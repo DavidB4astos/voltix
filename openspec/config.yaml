@@ -8,7 +8,7 @@ context: |
   Desenvolvimento: incremental e orientado por especificações com OpenSpec.
   Documentação: utilizar docs/project-overview.md, docs/domain-model.md e AGENTS.md como fontes de contexto e regras do projeto.
 
-  rules:
+rules:
   proposal:
     - Definir claramente o objetivo, o escopo e o que fica fora da mudança.
   specs:
@@ -18,7 +18,7 @@ context: |
   tasks:
     - Dividir a implementação em tarefas pequenas, sequenciais e verificáveis.
 
-    operations:
+operations:
   apply:
     guidance:
       - Implementar somente o que pertence à mudança atual.
