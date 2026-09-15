@@ -1,0 +1,29 @@
+schema: spec-driven
+
+context: |
+  Projeto: Voltix, e-commerce acadêmico de tecnologia com CRM integrado.
+  Frontend: Reflex.
+  Backend: Xano e XanoScript.
+  Dados: infraestrutura gerenciada pelo Xano.
+  Desenvolvimento: incremental e orientado por especificações com OpenSpec.
+  Documentação: utilizar docs/project-overview.md, docs/domain-model.md e AGENTS.md como fontes de contexto e regras do projeto.
+
+  rules:
+  proposal:
+    - Definir claramente o objetivo, o escopo e o que fica fora da mudança.
+  specs:
+    - Especificar comportamentos de forma verificável e respeitar as regras definidas em docs/domain-model.md.
+  design:
+    - Respeitar a arquitetura definida para o projeto e justificar decisões técnicas relevantes.
+  tasks:
+    - Dividir a implementação em tarefas pequenas, sequenciais e verificáveis.
+
+    operations:
+  apply:
+    guidance:
+      - Implementar somente o que pertence à mudança atual.
+      - Verificar a implementação antes de considerar a mudança concluída.
+  archive:
+    guidance:
+      - Arquivar somente mudanças concluídas e verificadas.
+      - Garantir que as specs consolidadas representem o comportamento final da mudança.
