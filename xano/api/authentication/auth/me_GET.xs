@@ -11,21 +11,38 @@ query "auth/me" verb=GET {
     db.get user {
       field_name = "id"
       field_value = $auth.id
-      output = ["id", "created_at", "name", "email", "account_id", "role"]
+      output = ["id", "name", "email", "role", "status"]
     } as $user
   
-    // Create an event log for get user record
-    function.run "Getting Started Template/create_event_log" {
-      input = {
-        user_id   : $user.id
-        account_id: $user.account_id
-        action    : "get_auth_user"
-        metadata  : $user
-      }
-    } as $event_log
+    // Reject an authenticated token without a matching user record
+    precondition ($user != null) {
+      error_type = "accessdenied"
+      error = "Invalid authenticated user."
+    }
+
+    // Accept only approved internal-user profiles
+    precondition (
+      $user.role == "FUNCIONARIO" ||
+      $user.role == "ADMINISTRADOR"
+    ) {
+      error_type = "accessdenied"
+      error = "Invalid authenticated user."
+    }
+
+    // Only active internal users may access their identity
+    precondition ($user.status == "ATIVO") {
+      error_type = "accessdenied"
+      error = "Internal access is not available."
+    }
   }
 
-  response = $user
+  response = {
+    id: $user.id
+    name: $user.name
+    email: $user.email
+    role: $user.role
+    status: $user.status
+  }
   tags = ["xano:quick-start"]
   guid = "R_7_R-8SS4-WfM3GS4ieMO0_vls"
 }

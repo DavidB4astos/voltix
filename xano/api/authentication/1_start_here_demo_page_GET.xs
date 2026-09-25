@@ -213,7 +213,6 @@ query "1_start_here_demo_page" verb=GET {
               <div class="api-card">
                 <h3>Demo Overview</h3>
                 <div class="api-list">
-                  <div class="api-item"><span class="api-dot"></span><div><strong>Signup:</strong> Create new accounts through your Xano signup endpoint with secure password hashing.</div></div>
                   <div class="api-item"><span class="api-dot"></span><div><strong>Login:</strong> Authenticate users via POST request to your Xano login endpoint with email/password credentials.</div></div>
                   <div class="api-item"><span class="api-dot"></span><div><strong>Password Reset:</strong> Trigger email-based password recovery using your Xano reset endpoint.</div></div>
                   <div class="api-item"><span class="api-dot"></span><div><strong>Agent Chatbot:</strong> Interact with an example chatbot connected to an MCP with Xano Docs using Xano Agents.</div></div>
@@ -271,98 +270,10 @@ query "1_start_here_demo_page" verb=GET {
         
               <div class="mt-6 form-actions" style="display:grid;gap:10px">
                 <button class="btn btn-primary" id="btnLogin" type="submit">Sign in</button>
-                <a class="btn btn-secondary" href="#/signup" id="linkLoginToSignup" role="button">Create account</a>
                 <a class="btn btn-link" href="#/reset" id="linkLoginToReset">Forgot password?</a>
               </div>
         
               <div role="status" aria-live="polite" id="loginStatus" class="text-sm text-muted mt-4" style="min-height:1em"></div>
-            </form>
-          </section>
-        </main>
-        
-        <!-- ===== SIGNUP ===== -->
-        <main id="view-signup" class="auth" data-view>
-          <!-- LEFT -->
-          <section class="auth__brand" aria-hidden="true">
-            <div class="auth__panel">
-              <span class="auth__badge">Xano Backend Demo</span>
-              <h1 class="mt-4" style="font-size:clamp(28px,4.4vw,44px);line-height:1.1;margin-bottom:10px">Demo App</h1>
-              <p class="text-muted" style="font-size:clamp(16px,2.6vw,20px)">A demo built on Xano with out-of-the-box authentication endpoints and an example Agent that lets you interact with a chatbot powered by Xano Docs.</p>
-        
-              <a class="demo-video-link" href="https://go.xano.co/4nKglrc" target="_blank" rel="noopener">🎬 Video: Learn how to use this Demo App</a>
-        
-              <div class="api-card">
-                <h3>Demo Overview</h3>
-                <div class="api-list">
-                  <div class="api-item"><span class="api-dot"></span><div><strong>Signup:</strong> Create new accounts through your Xano signup endpoint with secure password hashing.</div></div>
-                  <div class="api-item"><span class="api-dot"></span><div><strong>Login:</strong> Authenticate users via POST request to your Xano login endpoint with email/password credentials.</div></div>
-                  <div class="api-item"><span class="api-dot"></span><div><strong>Password Reset:</strong> Trigger email-based password recovery using your Xano reset endpoint.</div></div>
-                  <div class="api-item"><span class="api-dot"></span><div><strong>Agent Chatbot:</strong> Interact with an example chatbot connected to an MCP with Xano Docs using Xano Agents.</div></div>
-                </div>
-              </div>
-        
-              <div class="api-card">
-                <h3>Signup – Technical Implementation</h3>
-                <div class="api-list">
-                  <div class="api-item"><span class="api-dot"></span><div>Step 1: Input validation</div></div>
-                  <div class="api-item"><span class="api-dot"></span><div>Step 2: POST to <code>/auth/signup</code></div></div>
-                  <div class="api-item"><span class="api-dot"></span><div>Step 3: Generate Auth Token</div></div>
-                  <div class="api-item"><span class="api-dot"></span><div>Step 4: Redirect to Agent chat</div></div>
-                </div>
-              </div>
-        
-              <div class="infotip" role="note">
-                <div class="infotip__icon" aria-hidden="true">i</div>
-                <button class="infotip__trigger" type="button" aria-describedby="tip-signup">Remove the demo when you're ready</button>
-                <div class="tooltip text-sm" id="tip-signup">
-                  When you're ready to remove the demo, delete the API endpoint <strong>GET /1_start_here_demo_page</strong> from your workspace.
-                </div>
-              </div>
-            </div>
-          </section>
-        
-          <!-- RIGHT -->
-          <section class="auth__content">
-            <form id="signupForm" class="auth__panel card" style="padding:24px" aria-labelledby="signupTitle" autocomplete="off">
-              <div class="text-center">
-                <h2 id="signupTitle" class="mt-0 mb-2" style="font-size:24px">Sign up</h2>
-                <p class="text-muted mb-4">Create your account</p>
-              </div>
-        
-              <section class="callout mb-4" aria-label="API Integration">
-                <div class="text-sm font-bold mb-2">API Integration</div>
-                <div class="text-sm"><strong>Endpoint:</strong> <code id="signup-endpoint" class="text-xs"></code></div>
-                <div class="text-sm mt-2"><strong>Request Body:</strong> <code class="inline">{ name, email, password }</code></div>
-                <div class="text-sm mt-2"><strong>Response:</strong> Authentication token</div>
-                <p class="text-xs text-muted mt-2 mb-0">This form connects directly to your Xano signup system for secure account creation.</p>
-              </section>
-        
-              <section class="notice mb-4" aria-label="Notice">
-                <p class="text-sm mb-0">
-                  <strong>Notice:</strong> This will create a new user in the
-                  <code class="inline">user</code> table.
-                </p>
-              </section>
-        
-              <div class="field">
-                <label class="label" for="signup_name">Name</label>
-                <input class="input" id="signup_name" type="text" placeholder="Jane Doe" autocomplete="off" />
-              </div>
-              <div class="field mt-4">
-                <label class="label" for="signup_email">Email</label>
-                <input class="input" id="signup_email" type="email" placeholder="you@example.com" autocomplete="off" />
-              </div>
-              <div class="field mt-4">
-                <label class="label" for="signup_password">Password</label>
-                <input class="input" id="signup_password" type="password" placeholder="••••••••" autocomplete="new-password" />
-              </div>
-        
-              <div class="mt-6 form-actions" style="display:grid;gap:10px">
-                <button class="btn btn-primary" id="btnSignup" type="submit">Create account</button>
-                <a class="btn btn-secondary" href="#/login" id="linkSignupToLogin" role="button">Already have an account? Sign in</a>
-              </div>
-        
-              <div role="status" aria-live="polite" id="signupStatus" class="text-sm text-muted mt-4" style="min-height:1em"></div>
             </form>
           </section>
         </main>
@@ -381,7 +292,6 @@ query "1_start_here_demo_page" verb=GET {
               <div class="api-card">
                 <h3>Demo Overview</h3>
                 <div class="api-list">
-                  <div class="api-item"><span class="api-dot"></span><div><strong>Signup:</strong> Create new accounts through your Xano signup endpoint with secure password hashing.</div></div>
                   <div class="api-item"><span class="api-dot"></span><div><strong>Login:</strong> Authenticate users via POST request to your Xano login endpoint with email/password credentials.</div></div>
                   <div class="api-item"><span class="api-dot"></span><div><strong>Password Reset:</strong> Trigger email-based password recovery using your Xano reset endpoint.</div></div>
                   <div class="api-item"><span class="api-dot"></span><div><strong>Agent Chatbot:</strong> Interact with an example chatbot connected to an MCP with Xano Docs using Xano Agents.</div></div>
@@ -457,7 +367,6 @@ query "1_start_here_demo_page" verb=GET {
               <div class="api-card">
                 <h3>Demo Overview</h3>
                 <div class="api-list">
-                  <div class="api-item"><span class="api-dot"></span><div><strong>Signup:</strong> Create new accounts through your Xano signup endpoint with secure password hashing.</div></div>
                   <div class="api-item"><span class="api-dot"></span><div><strong>Login:</strong> Authenticate users via POST request to your Xano login endpoint with email/password credentials.</div></div>
                   <div class="api-item"><span class="api-dot"></span><div><strong>Password Reset:</strong> Trigger email-based password recovery using your Xano reset endpoint.</div></div>
                   <div class="api-item"><span class="api-dot"></span><div><strong>Agent Chatbot:</strong> Interact with an example chatbot connected to an MCP with Xano Docs using Xano Agents.</div></div>
@@ -614,7 +523,6 @@ query "1_start_here_demo_page" verb=GET {
             baseUrl: "{{ $var.api_base_url }}", // injected by Xano
             routes: {
               login: "/auth/login",
-              signup: "/auth/signup",
               me: "/auth/me",
               requestResetLink: "/reset/request-reset-link",
               magicLogin: "/reset/magic-link-login",
@@ -649,7 +557,6 @@ query "1_start_here_demo_page" verb=GET {
         
           const views = {
             login:  document.getElementById("view-login"),
-            signup: document.getElementById("view-signup"),
             reset:  document.getElementById("view-reset"),
             update: document.getElementById("view-update"),
             chat:   document.getElementById("view-chat")
@@ -707,10 +614,9 @@ query "1_start_here_demo_page" verb=GET {
           // ---------- Form reset helpers ----------
           function resetForm(id){ const f=$(id); if (f && typeof f.reset==="function") f.reset(); }
           function clearAuthForms(){
-            ["loginForm","signupForm","resetForm","updateForm"].forEach(resetForm);
+            ["loginForm","resetForm","updateForm"].forEach(resetForm);
             const ids = [
               "login_email","login_password",
-              "signup_name","signup_email","signup_password",
               "reset_email",
               "new_password","confirm_password"
             ];
@@ -776,16 +682,16 @@ query "1_start_here_demo_page" verb=GET {
         
           // ---------- Clear form statuses ----------
           function clearAllFormStatuses(){
-            const ids = ["loginStatus","signupStatus","resetStatus","updateStatus"];
+            const ids = ["loginStatus","resetStatus","updateStatus"];
             ids.forEach(id => { const el = document.getElementById(id); if (el) el.textContent = ""; });
           }
         
           // ---------- Route helpers ----------
           function currentRoute(){
-            const raw = (location.hash || "#/signup").slice(1);
+            const raw = (location.hash || "#/login").slice(1);
             const noLead = raw.replace(/^\/+/, "");
             const pathOnly = noLead.split("?")[0];
-            return pathOnly || "signup";
+            return pathOnly || "login";
           }
         
           // ---------- Router ----------
@@ -794,8 +700,6 @@ query "1_start_here_demo_page" verb=GET {
             clearAllFormStatuses();
         
             switch (route) {
-              case "signup":
-                show("signup"); clearAuthForms(); break;
               case "login":
                 show("login"); clearAuthForms(); break;
               case "reset":
@@ -806,13 +710,13 @@ query "1_start_here_demo_page" verb=GET {
                 await prepareUpdatePage();
                 break;
               case "chat":
-                if (!(await ensureAuthed())) { navigateTo("#/signup"); return; }
+                if (!(await ensureAuthed())) { navigateTo("#/login"); return; }
                 show("chat");
                 if (!chatBootstrapped) initChatOnce();
                 hydrateConversationFromScope();
                 break;
               default:
-                navigateTo("#/signup"); return;
+                navigateTo("#/login"); return;
             }
             dumpConfig();
           }
@@ -842,12 +746,6 @@ query "1_start_here_demo_page" verb=GET {
           const api = {
             async login(email, password){
               const json = await http(Config.routes.login, { method:"POST", body:{ email, password } });
-              const accessToken = json?.authToken;
-              if (!accessToken) throw new Error("No authToken returned.");
-              return { accessToken };
-            },
-            async signup(name, email, password){
-              const json = await http(Config.routes.signup, { method:"POST", body:{ name, email, password } });
               const accessToken = json?.authToken;
               if (!accessToken) throw new Error("No authToken returned.");
               return { accessToken };
@@ -909,10 +807,7 @@ query "1_start_here_demo_page" verb=GET {
           document.addEventListener("DOMContentLoaded", async () => {
             migrateLegacyStorage();
             autoRouteIfMagicToken();
-            if (!location.hash) navigateTo("#/signup");
-        
-            $("linkSignupToLogin")?.addEventListener("click", (e)=>{ e.preventDefault(); clearAllFormStatuses(); clearAuthForms(); navigateTo("#/login"); });
-            $("linkLoginToSignup")?.addEventListener("click", (e)=>{ e.preventDefault(); clearAllFormStatuses(); clearAuthForms(); navigateTo("#/signup"); });
+            if (!location.hash) navigateTo("#/login");
             $("linkLoginToReset")?.addEventListener("click",  (e)=>{ e.preventDefault(); clearAllFormStatuses(); clearAuthForms(); navigateTo("#/reset"); });
             $("linkResetToLogin")?.addEventListener("click",  (e)=>{ e.preventDefault(); clearAllFormStatuses(); clearAuthForms(); navigateTo("#/login"); });
             $("linkUpdateToLogin")?.addEventListener("click", (e)=>{ e.preventDefault(); clearAllFormStatuses(); clearAuthForms(); navigateTo("#/login"); });
@@ -940,25 +835,6 @@ query "1_start_here_demo_page" verb=GET {
               }
             });
         
-            // Signup
-            $("signupForm")?.addEventListener("submit", async (e) => {
-              e.preventDefault();
-              const name = $("signup_name").value.trim();
-              const email = $("signup_email").value.trim();
-              const password = $("signup_password").value;
-              $("signupStatus").textContent = "Creating your account…"; $("btnSignup").disabled = true;
-              try {
-                const { accessToken } = await api.signup(name, email, password);
-                setSession({ token: accessToken });
-                const me = await http(Config.routes.me, { method:"GET", auth:true });
-                setSession({ token: accessToken, user: me });
-                $("signupStatus").textContent = "Account created."; navigateTo("#/chat");
-              } catch (err) {
-                $("signupStatus").textContent = "Signup failed: " + (err.message || "Unknown error");
-              } finally {
-                $("btnSignup").disabled = false;
-              }
-            });
         
             // Reset link
             $("resetForm")?.addEventListener("submit", async (e) => {
@@ -979,7 +855,7 @@ query "1_start_here_demo_page" verb=GET {
             $("updateForm")?.addEventListener("submit", onUpdateSubmit);
         
             // Header actions
-            $("btnLogout")?.addEventListener("click", () => { clearSession(); navigateTo("#/signup"); });
+            $("btnLogout")?.addEventListener("click", () => { clearSession(); navigateTo("#/login"); });
             $("btnNewChat")?.addEventListener("click", newChat);
             $("btnCopyJson")?.addEventListener("click", async () => { try { const jsonText = JSON.stringify(buildSampleBody(), null, 2); await navigator.clipboard.writeText(jsonText); $("btnCopyJson").textContent = "Copied!"; setTimeout(()=>{$("btnCopyJson").textContent="Copy"}, 900);} catch {} });
             $("btnContinue")?.addEventListener("click", () => navigateTo("#/chat"));
@@ -1153,7 +1029,6 @@ query "1_start_here_demo_page" verb=GET {
           function dumpConfig(){
             const set = (id, val) => { const el=$(id); if (el) el.textContent = val; };
             set("login-endpoint", fullUrl(Config.routes.login));
-            set("signup-endpoint", fullUrl(Config.routes.signup));
             set("reset-endpoint", fullUrl(Config.routes.requestResetLink));
             set("magic-endpoint-sm", fullUrl(Config.routes.magicLogin));
             set("update-endpoint-sm", fullUrl(Config.routes.updatePassword));

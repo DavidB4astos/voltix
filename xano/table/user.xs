@@ -19,9 +19,15 @@ table user {
       table = "account"
     }
   
-    // The role of the user within their company (e.g., 'admin', 'member').
+    // Perfil do UsuarioInterno na operação Voltix.
     enum role? {
-      values = ["admin", "member"]
+      values = ["FUNCIONARIO", "ADMINISTRADOR"]
+      visibility = "private"
+    }
+
+    // Status de acesso do UsuarioInterno.
+    enum status? {
+      values = ["ATIVO", "INATIVO"]
       visibility = "private"
     }
   
