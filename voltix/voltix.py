@@ -8,9 +8,12 @@ import urllib.request
 from typing import Any
 
 import reflex as rx
+from dotenv import load_dotenv
 
 from rxconfig import config
 
+
+load_dotenv()
 
 XANO_HEALTH_URL_ENV = "XANO_HEALTH_URL"
 XANO_LOGIN_URL_ENV = "XANO_LOGIN_URL"
