@@ -1,6 +1,7 @@
 import asyncio
 import unittest
 from pathlib import Path
+from urllib.error import URLError
 from unittest.mock import AsyncMock
 
 import voltix.voltix as app
@@ -104,6 +105,7 @@ class _CheckoutState:
     _set_selected_order = app.State._set_selected_order
     load_customer_orders = app.State.load_customer_orders.fn
     load_customer_order = app.State.load_customer_order.fn
+    simulate_order_payment = app.State.simulate_order_payment.fn
     checkout_address_id = "6"
     _customer_auth_token = "customer-token"
     customer_authenticated = True
@@ -137,6 +139,8 @@ class _CheckoutState:
     orders_message = ""
     selected_order_items = []
     order_loading = False
+    payment_simulating = False
+    payment_message = ""
 
 
 class CheckoutOrdersTests(unittest.TestCase):
@@ -172,6 +176,137 @@ class CheckoutOrdersTests(unittest.TestCase):
                 "status": "PENDENTE",
             }
             app._order_summary(invalid, detail=True)
+
+    def test_order_parser_accepts_approved_payment_and_confirmed_order(self):
+        response = _order_response(detail=True)
+        response["status"] = "PAGAMENTO_CONFIRMADO"
+        response["pagamento"]["status"] = "APROVADO"
+        order = app._order_summary(response, detail=True)
+        self.assertEqual(order.status, "PAGAMENTO_CONFIRMADO")
+        self.assertEqual(order.payment_status, "APROVADO")
+        self.assertEqual(order.payment_method, "PIX")
+        self.assertEqual(order.payment_value, "25")
+
+    def test_payment_simulation_updates_only_after_valid_customer_response(self):
+        state = _CheckoutState()
+        state._set_selected_order(app._order_summary(_order_response(detail=True), detail=True))
+        state.orders = [state._selected_order]
+        state._customer_request = AsyncMock(
+            return_value={
+                "simulado": True,
+                "alterado": True,
+                "pedido_id": 29,
+                "codigo": "VTX-29",
+                "pedido_status": "PAGAMENTO_CONFIRMADO",
+                "pagamento": {
+                    "metodo": "PIX",
+                    "valor": 25,
+                    "status": "APROVADO",
+                },
+            }
+        )
+
+        async def run():
+            await app.State.simulate_order_payment.fn(state)
+            request = state._customer_request.call_args
+            self.assertEqual(request.args[0], app.XANO_PAYMENT_SIMULATION_URL_ENV)
+            self.assertEqual(request.kwargs["method"], "POST")
+            self.assertEqual(request.kwargs["path"], "29/payment/simulate")
+            self.assertEqual(state.selected_order_status, "PAGAMENTO_CONFIRMADO")
+            self.assertEqual(state.selected_order_payment_status, "APROVADO")
+            self.assertEqual(state.orders[0].payment_status, "APROVADO")
+            self.assertEqual(state._selected_order.payment_method, "PIX")
+            self.assertEqual(state._selected_order.payment_value, "25")
+            self.assertIn("Nenhuma cobrança real", state.payment_message)
+
+        asyncio.run(run())
+
+    def test_payment_simulation_rejects_missing_session_or_ineligible_order(self):
+        state = _CheckoutState()
+        state._set_selected_order(app._order_summary(_order_response(detail=True), detail=True))
+        state._customer_request = AsyncMock()
+
+        async def run():
+            state._customer_auth_token = ""
+            state.customer_authenticated = False
+            await app.State.simulate_order_payment.fn(state)
+            self.assertIn("Entre como Cliente", state.payment_message)
+            state._customer_auth_token = "customer-token"
+            state.customer_authenticated = True
+            state._set_selected_order(
+                app._order_summary(
+                    {
+                        **_order_response(detail=True),
+                        "status": "PAGAMENTO_CONFIRMADO",
+                    },
+                    detail=True,
+                )
+            )
+            await app.State.simulate_order_payment.fn(state)
+            self.assertIn("não está aguardando", state.payment_message)
+            state._customer_request.assert_not_called()
+
+        asyncio.run(run())
+
+    def test_payment_simulation_is_not_repeated_after_approval(self):
+        response = _order_response(detail=True)
+        response["status"] = "PAGAMENTO_CONFIRMADO"
+        response["pagamento"]["status"] = "APROVADO"
+        state = _CheckoutState()
+        state._set_selected_order(app._order_summary(response, detail=True))
+        state._customer_request = AsyncMock()
+
+        async def run():
+            await app.State.simulate_order_payment.fn(state)
+            state._customer_request.assert_not_called()
+            self.assertEqual(state.selected_order_payment_status, "APROVADO")
+            self.assertIn("não está aguardando", state.payment_message)
+
+        asyncio.run(run())
+
+    def test_invalid_payment_response_does_not_claim_approval(self):
+        state = _CheckoutState()
+        state._set_selected_order(app._order_summary(_order_response(detail=True), detail=True))
+        original = state._selected_order
+        state._customer_request = AsyncMock(
+            return_value={
+                "simulado": True,
+                "alterado": True,
+                "pedido_id": 29,
+                "codigo": "VTX-29",
+                "pedido_status": "PAGAMENTO_CONFIRMADO",
+                "pagamento": {
+                    "metodo": "PIX",
+                    "valor": 24,
+                    "status": "APROVADO",
+                },
+            }
+        )
+
+        async def run():
+            await app.State.simulate_order_payment.fn(state)
+            self.assertIs(state._selected_order, original)
+            self.assertEqual(state.selected_order_payment_status, "PENDENTE")
+            self.assertIn("Não foi possível confirmar", state.payment_message)
+            self.assertFalse(state.payment_simulating)
+
+        asyncio.run(run())
+
+    def test_payment_http_failure_preserves_pending_order(self):
+        state = _CheckoutState()
+        state._set_selected_order(app._order_summary(_order_response(detail=True), detail=True))
+        original = state._selected_order
+        state._customer_request = AsyncMock(side_effect=URLError("offline"))
+
+        async def run():
+            await app.State.simulate_order_payment.fn(state)
+            self.assertIs(state._selected_order, original)
+            self.assertEqual(state.selected_order_status, "AGUARDANDO_PAGAMENTO")
+            self.assertEqual(state.selected_order_payment_status, "PENDENTE")
+            self.assertIn("Não foi possível confirmar", state.payment_message)
+            self.assertFalse(state.payment_simulating)
+
+        asyncio.run(run())
 
     def test_confirmation_requires_own_customer_session_and_valid_review(self):
         state = _CheckoutState()
@@ -320,6 +455,43 @@ class CheckoutOrdersTests(unittest.TestCase):
         self.assertNotIn("_customer_auth_token", orders_page)
         self.assertNotIn("gateway", checkout_page.lower())
         self.assertNotIn("frete real", checkout_page.lower())
+
+    def test_order_detail_displays_simulation_only_for_pending_payment(self):
+        source = Path("voltix/voltix.py").read_text(encoding="utf-8")
+        orders_page = source.split("def customer_orders_page()", 1)[1].split(
+            "\n\napp = rx.App()", 1
+        )[0]
+        self.assertIn("State.simulate_order_payment", orders_page)
+        self.assertIn('State.selected_order_status == "AGUARDANDO_PAGAMENTO"', orders_page)
+        self.assertIn('State.selected_order_payment_status == "PENDENTE"', orders_page)
+        self.assertIn("nenhum valor será cobrado", orders_page)
+        self.assertIn("Nenhuma cobrança real foi realizada", source)
+
+    def test_simulated_payment_endpoint_is_customer_scoped_and_transactional(self):
+        path = Path(
+            "xano/api/customer/order_id_payment_simulate_POST.xs"
+        )
+        source = path.read_text(encoding="utf-8")
+        self.assertIn('auth = "CLIENTE"', source)
+        self.assertIn("$order.cliente_id == $auth.id", source)
+        self.assertIn("$current_order.cliente_id == $auth.id", source)
+        self.assertIn("$payment.valor == $order.valor_total", source)
+        self.assertIn("$current_payment.valor == $current_order.valor_total", source)
+        self.assertIn("Order payment data is inconsistent.", source)
+        self.assertIn("db.transaction", source)
+        self.assertIn('status: "APROVADO"', source)
+        self.assertIn('status: "PAGAMENTO_CONFIRMADO"', source)
+        self.assertIn('$current_order.status == "PAGAMENTO_CONFIRMADO"', source)
+        self.assertIn('$current_payment.status == "APROVADO"', source)
+        self.assertIn('$current_order.status == "AGUARDANDO_PAGAMENTO"', source)
+        self.assertIn('$current_payment.status == "PENDENTE"', source)
+        self.assertIn('$customer.status == "ATIVO"', source)
+        self.assertNotIn("db.add pagamento", source)
+        self.assertNotIn("variacao_produto", source)
+        self.assertNotIn("$input.cliente_id", source)
+        self.assertIn("XANO_PAYMENT_SIMULATION_URL", Path(".env.example").read_text(encoding="utf-8"))
+        payment_table = Path("xano/table/pagamento.xs").read_text(encoding="utf-8")
+        self.assertIn('values = ["PIX", "CARTAO", "BOLETO"]', payment_table)
 
 
 if __name__ == "__main__":

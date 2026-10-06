@@ -42,6 +42,7 @@ XANO_CART_URL_ENV = "XANO_CART_URL"
 XANO_CHECKOUT_REVIEW_URL_ENV = "XANO_CHECKOUT_REVIEW_URL"
 XANO_CHECKOUT_CONFIRM_URL_ENV = "XANO_CHECKOUT_CONFIRM_URL"
 XANO_ORDERS_URL_ENV = "XANO_ORDERS_URL"
+XANO_PAYMENT_SIMULATION_URL_ENV = "XANO_PAYMENT_SIMULATION_URL"
 
 XanoJson = dict[str, object] | list[dict[str, object]]
 
@@ -647,7 +648,6 @@ def _order_summary(payload: object, *, detail: bool) -> OrderSummary:
         if (
             payment_method not in {"PIX", "CARTAO", "BOLETO"}
             or payment_status not in {"PENDENTE", "APROVADO", "RECUSADO", "CANCELADO"}
-            or payment_status != "PENDENTE"
             or payment_value != total
         ):
             raise ValueError("Order payment response is inconsistent.")
@@ -668,6 +668,42 @@ def _order_summary(payload: object, *, detail: bool) -> OrderSummary:
         delivery=_checkout_address_snapshot(payload.get("entrega")),
         payment_method=payment_method,
         payment_status=payment_status,
+        payment_value=_cart_decimal_text(payment_value),
+    )
+
+
+def _simulated_payment_response(
+    payload: object,
+    order: OrderSummary,
+) -> OrderSummary:
+    if not isinstance(payload, dict):
+        raise ValueError("Simulated payment response must be an object.")
+    payment = payload.get("pagamento")
+    if not isinstance(payment, dict):
+        raise ValueError("Simulated payment response is missing payment data.")
+
+    order_id = payload.get("pedido_id")
+    code = payload.get("codigo")
+    order_status = payload.get("pedido_status")
+    method = payment.get("metodo")
+    payment_status = payment.get("status")
+    payment_value = _cart_decimal(payment.get("valor"))
+    if (
+        payload.get("simulado") is not True
+        or not isinstance(payload.get("alterado"), bool)
+        or order_id != order.id
+        or isinstance(order_id, bool)
+        or code != order.code
+        or order_status != "PAGAMENTO_CONFIRMADO"
+        or method != order.payment_method
+        or payment_status != "APROVADO"
+        or payment_value != _cart_decimal(order.total)
+    ):
+        raise ValueError("Simulated payment response is inconsistent.")
+    return replace(
+        order,
+        status="PAGAMENTO_CONFIRMADO",
+        payment_status="APROVADO",
         payment_value=_cart_decimal_text(payment_value),
     )
 
@@ -1197,6 +1233,8 @@ class State(rx.State):
     selected_order_payment_method: str = ""
     selected_order_payment_status: str = ""
     order_loading: bool = False
+    payment_simulating: bool = False
+    payment_message: str = ""
     customer_addresses: list[CustomerAddressEntry] = []
     customer_addresses_loading: bool = False
     customer_addresses_message: str = ""
@@ -2415,6 +2453,8 @@ class State(rx.State):
         self.orders_message = ""
         self._set_selected_order(None)
         self.order_loading = False
+        self.payment_simulating = False
+        self.payment_message = ""
         self.customer_addresses = []
         self.customer_addresses_loading = False
         self.customer_addresses_message = ""
@@ -2946,6 +2986,59 @@ class State(rx.State):
         finally:
             self.order_loading = False
         self._set_selected_order(order)
+
+    @rx.event
+    async def simulate_order_payment(self):
+        order = self._selected_order
+        if (
+            not self._customer_auth_token
+            or not self.customer_authenticated
+            or self.customer_session_status != "success"
+        ):
+            self.payment_message = "Entre como Cliente para simular o pagamento."
+            return
+        if (
+            order is None
+            or order.status != "AGUARDANDO_PAGAMENTO"
+            or order.payment_status != "PENDENTE"
+        ):
+            self.payment_message = (
+                "Este pedido não está aguardando pagamento simulado."
+            )
+            return
+
+        self.payment_simulating = True
+        self.payment_message = ""
+        try:
+            response = await self._customer_request(
+                XANO_PAYMENT_SIMULATION_URL_ENV,
+                method="POST",
+                path=f"{order.id}/payment/simulate",
+            )
+            updated_order = _simulated_payment_response(response, order)
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.payment_message = (
+                "Não foi possível confirmar o pagamento simulado. "
+                "O estado do pedido não foi atualizado."
+            )
+            return
+        finally:
+            self.payment_simulating = False
+
+        self._set_selected_order(updated_order)
+        self.orders = [
+            updated_order if entry.id == updated_order.id else entry
+            for entry in self.orders
+        ]
+        self.payment_message = (
+            "Pagamento simulado aprovado. Nenhuma cobrança real foi realizada."
+        )
 
     @rx.event
     async def register_customer(self, form_data: dict[str, Any]):
@@ -5142,6 +5235,25 @@ def customer_orders_page() -> rx.Component:
                     + " — "
                     + State.selected_order_payment_status
                 ),
+                rx.text(
+                    "Aprovação simulada: nenhum valor será cobrado."
+                ),
+                rx.cond(
+                    (State.selected_order_status == "AGUARDANDO_PAGAMENTO")
+                    & (State.selected_order_payment_status == "PENDENTE"),
+                    rx.button(
+                        "Simular pagamento",
+                        on_click=State.simulate_order_payment,
+                        disabled=State.payment_simulating,
+                    ),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    State.payment_simulating,
+                    rx.text("Simulando pagamento..."),
+                    rx.fragment(),
+                ),
+                rx.text(State.payment_message),
                 align="stretch",
                 spacing="3",
                 width="100%",
