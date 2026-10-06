@@ -2,11 +2,16 @@
 
 import asyncio
 import json
+import math
+import mimetypes
 import os
+import re
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from typing import Any
+from uuid import uuid4
 
 import reflex as rx
 from dotenv import load_dotenv
@@ -22,6 +27,8 @@ XANO_ME_URL_ENV = "XANO_ME_URL"
 XANO_INTERNAL_ACCESS_URL_ENV = "XANO_INTERNAL_ACCESS_URL"
 XANO_CATEGORIES_URL_ENV = "XANO_CATEGORIES_URL"
 XANO_BRANDS_URL_ENV = "XANO_BRANDS_URL"
+XANO_PRODUCTS_URL_ENV = "XANO_PRODUCTS_URL"
+XANO_VARIATIONS_URL_ENV = "XANO_VARIATIONS_URL"
 
 XanoJson = dict[str, object] | list[dict[str, object]]
 
@@ -32,6 +39,34 @@ class CatalogEntry:
     name: str
     description: str
     status: str
+
+
+@dataclass(frozen=True)
+class ProductVariation:
+    id: int
+    product_id: int
+    name_or_description: str
+    sku: str
+    price: float
+    available_quantity: float
+    status: str
+
+
+@dataclass(frozen=True)
+class ProductEntry:
+    id: int
+    name: str
+    description: str
+    technical_specifications: str
+    image_present: bool
+    category_id: int
+    category_name: str
+    category_status: str
+    brand_id: int
+    brand_name: str
+    brand_status: str
+    status: str
+    variations: list[ProductVariation]
 
 
 def _required_environment_url(name: str) -> str:
@@ -124,6 +159,140 @@ def _catalog_entries(payload: XanoJson) -> list[CatalogEntry]:
     return [_catalog_entry(item) for item in payload]
 
 
+def _finite_number(
+    payload: object,
+    *,
+    minimum: Decimal,
+    strictly_positive: bool = False,
+) -> float:
+    if isinstance(payload, bool) or not isinstance(payload, (int, float, str)):
+        raise ValueError("Numeric product field has an invalid value.")
+    try:
+        number = Decimal(str(payload))
+    except InvalidOperation as error:
+        raise ValueError("Numeric product field has an invalid value.") from error
+    if (
+        not number.is_finite()
+        or number < minimum
+        or (strictly_positive and number == 0)
+    ):
+        raise ValueError("Numeric product field is outside the allowed range.")
+    converted = float(number)
+    if not math.isfinite(converted):
+        raise ValueError("Numeric product field is outside the allowed range.")
+    return converted
+
+
+def _product_variation(payload: object) -> ProductVariation:
+    if not isinstance(payload, dict):
+        raise ValueError("Product variation response must be an object.")
+
+    variation_id = payload.get("id")
+    product_id = payload.get("produto_id")
+    name = payload.get("nome_ou_descricao")
+    sku = payload.get("sku")
+    status = payload.get("status")
+    if (
+        not isinstance(variation_id, int)
+        or isinstance(variation_id, bool)
+        or not isinstance(product_id, int)
+        or isinstance(product_id, bool)
+        or (name is not None and not isinstance(name, str))
+        or not isinstance(sku, str)
+        or not sku.strip()
+        or status not in {"ATIVO", "INATIVO"}
+    ):
+        raise ValueError("Product variation response has an invalid record.")
+
+    return ProductVariation(
+        id=variation_id,
+        product_id=product_id,
+        name_or_description=name or "",
+        sku=sku,
+        price=_finite_number(
+            payload.get("preco"),
+            minimum=Decimal("0"),
+            strictly_positive=True,
+        ),
+        available_quantity=_finite_number(
+            payload.get("quantidade_disponivel"),
+            minimum=Decimal("0"),
+        ),
+        status=status,
+    )
+
+
+def _product_entries(
+    products_payload: XanoJson,
+    variations_payload: XanoJson,
+    categories: list[CatalogEntry],
+    brands: list[CatalogEntry],
+) -> list[ProductEntry]:
+    if not isinstance(products_payload, list) or not isinstance(
+        variations_payload, list
+    ):
+        raise ValueError("Product and variation list responses must be arrays.")
+
+    category_by_id = {entry.id: entry for entry in categories}
+    brand_by_id = {entry.id: entry for entry in brands}
+    variations_by_product: dict[int, list[ProductVariation]] = {}
+    for item in variations_payload:
+        variation = _product_variation(item)
+        variations_by_product.setdefault(variation.product_id, []).append(variation)
+
+    products: list[ProductEntry] = []
+    for payload in products_payload:
+        if not isinstance(payload, dict):
+            raise ValueError("Product response must be an object.")
+        product_id = payload.get("id")
+        category_id = payload.get("categoria_id")
+        brand_id = payload.get("marca_id")
+        name = payload.get("nome")
+        description = payload.get("descricao")
+        specifications = payload.get("especificacoes_tecnicas")
+        image_path = payload.get("imagem_principal")
+        status = payload.get("status")
+        if (
+            not isinstance(product_id, int)
+            or isinstance(product_id, bool)
+            or not isinstance(category_id, int)
+            or isinstance(category_id, bool)
+            or not isinstance(brand_id, int)
+            or isinstance(brand_id, bool)
+            or (name is not None and not isinstance(name, str))
+            or (description is not None and not isinstance(description, str))
+            or (specifications is not None and not isinstance(specifications, str))
+            or (image_path is not None and not isinstance(image_path, str))
+            or status not in {"ATIVO", "INATIVO"}
+        ):
+            raise ValueError("Product response has an invalid record.")
+
+        category = category_by_id.get(category_id)
+        brand = brand_by_id.get(brand_id)
+        product_variations = variations_by_product.get(product_id, [])
+        if category is None or brand is None or not product_variations:
+            raise ValueError("Product response has missing relationships or variations.")
+
+        products.append(
+            ProductEntry(
+                id=product_id,
+                name=name or "",
+                description=description or "",
+                technical_specifications=specifications or "",
+                image_present=bool(image_path),
+                category_id=category.id,
+                category_name=category.name,
+                category_status=category.status,
+                brand_id=brand.id,
+                brand_name=brand.name,
+                brand_status=brand.status,
+                status=status,
+                variations=product_variations,
+            )
+        )
+    return products
+
+
 def _catalog_failure_message(error: Exception) -> str:
     if isinstance(error, urllib.error.HTTPError):
         if error.code in {401, 403}:
@@ -131,6 +300,79 @@ def _catalog_failure_message(error: Exception) -> str:
         if error.code == 400:
             return "Os dados foram rejeitados. Verifique o nome e tente novamente."
     return "Não foi possível concluir a operação. Tente novamente."
+
+
+def _product_failure_message(error: Exception) -> str:
+    if isinstance(error, ValueError) and str(error).startswith(
+        "Missing required environment variable:"
+    ):
+        variable = str(error).split(":", maxsplit=1)[1].strip().rstrip(".")
+        return f"Configuração ausente: {variable}."
+    if isinstance(error, urllib.error.HTTPError):
+        if error.code in {401, 403}:
+            return "Você não tem autorização para essa operação."
+        if error.code == 400:
+            return "Os dados do produto foram rejeitados. Verifique os campos e tente novamente."
+    return "Não foi possível concluir a operação do produto. Tente novamente."
+
+
+def _request_xano_multipart(
+    url: str,
+    *,
+    field_name: str,
+    file_name: str,
+    file_data: bytes,
+    authorization: str,
+) -> XanoJson:
+    boundary = "----Voltix" + uuid4().hex
+    safe_file_name = re.sub(r"[^A-Za-z0-9._-]", "_", os.path.basename(file_name))
+    content_type = mimetypes.guess_type(safe_file_name)[0] or "application/octet-stream"
+    body = (
+        f"--{boundary}\r\n"
+        f'Content-Disposition: form-data; name="{field_name}"; filename="{safe_file_name}"\r\n'
+        f"Content-Type: {content_type}\r\n\r\n"
+    ).encode("ascii") + file_data + f"\r\n--{boundary}--\r\n".encode("ascii")
+    request = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "Accept": "application/json",
+            "Authorization": authorization,
+            "Content-Type": f"multipart/form-data; boundary={boundary}",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        if response.status < 200 or response.status >= 300:
+            raise ValueError(
+                f"Xano returned unexpected HTTP status {response.status}."
+            )
+        response_payload = json.loads(response.read().decode("utf-8"))
+    if isinstance(response_payload, dict):
+        return response_payload
+    if isinstance(response_payload, list) and all(
+        isinstance(item, dict) for item in response_payload
+    ):
+        return [dict(item) for item in response_payload]
+    raise ValueError("Xano response must be a JSON object or a list of objects.")
+
+
+async def _server_side_xano_multipart_request(
+    url: str,
+    *,
+    field_name: str,
+    file_name: str,
+    file_data: bytes,
+    authorization: str,
+) -> XanoJson:
+    return await asyncio.to_thread(
+        _request_xano_multipart,
+        url,
+        field_name=field_name,
+        file_name=file_name,
+        file_data=file_data,
+        authorization=authorization,
+    )
 
 
 def _request_xano_health(url: str) -> dict[str, str]:
@@ -186,6 +428,22 @@ class State(rx.State):
     brand_form_name: str = ""
     brand_form_description: str = ""
     brand_editing_id: int | None = None
+    products: list[ProductEntry] = []
+    products_loading: bool = False
+    products_message: str = ""
+    product_editing_id: int | None = None
+    product_form_name: str = ""
+    product_form_description: str = ""
+    product_form_specifications: str = ""
+    product_form_category_id: str = ""
+    product_form_brand_id: str = ""
+    variation_product_id: int | None = None
+    variation_editing_id: int | None = None
+    variation_form_name: str = ""
+    variation_form_sku: str = ""
+    variation_form_price: str = ""
+    variation_form_quantity: str = ""
+    product_image_message: str = ""
 
     def _clear_catalog_state(self):
         self.categories = []
@@ -200,6 +458,22 @@ class State(rx.State):
         self.brand_form_name = ""
         self.brand_form_description = ""
         self.brand_editing_id = None
+        self.products = []
+        self.products_loading = False
+        self.products_message = ""
+        self.product_editing_id = None
+        self.product_form_name = ""
+        self.product_form_description = ""
+        self.product_form_specifications = ""
+        self.product_form_category_id = ""
+        self.product_form_brand_id = ""
+        self.variation_product_id = None
+        self.variation_editing_id = None
+        self.variation_form_name = ""
+        self.variation_form_sku = ""
+        self.variation_form_price = ""
+        self.variation_form_quantity = ""
+        self.product_image_message = ""
 
     def _clear_authentication_state(
         self,
@@ -289,6 +563,476 @@ class State(rx.State):
             self.brands_message = _catalog_failure_message(error)
         finally:
             self.brands_loading = False
+
+    async def _fetch_products(self) -> list[ProductEntry]:
+        products = await self._catalog_request(XANO_PRODUCTS_URL_ENV)
+        variations = await self._catalog_request(XANO_VARIATIONS_URL_ENV)
+        return _product_entries(products, variations, self.categories, self.brands)
+
+    async def _refresh_products(self) -> bool:
+        self.products_loading = True
+        self.products_message = ""
+        try:
+            await self._load_categories()
+            await self._load_brands()
+            if self.categories_message or self.brands_message:
+                raise ValueError("Could not refresh product relationships.")
+            self.products = await self._fetch_products()
+            return True
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as error:
+            self.products_message = _product_failure_message(error)
+            return False
+        finally:
+            self.products_loading = False
+
+    @rx.event
+    async def load_products(self):
+        await self._refresh_products()
+
+    @rx.event
+    def set_product_form_name(self, value: str):
+        self.product_form_name = value
+
+    @rx.event
+    def set_product_form_description(self, value: str):
+        self.product_form_description = value
+
+    @rx.event
+    def set_product_form_specifications(self, value: str):
+        self.product_form_specifications = value
+
+    @rx.event
+    def set_product_form_category_id(self, value: str):
+        self.product_form_category_id = value
+
+    @rx.event
+    def set_product_form_brand_id(self, value: str):
+        self.product_form_brand_id = value
+
+    @rx.event
+    def set_variation_form_name(self, value: str):
+        self.variation_form_name = value
+
+    @rx.event
+    def set_variation_form_sku(self, value: str):
+        self.variation_form_sku = value
+
+    @rx.event
+    def set_variation_form_price(self, value: str):
+        self.variation_form_price = value
+
+    @rx.event
+    def set_variation_form_quantity(self, value: str):
+        self.variation_form_quantity = value
+
+    @rx.event
+    def edit_product(self, product_id: int):
+        product = next((item for item in self.products if item.id == product_id), None)
+        if product is None:
+            self.products_message = "Produto não encontrado. Atualize a lista."
+            return
+        self.product_editing_id = product.id
+        self.product_form_name = product.name
+        self.product_form_description = product.description
+        self.product_form_specifications = product.technical_specifications
+        self.product_form_category_id = str(product.category_id)
+        self.product_form_brand_id = str(product.brand_id)
+        self.products_message = ""
+        self.product_image_message = ""
+
+    @rx.event
+    def cancel_product_edit(self):
+        self.product_editing_id = None
+        self.product_form_name = ""
+        self.product_form_description = ""
+        self.product_form_specifications = ""
+        self.product_form_category_id = ""
+        self.product_form_brand_id = ""
+        self.product_image_message = ""
+
+    @staticmethod
+    def _form_decimal(
+        value: object,
+        *,
+        field_name: str,
+        minimum: Decimal,
+        strictly_positive: bool = False,
+    ) -> float:
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError(f"Informe {field_name}.")
+        try:
+            number = Decimal(value.strip())
+        except InvalidOperation as error:
+            raise ValueError(f"Informe um valor válido para {field_name}.") from error
+        if (
+            not number.is_finite()
+            or number < minimum
+            or (strictly_positive and number == 0)
+        ):
+            raise ValueError(f"Informe um valor válido para {field_name}.")
+        converted = float(number)
+        if not math.isfinite(converted):
+            raise ValueError(f"Informe um valor válido para {field_name}.")
+        return converted
+
+    async def _save_product_form(self, form_data: dict[str, Any]):
+        category_id = self.product_form_category_id.strip()
+        brand_id = self.product_form_brand_id.strip()
+        if not category_id or not brand_id:
+            raise ValueError("Selecione uma categoria e uma marca.")
+        try:
+            category_id_value = int(category_id)
+            brand_id_value = int(brand_id)
+        except ValueError as error:
+            raise ValueError("Selecione uma categoria e uma marca válidas.") from error
+
+        payload: dict[str, object] = {
+            "nome": self.product_form_name,
+            "descricao": self.product_form_description,
+            "especificacoes_tecnicas": self.product_form_specifications,
+            "categoria_id": category_id_value,
+            "marca_id": brand_id_value,
+        }
+        if self.product_editing_id is None:
+            variation_name = form_data.get("variation_name", "")
+            variation_sku = form_data.get("variation_sku", "")
+            if not all(
+                isinstance(value, str)
+                for value in (variation_name, variation_sku)
+            ):
+                raise ValueError("Dados da variação inválidos.")
+            clean_sku = variation_sku.strip()
+            if not clean_sku:
+                raise ValueError("Informe o SKU da variação.")
+            price = self._form_decimal(
+                form_data.get("variation_price"),
+                field_name="um preço maior que zero",
+                minimum=Decimal("0"),
+                strictly_positive=True,
+            )
+            quantity = self._form_decimal(
+                form_data.get("variation_quantity"),
+                field_name="uma quantidade não negativa",
+                minimum=Decimal("0"),
+            )
+            payload["variacoes"] = [
+                {
+                    "nome_ou_descricao": variation_name.strip(),
+                    "sku": clean_sku,
+                    "preco": price,
+                    "quantidade_disponivel": quantity,
+                }
+            ]
+            response = await self._catalog_request(
+                XANO_PRODUCTS_URL_ENV,
+                method="POST",
+                payload=payload,
+            )
+        else:
+            response = await self._catalog_request(
+                XANO_PRODUCTS_URL_ENV,
+                method="PATCH",
+                record_id=self.product_editing_id,
+                payload=payload,
+            )
+
+        if not isinstance(response, dict):
+            raise ValueError("Product mutation response must be an object.")
+        return self.product_editing_id is None
+
+    @rx.event
+    async def save_product(self, form_data: dict[str, Any]):
+        self.products_loading = True
+        self.products_message = ""
+        try:
+            created = await self._save_product_form(form_data)
+            self.product_editing_id = None
+            self.product_form_name = ""
+            self.product_form_description = ""
+            self.product_form_specifications = ""
+            self.product_form_category_id = ""
+            self.product_form_brand_id = ""
+            if created:
+                self.variation_form_name = ""
+                self.variation_form_sku = ""
+                self.variation_form_price = ""
+                self.variation_form_quantity = ""
+            if await self._refresh_products():
+                self.products_message = (
+                    "Produto criado." if created else "Produto atualizado."
+                )
+            else:
+                self.products_message = (
+                    "Operação concluída; não foi possível atualizar a lista. "
+                    "Atualize para confirmar."
+                )
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as error:
+            self.products_message = _product_failure_message(error)
+        finally:
+            self.products_loading = False
+
+    @rx.event
+    async def toggle_product_status(self, product_id: int):
+        product = next((item for item in self.products if item.id == product_id), None)
+        if product is None:
+            self.products_message = "Produto não encontrado. Atualize a lista."
+            return
+        await self._change_product_status(
+            product_id,
+            "INATIVO" if product.status == "ATIVO" else "ATIVO",
+            "Produto",
+        )
+
+    async def _change_product_status(
+        self,
+        product_id: int,
+        status: str,
+        label: str,
+    ):
+        self.products_loading = True
+        self.products_message = ""
+        try:
+            response = await self._catalog_request(
+                XANO_PRODUCTS_URL_ENV,
+                method="PATCH",
+                record_id=product_id,
+                payload={"status": status},
+            )
+            if not isinstance(response, dict):
+                raise ValueError("Product status response must be an object.")
+            if await self._refresh_products():
+                self.products_message = f"Status de {label.lower()} atualizado."
+            else:
+                self.products_message = (
+                    "Status atualizado; não foi possível atualizar a lista. "
+                    "Atualize para confirmar."
+                )
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as error:
+            self.products_message = _product_failure_message(error)
+        finally:
+            self.products_loading = False
+
+    @rx.event
+    def begin_variation(self, product_id: int):
+        if not any(item.id == product_id for item in self.products):
+            self.products_message = "Produto não encontrado. Atualize a lista."
+            return
+        self.variation_product_id = product_id
+        self.variation_editing_id = None
+        self.variation_form_name = ""
+        self.variation_form_sku = ""
+        self.variation_form_price = ""
+        self.variation_form_quantity = ""
+
+    @rx.event
+    def edit_variation(self, product_id: int, variation_id: int):
+        product = next((item for item in self.products if item.id == product_id), None)
+        variation = (
+            next((item for item in product.variations if item.id == variation_id), None)
+            if product is not None
+            else None
+        )
+        if variation is None:
+            self.products_message = "Variação não encontrada. Atualize a lista."
+            return
+        self.variation_product_id = product.id
+        self.variation_editing_id = variation.id
+        self.variation_form_name = variation.name_or_description
+        self.variation_form_sku = variation.sku
+        self.variation_form_price = str(variation.price)
+        self.variation_form_quantity = str(variation.available_quantity)
+
+    @rx.event
+    def cancel_variation(self):
+        self.variation_product_id = None
+        self.variation_editing_id = None
+        self.variation_form_name = ""
+        self.variation_form_sku = ""
+        self.variation_form_price = ""
+        self.variation_form_quantity = ""
+
+    @rx.event
+    async def save_variation(self, form_data: dict[str, Any]):
+        product_id = self.variation_product_id
+        if product_id is None:
+            self.products_message = "Selecione um produto para a variação."
+            return
+        self.products_loading = True
+        self.products_message = ""
+        try:
+            name = form_data.get("variation_name", "")
+            sku = form_data.get("variation_sku", "")
+            if not isinstance(name, str) or not isinstance(sku, str):
+                raise ValueError("Dados da variação inválidos.")
+            clean_sku = sku.strip()
+            if not clean_sku:
+                raise ValueError("Informe o SKU da variação.")
+            price = self._form_decimal(
+                form_data.get("variation_price"),
+                field_name="um preço maior que zero",
+                minimum=Decimal("0"),
+                strictly_positive=True,
+            )
+            quantity = self._form_decimal(
+                form_data.get("variation_quantity"),
+                field_name="uma quantidade não negativa",
+                minimum=Decimal("0"),
+            )
+            payload: dict[str, object] = {
+                "nome_ou_descricao": name.strip(),
+                "sku": clean_sku,
+                "preco": price,
+                "quantidade_disponivel": quantity,
+            }
+            if self.variation_editing_id is None:
+                payload["produto_id"] = product_id
+                response = await self._catalog_request(
+                    XANO_VARIATIONS_URL_ENV,
+                    method="POST",
+                    payload=payload,
+                )
+            else:
+                response = await self._catalog_request(
+                    XANO_VARIATIONS_URL_ENV,
+                    method="PATCH",
+                    record_id=self.variation_editing_id,
+                    payload=payload,
+                )
+            if not isinstance(response, dict):
+                raise ValueError("Variation mutation response must be an object.")
+            self.cancel_variation()
+            if await self._refresh_products():
+                self.products_message = "Variação salva."
+            else:
+                self.products_message = (
+                    "Variação salva; não foi possível atualizar a lista. "
+                    "Atualize para confirmar."
+                )
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as error:
+            self.products_message = _product_failure_message(error)
+        finally:
+            self.products_loading = False
+
+    @rx.event
+    async def toggle_variation_status(self, variation_id: int, status: str):
+        if status not in {"ATIVO", "INATIVO"}:
+            self.products_message = "Status de variação inválido."
+            return
+        self.products_loading = True
+        self.products_message = ""
+        try:
+            response = await self._catalog_request(
+                XANO_VARIATIONS_URL_ENV,
+                method="PATCH",
+                record_id=variation_id,
+                payload={"status": status},
+            )
+            if not isinstance(response, dict):
+                raise ValueError("Variation status response must be an object.")
+            if await self._refresh_products():
+                self.products_message = "Status da variação atualizado."
+            else:
+                self.products_message = (
+                    "Status atualizado; não foi possível atualizar a lista. "
+                    "Atualize para confirmar."
+                )
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as error:
+            self.products_message = _product_failure_message(error)
+        finally:
+            self.products_loading = False
+
+    @rx.event
+    async def upload_product_image(self, files: list[rx.UploadFile]):
+        if (
+            not self._auth_token
+            or not self.is_authenticated
+            or self.session_status != "success"
+            or self.user_role != "ADMINISTRADOR"
+            or self.user_status != "ATIVO"
+        ):
+            self.product_image_message = "Você não tem autorização para essa operação."
+            return
+        if self.product_editing_id is None:
+            self.product_image_message = "Selecione um produto para associar a imagem."
+            return
+        if len(files) != 1:
+            self.product_image_message = "Selecione exatamente uma imagem."
+            return
+
+        file = files[0]
+        if os.path.splitext(file.name)[1].lower() not in {
+            ".jpg",
+            ".jpeg",
+            ".png",
+            ".gif",
+            ".webp",
+        }:
+            self.product_image_message = (
+                "Formato de imagem não suportado. Use JPG, PNG, GIF ou WEBP."
+            )
+            return
+
+        self.products_loading = True
+        self.product_image_message = ""
+        try:
+            image_data = await file.read()
+            base_url = _required_environment_url(XANO_PRODUCTS_URL_ENV).rstrip("/")
+            response = await _server_side_xano_multipart_request(
+                f"{base_url}/{self.product_editing_id}/image",
+                field_name="image_file",
+                file_name=file.name,
+                file_data=image_data,
+                authorization="Bearer " + self._auth_token,
+            )
+            if not isinstance(response, dict):
+                raise ValueError("Product image response must be an object.")
+            if await self._refresh_products():
+                self.product_image_message = "Imagem principal atualizada."
+            else:
+                self.product_image_message = (
+                    "Imagem enviada; não foi possível atualizar a lista. "
+                    "Atualize para confirmar."
+                )
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as error:
+            self.product_image_message = _product_failure_message(error)
+        finally:
+            self.products_loading = False
 
     @rx.event
     async def load_categories(self):
@@ -661,8 +1405,7 @@ class State(rx.State):
             and self.user_role == "ADMINISTRADOR"
             and self.user_status == "ATIVO"
         ):
-            await self._load_categories()
-            await self._load_brands()
+            await self._refresh_products()
 
     @rx.event
     async def logout(self):
@@ -833,6 +1576,427 @@ def index() -> rx.Component:
             width="100%",
         )
 
+    def product_form() -> rx.Component:
+        category_choices = rx.foreach(
+            State.categories,
+            lambda entry: rx.cond(
+                (entry.status == "ATIVO")
+                | (
+                    State.product_form_category_id == entry.id.to_string()
+                ),
+                rx.select.item(
+                    entry.name
+                    + rx.cond(entry.status == "INATIVO", " (INATIVA)", ""),
+                    value=entry.id.to_string(),
+                ),
+                rx.fragment(),
+            ),
+        )
+        brand_choices = rx.foreach(
+            State.brands,
+            lambda entry: rx.cond(
+                (entry.status == "ATIVO")
+                | (
+                    State.product_form_brand_id == entry.id.to_string()
+                ),
+                rx.select.item(
+                    entry.name
+                    + rx.cond(entry.status == "INATIVO", " (INATIVA)", ""),
+                    value=entry.id.to_string(),
+                ),
+                rx.fragment(),
+            ),
+        )
+        return rx.form(
+            rx.vstack(
+                rx.heading(
+                    rx.cond(
+                        State.product_editing_id != None,
+                        "Editar produto",
+                        "Cadastrar produto",
+                    ),
+                    size="4",
+                ),
+                rx.input(
+                    placeholder="Nome do produto",
+                    value=State.product_form_name,
+                    on_change=State.set_product_form_name,
+                    disabled=State.products_loading,
+                    width="100%",
+                ),
+                rx.text_area(
+                    placeholder="Descrição",
+                    value=State.product_form_description,
+                    on_change=State.set_product_form_description,
+                    disabled=State.products_loading,
+                    width="100%",
+                ),
+                rx.text_area(
+                    placeholder="Especificações técnicas",
+                    value=State.product_form_specifications,
+                    on_change=State.set_product_form_specifications,
+                    disabled=State.products_loading,
+                    width="100%",
+                ),
+                rx.select.root(
+                    rx.select.trigger(placeholder="Selecione uma categoria"),
+                    rx.select.content(category_choices),
+                    value=State.product_form_category_id,
+                    on_change=State.set_product_form_category_id,
+                    disabled=State.products_loading,
+                    width="100%",
+                ),
+                rx.select.root(
+                    rx.select.trigger(placeholder="Selecione uma marca"),
+                    rx.select.content(brand_choices),
+                    value=State.product_form_brand_id,
+                    on_change=State.set_product_form_brand_id,
+                    disabled=State.products_loading,
+                    width="100%",
+                ),
+                rx.cond(
+                    State.product_editing_id == None,
+                    rx.vstack(
+                        rx.heading("Variação inicial obrigatória", size="3"),
+                        rx.input(
+                            name="variation_name",
+                            placeholder="Nome ou descrição da variação (opcional)",
+                            disabled=State.products_loading,
+                            width="100%",
+                        ),
+                        rx.input(
+                            name="variation_sku",
+                            placeholder="SKU",
+                            required=True,
+                            disabled=State.products_loading,
+                            width="100%",
+                        ),
+                        rx.input(
+                            name="variation_price",
+                            type="number",
+                            step="any",
+                            placeholder="Preço (maior que zero)",
+                            required=True,
+                            disabled=State.products_loading,
+                            width="100%",
+                        ),
+                        rx.input(
+                            name="variation_quantity",
+                            type="number",
+                            step="any",
+                            placeholder="Quantidade disponível (zero ou maior)",
+                            required=True,
+                            disabled=State.products_loading,
+                            width="100%",
+                        ),
+                        align="stretch",
+                        width="100%",
+                    ),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    State.product_editing_id != None,
+                    rx.vstack(
+                        rx.text(
+                            rx.cond(
+                                State.products.length() > 0,
+                                "Produto existente: imagem principal opcional.",
+                                "",
+                            ),
+                            color="gray",
+                        ),
+                        rx.upload(
+                            rx.text("Selecione uma imagem JPG, PNG, GIF ou WEBP"),
+                            id="product-main-image",
+                            accept={
+                                "image/jpeg": [".jpg", ".jpeg"],
+                                "image/png": [".png"],
+                                "image/gif": [".gif"],
+                                "image/webp": [".webp"],
+                            },
+                            max_files=1,
+                            disabled=State.products_loading,
+                            width="100%",
+                        ),
+                        rx.button(
+                            "Enviar imagem principal",
+                            type="button",
+                            on_click=State.upload_product_image(
+                                rx.upload_files("product-main-image")
+                            ),
+                            disabled=State.products_loading,
+                        ),
+                        rx.text(State.product_image_message, color="gray"),
+                        align="stretch",
+                        width="100%",
+                    ),
+                    rx.fragment(),
+                ),
+                rx.hstack(
+                    rx.button(
+                        rx.cond(
+                            State.product_editing_id != None,
+                            "Salvar produto",
+                            "Criar produto",
+                        ),
+                        type="submit",
+                        disabled=State.products_loading,
+                    ),
+                    rx.cond(
+                        State.product_editing_id != None,
+                        rx.button(
+                            "Cancelar edição",
+                            type="button",
+                            on_click=State.cancel_product_edit,
+                            disabled=State.products_loading,
+                        ),
+                        rx.fragment(),
+                    ),
+                    spacing="2",
+                ),
+                align="stretch",
+                spacing="3",
+                width="100%",
+            ),
+            on_submit=State.save_product,
+            width="100%",
+        )
+
+    def variation_form() -> rx.Component:
+        return rx.cond(
+            State.variation_product_id != None,
+            rx.form(
+                rx.vstack(
+                    rx.heading(
+                        rx.cond(
+                            State.variation_editing_id != None,
+                            "Editar variação",
+                            "Adicionar variação",
+                        ),
+                        size="4",
+                    ),
+                    rx.input(
+                        name="variation_name",
+                        placeholder="Nome ou descrição (opcional)",
+                        value=State.variation_form_name,
+                        on_change=State.set_variation_form_name,
+                        disabled=State.products_loading,
+                        width="100%",
+                    ),
+                    rx.input(
+                        name="variation_sku",
+                        placeholder="SKU",
+                        value=State.variation_form_sku,
+                        on_change=State.set_variation_form_sku,
+                        required=True,
+                        disabled=State.products_loading,
+                        width="100%",
+                    ),
+                    rx.input(
+                        name="variation_price",
+                        type="number",
+                        step="any",
+                        placeholder="Preço (maior que zero)",
+                        value=State.variation_form_price,
+                        on_change=State.set_variation_form_price,
+                        required=True,
+                        disabled=State.products_loading,
+                        width="100%",
+                    ),
+                    rx.input(
+                        name="variation_quantity",
+                        type="number",
+                        step="any",
+                        placeholder="Quantidade disponível (zero ou maior)",
+                        value=State.variation_form_quantity,
+                        on_change=State.set_variation_form_quantity,
+                        required=True,
+                        disabled=State.products_loading,
+                        width="100%",
+                    ),
+                    rx.hstack(
+                        rx.button(
+                            "Salvar variação",
+                            type="submit",
+                            disabled=State.products_loading,
+                        ),
+                        rx.button(
+                            "Cancelar",
+                            type="button",
+                            on_click=State.cancel_variation,
+                            disabled=State.products_loading,
+                        ),
+                        spacing="2",
+                    ),
+                    align="stretch",
+                    width="100%",
+                ),
+                on_submit=State.save_variation,
+                width="100%",
+            ),
+            rx.fragment(),
+        )
+
+    product_management = rx.cond(
+        State.user_role == "ADMINISTRADOR",
+        rx.vstack(
+            rx.heading("Gestão de produtos", size="6"),
+            product_form(),
+            rx.hstack(
+                rx.heading("Produtos cadastrados", size="5"),
+                rx.button(
+                    "Atualizar lista",
+                    on_click=State.load_products,
+                    disabled=State.products_loading,
+                ),
+                justify="between",
+                width="100%",
+            ),
+            rx.text(State.products_message, color="gray"),
+            rx.cond(
+                State.products_loading,
+                rx.text("Carregando produtos..."),
+                rx.fragment(),
+            ),
+            rx.foreach(
+                State.products,
+                lambda product: rx.box(
+                    rx.vstack(
+                        rx.hstack(
+                            rx.heading(
+                                rx.cond(
+                                    product.name != "",
+                                    product.name,
+                                    "Produto #" + product.id.to_string(),
+                                ),
+                                size="4",
+                            ),
+                            rx.badge(product.status),
+                            justify="between",
+                            width="100%",
+                        ),
+                        rx.text(product.description, color="gray"),
+                        rx.text(product.technical_specifications, color="gray"),
+                        rx.text(
+                            "Categoria: "
+                            + product.category_name
+                            + " ("
+                            + product.category_status
+                            + ")"
+                        ),
+                        rx.text(
+                            "Marca: "
+                            + product.brand_name
+                            + " ("
+                            + product.brand_status
+                            + ")"
+                        ),
+                        rx.text(
+                            rx.cond(
+                                product.image_present,
+                                "Imagem principal cadastrada",
+                                "Sem imagem principal",
+                            ),
+                            color="gray",
+                        ),
+                        rx.hstack(
+                            rx.button(
+                                "Editar produto",
+                                on_click=State.edit_product(product.id),
+                                disabled=State.products_loading,
+                            ),
+                            rx.button(
+                                rx.cond(
+                                    product.status == "ATIVO",
+                                    "Inativar produto",
+                                    "Reativar produto",
+                                ),
+                                on_click=State.toggle_product_status(product.id),
+                                disabled=State.products_loading,
+                            ),
+                            rx.button(
+                                "Adicionar variação",
+                                on_click=State.begin_variation(product.id),
+                                disabled=State.products_loading,
+                            ),
+                            spacing="2",
+                        ),
+                        rx.heading("Variações", size="3"),
+                        rx.foreach(
+                            product.variations,
+                            lambda variation: rx.vstack(
+                                rx.hstack(
+                                    rx.text(
+                                        rx.cond(
+                                            variation.name_or_description != "",
+                                            variation.name_or_description,
+                                            variation.sku,
+                                        ),
+                                        weight="bold",
+                                    ),
+                                    rx.badge(variation.status),
+                                    justify="between",
+                                    width="100%",
+                                ),
+                                rx.text(
+                                    "SKU: "
+                                    + variation.sku
+                                    + " | Preço: "
+                                    + variation.price.to_string()
+                                    + " | Disponível: "
+                                    + variation.available_quantity.to_string()
+                                ),
+                                rx.hstack(
+                                    rx.button(
+                                        "Editar variação",
+                                        on_click=State.edit_variation(
+                                            product.id,
+                                            variation.id,
+                                        ),
+                                        disabled=State.products_loading,
+                                    ),
+                                    rx.button(
+                                        rx.cond(
+                                            variation.status == "ATIVO",
+                                            "Inativar variação",
+                                            "Reativar variação",
+                                        ),
+                                        on_click=State.toggle_variation_status(
+                                            variation.id,
+                                            rx.cond(
+                                                variation.status == "ATIVO",
+                                                "INATIVO",
+                                                "ATIVO",
+                                            ),
+                                        ),
+                                        disabled=State.products_loading,
+                                    ),
+                                    spacing="2",
+                                ),
+                                align="stretch",
+                                width="100%",
+                                padding="2",
+                                border_bottom="1px solid var(--gray-4)",
+                            ),
+                        ),
+                        align="stretch",
+                        spacing="2",
+                        width="100%",
+                    ),
+                    border="1px solid var(--gray-5)",
+                    border_radius="8px",
+                    padding="4",
+                    width="100%",
+                ),
+            ),
+            variation_form(),
+            align="stretch",
+            spacing="3",
+            width="100%",
+        ),
+        rx.fragment(),
+    )
+
     catalog_management = rx.cond(
         State.user_role == "ADMINISTRADOR",
         rx.vstack(
@@ -891,6 +2055,7 @@ def index() -> rx.Component:
                 on_click=State.logout,
             ),
             catalog_management,
+            product_management,
             spacing="3",
             align="center",
             width="100%",
