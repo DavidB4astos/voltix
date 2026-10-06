@@ -8,9 +8,10 @@ import os
 import re
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
 from typing import Any
+from urllib.parse import urlencode, urlparse
 from uuid import uuid4
 
 import reflex as rx
@@ -29,6 +30,10 @@ XANO_CATEGORIES_URL_ENV = "XANO_CATEGORIES_URL"
 XANO_BRANDS_URL_ENV = "XANO_BRANDS_URL"
 XANO_PRODUCTS_URL_ENV = "XANO_PRODUCTS_URL"
 XANO_VARIATIONS_URL_ENV = "XANO_VARIATIONS_URL"
+XANO_PUBLIC_CATEGORIES_URL_ENV = "XANO_PUBLIC_CATEGORIES_URL"
+XANO_PUBLIC_PRODUCTS_URL_ENV = "XANO_PUBLIC_PRODUCTS_URL"
+XANO_PUBLIC_PRODUCT_DETAILS_URL_ENV = "XANO_PUBLIC_PRODUCT_DETAILS_URL"
+XANO_PUBLIC_PRODUCT_IMAGE_URL_ENV = "XANO_PUBLIC_PRODUCT_IMAGE_URL"
 
 XanoJson = dict[str, object] | list[dict[str, object]]
 
@@ -66,6 +71,18 @@ class ProductEntry:
     brand_name: str
     brand_status: str
     status: str
+    variations: list[ProductVariation]
+
+
+@dataclass(frozen=True)
+class PublicProductEntry:
+    id: int
+    name: str
+    description: str
+    technical_specifications: str
+    category_name: str
+    brand_name: str
+    image_url: str
     variations: list[ProductVariation]
 
 
@@ -293,6 +310,98 @@ def _product_entries(
     return products
 
 
+def _public_catalog_categories(payload: XanoJson) -> list[CatalogEntry]:
+    categories = _catalog_entries(payload)
+    if any(category.status != "ATIVO" for category in categories):
+        raise ValueError("Public catalog returned an inactive category.")
+    return categories
+
+
+def _public_product_entry(
+    payload: object,
+    *,
+    image_url: str = "",
+    variations: list[ProductVariation] | None = None,
+) -> PublicProductEntry:
+    if not isinstance(payload, dict):
+        raise ValueError("Public product response must be an object.")
+
+    product_id = payload.get("id")
+    name = payload.get("nome")
+    description = payload.get("descricao")
+    specifications = payload.get("especificacoes_tecnicas")
+    category_id = payload.get("categoria_id")
+    brand_id = payload.get("marca_id")
+    status = payload.get("status")
+    category_name = payload.get("categoria_nome")
+    brand_name = payload.get("marca_nome")
+    if (
+        not isinstance(product_id, int)
+        or isinstance(product_id, bool)
+        or not isinstance(category_id, int)
+        or isinstance(category_id, bool)
+        or not isinstance(brand_id, int)
+        or isinstance(brand_id, bool)
+        or (name is not None and not isinstance(name, str))
+        or (description is not None and not isinstance(description, str))
+        or (specifications is not None and not isinstance(specifications, str))
+        or (category_name is not None and not isinstance(category_name, str))
+        or (brand_name is not None and not isinstance(brand_name, str))
+        or "imagem_principal" in payload
+        or status != "ATIVO"
+    ):
+        raise ValueError("Public product response has an invalid record.")
+
+    return PublicProductEntry(
+        id=product_id,
+        name=name or "",
+        description=description or "",
+        technical_specifications=specifications or "",
+        category_name=category_name or "",
+        brand_name=brand_name or "",
+        image_url=image_url,
+        variations=variations or [],
+    )
+
+
+def _public_catalog_products(payload: XanoJson) -> list[PublicProductEntry]:
+    if not isinstance(payload, list):
+        raise ValueError("Public product list response must be an array.")
+    return [_public_product_entry(item) for item in payload]
+
+
+def _public_product_details(
+    payload: XanoJson,
+    *,
+    image_url: str,
+) -> PublicProductEntry:
+    if not isinstance(payload, dict) or not isinstance(
+        payload.get("product"), dict
+    ):
+        raise ValueError("Public product detail response must be an object.")
+    product = payload["product"] | {
+        "categoria_nome": payload.get("category_name"),
+        "marca_nome": payload.get("brand_name"),
+    }
+    product_id = product.get("id")
+    variation_payload = payload.get("variations")
+    if not isinstance(product_id, int) or isinstance(product_id, bool):
+        raise ValueError("Public product detail has an invalid identifier.")
+    if not isinstance(variation_payload, list):
+        raise ValueError("Public product variations must be an array.")
+    variations = [_product_variation(item) for item in variation_payload]
+    if any(
+        variation.status != "ATIVO" or variation.product_id != product_id
+        for variation in variations
+    ):
+        raise ValueError("Public product detail returned an invalid variation.")
+    return _public_product_entry(
+        product,
+        image_url=image_url,
+        variations=variations,
+    )
+
+
 def _catalog_failure_message(error: Exception) -> str:
     if isinstance(error, urllib.error.HTTPError):
         if error.code in {401, 403}:
@@ -431,6 +540,15 @@ class State(rx.State):
     products: list[ProductEntry] = []
     products_loading: bool = False
     products_message: str = ""
+    public_categories: list[CatalogEntry] = []
+    public_products: list[PublicProductEntry] = []
+    public_catalog_loading: bool = False
+    public_catalog_message: str = ""
+    public_category_id: str = ""
+    public_product_loading: bool = False
+    public_product_message: str = ""
+    public_product_detail_id: int | None = None
+    public_selected_product: PublicProductEntry | None = None
     product_editing_id: int | None = None
     product_form_name: str = ""
     product_form_description: str = ""
@@ -594,6 +712,124 @@ class State(rx.State):
     @rx.event
     async def load_products(self):
         await self._refresh_products()
+
+    async def _public_catalog_request(
+        self,
+        url_env: str,
+        *,
+        record_id: int | None = None,
+        query_params: dict[str, str] | None = None,
+    ) -> XanoJson:
+        url = _required_environment_url(url_env).rstrip("/")
+        if record_id is not None:
+            url = f"{url}/{record_id}"
+        if query_params:
+            url = f"{url}?{urlencode(query_params)}"
+        return await _server_side_xano_request(url, authorization=None)
+
+    async def _public_product_image(self, product_id: int) -> str:
+        payload = await self._public_catalog_request(
+            XANO_PUBLIC_PRODUCT_IMAGE_URL_ENV,
+            record_id=product_id,
+        )
+        if not isinstance(payload, dict):
+            raise ValueError("Public image response must be an object.")
+        image_url = payload.get("image_url")
+        if image_url is None:
+            return ""
+        if not isinstance(image_url, str):
+            raise ValueError("Public image URL has an invalid value.")
+        parsed_url = urlparse(image_url)
+        if parsed_url.scheme != "https" or not parsed_url.netloc:
+            raise ValueError("Public image URL must be an HTTPS URL.")
+        return image_url
+
+    async def _fetch_public_products(
+        self,
+        category_id: str = "",
+    ) -> list[PublicProductEntry]:
+        query_params = {"category_id": category_id} if category_id else None
+        payload = await self._public_catalog_request(
+            XANO_PUBLIC_PRODUCTS_URL_ENV,
+            query_params=query_params,
+        )
+        products = _public_catalog_products(payload)
+        image_urls = await asyncio.gather(
+            *(self._public_product_image(product.id) for product in products)
+        )
+        return [
+            replace(product, image_url=image_url)
+            for product, image_url in zip(products, image_urls, strict=True)
+        ]
+
+    @rx.event
+    async def load_public_catalog(self):
+        self.public_catalog_loading = True
+        self.public_catalog_message = ""
+        try:
+            categories = await self._public_catalog_request(
+                XANO_PUBLIC_CATEGORIES_URL_ENV
+            )
+            self.public_categories = _public_catalog_categories(categories)
+            category_id = self.public_category_id.strip()
+            if category_id and not any(
+                str(category.id) == category_id for category in self.public_categories
+            ):
+                self.public_category_id = ""
+                category_id = ""
+            self.public_products = await self._fetch_public_products(category_id)
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.public_catalog_message = (
+                "Não foi possível carregar o catálogo. Tente novamente."
+            )
+        finally:
+            self.public_catalog_loading = False
+
+    @rx.event
+    async def filter_public_catalog(self, category_id: str):
+        self.public_category_id = category_id
+        await self.load_public_catalog()
+
+    @rx.event
+    async def load_public_product_details(self, product_id: int):
+        self.public_product_loading = True
+        self.public_product_message = ""
+        self.public_product_detail_id = product_id
+        self.public_selected_product = None
+        try:
+            details = await self._public_catalog_request(
+                XANO_PUBLIC_PRODUCT_DETAILS_URL_ENV,
+                record_id=product_id,
+            )
+            image_url = await self._public_product_image(product_id)
+            self.public_selected_product = _public_product_details(
+                details,
+                image_url=image_url,
+            )
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.public_product_message = (
+                "Não foi possível carregar os detalhes do produto. Tente novamente."
+            )
+        finally:
+            self.public_product_loading = False
+
+    @rx.event
+    def close_public_product_details(self):
+        self.public_selected_product = None
+        self.public_product_message = ""
+        self.public_product_detail_id = None
 
     @rx.event
     def set_product_form_name(self, value: str):
@@ -2125,5 +2361,245 @@ def index() -> rx.Component:
     )
 
 
+def public_catalog_page() -> rx.Component:
+    def product_card(product: PublicProductEntry) -> rx.Component:
+        return rx.box(
+            rx.vstack(
+                rx.cond(
+                    product.image_url != "",
+                    rx.image(
+                        src=product.image_url,
+                        alt=product.name,
+                        width="100%",
+                        height="220px",
+                        object_fit="cover",
+                    ),
+                    rx.fragment(),
+                ),
+                rx.heading(
+                    rx.cond(
+                        product.name != "",
+                        product.name,
+                        "Produto #" + product.id.to_string(),
+                    ),
+                    size="4",
+                ),
+                rx.cond(
+                    product.category_name != "",
+                    rx.text("Categoria: " + product.category_name),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    product.brand_name != "",
+                    rx.text("Marca: " + product.brand_name),
+                    rx.fragment(),
+                ),
+                rx.text(product.description, color="gray"),
+                rx.button(
+                    "Ver detalhes",
+                    on_click=State.load_public_product_details(product.id),
+                    disabled=State.public_product_loading,
+                ),
+                align="stretch",
+                spacing="3",
+                width="100%",
+            ),
+            border="1px solid var(--gray-5)",
+            border_radius="8px",
+            padding="4",
+            width="100%",
+        )
+
+    def selected_product_details() -> rx.Component:
+        return rx.cond(
+            State.public_selected_product != None,
+            rx.box(
+                rx.vstack(
+                    rx.hstack(
+                        rx.heading(
+                            State.public_selected_product.name,
+                            size="5",
+                        ),
+                        rx.button(
+                            "Fechar detalhes",
+                            on_click=State.close_public_product_details,
+                        ),
+                        justify="between",
+                        width="100%",
+                    ),
+                    rx.cond(
+                        State.public_selected_product.image_url != "",
+                        rx.image(
+                            src=State.public_selected_product.image_url,
+                            alt=State.public_selected_product.name,
+                            max_width="640px",
+                            max_height="420px",
+                            object_fit="contain",
+                        ),
+                        rx.fragment(),
+                    ),
+                    rx.cond(
+                        State.public_selected_product.description != "",
+                        rx.text(State.public_selected_product.description),
+                        rx.fragment(),
+                    ),
+                    rx.cond(
+                        State.public_selected_product.technical_specifications
+                        != "",
+                        rx.text(
+                            "Especificações: "
+                            + State.public_selected_product.technical_specifications
+                        ),
+                        rx.fragment(),
+                    ),
+                    rx.cond(
+                        State.public_selected_product.category_name != "",
+                        rx.text(
+                            "Categoria: "
+                            + State.public_selected_product.category_name
+                        ),
+                        rx.fragment(),
+                    ),
+                    rx.cond(
+                        State.public_selected_product.brand_name != "",
+                        rx.text(
+                            "Marca: "
+                            + State.public_selected_product.brand_name
+                        ),
+                        rx.fragment(),
+                    ),
+                    rx.heading("Variações disponíveis", size="4"),
+                    rx.cond(
+                        State.public_selected_product.variations.length() == 0,
+                        rx.text("Não há variações ativas disponíveis."),
+                        rx.foreach(
+                            State.public_selected_product.variations,
+                            lambda variation: rx.box(
+                                rx.vstack(
+                                    rx.text(
+                                        rx.cond(
+                                            variation.name_or_description != "",
+                                            variation.name_or_description,
+                                            variation.sku,
+                                        ),
+                                        weight="bold",
+                                    ),
+                                    rx.text("SKU: " + variation.sku),
+                                    rx.text("Preço: R$ " + variation.price.to_string()),
+                                    rx.text(
+                                        rx.cond(
+                                            variation.available_quantity > 0,
+                                            "Disponível: "
+                                            + variation.available_quantity.to_string(),
+                                            "Indisponível para compra (estoque zero)",
+                                        )
+                                    ),
+                                    align="stretch",
+                                    spacing="2",
+                                ),
+                                border="1px solid var(--gray-4)",
+                                border_radius="8px",
+                                padding="3",
+                                width="100%",
+                            ),
+                        ),
+                    ),
+                    align="stretch",
+                    spacing="3",
+                    width="100%",
+                ),
+                border="1px solid var(--gray-6)",
+                border_radius="8px",
+                padding="4",
+                width="100%",
+            ),
+            rx.fragment(),
+        )
+
+    return rx.container(
+        rx.vstack(
+            rx.hstack(
+                rx.heading("Voltix", size="8"),
+                rx.link("Acesso interno", href="/"),
+                justify="between",
+                width="100%",
+            ),
+            rx.heading("Catálogo de produtos", size="6"),
+            rx.select.root(
+                rx.select.trigger(placeholder="Todas as categorias"),
+                rx.select.content(
+                    rx.foreach(
+                        State.public_categories,
+                        lambda category: rx.select.item(
+                            category.name,
+                            value=category.id.to_string(),
+                        ),
+                    )
+                ),
+                value=State.public_category_id,
+                on_change=State.filter_public_catalog,
+                width="100%",
+                max_width="24rem",
+            ),
+            rx.button(
+                "Limpar filtro",
+                on_click=State.filter_public_catalog(""),
+                disabled=State.public_category_id == "",
+            ),
+            rx.text(State.public_catalog_message, color="red"),
+            rx.cond(
+                State.public_catalog_loading,
+                rx.text("Carregando catálogo..."),
+                rx.fragment(),
+            ),
+            rx.cond(
+                State.public_catalog_message != "",
+                rx.button(
+                    "Tentar novamente",
+                    on_click=State.load_public_catalog,
+                    disabled=State.public_catalog_loading,
+                ),
+                rx.fragment(),
+            ),
+            rx.cond(
+                (State.public_catalog_loading == False)
+                & (State.public_catalog_message == "")
+                & (State.public_products.length() == 0),
+                rx.text("Nenhum produto disponível para exibição."),
+                rx.fragment(),
+            ),
+            rx.foreach(State.public_products, product_card),
+            rx.cond(
+                State.public_product_loading,
+                rx.text("Carregando detalhes..."),
+                rx.fragment(),
+            ),
+            rx.text(State.public_product_message, color="red"),
+            rx.cond(
+                State.public_product_message != "",
+                rx.button(
+                    "Tentar novamente",
+                    on_click=State.load_public_product_details(
+                        State.public_product_detail_id
+                    ),
+                    disabled=State.public_product_loading,
+                ),
+                rx.fragment(),
+            ),
+            selected_product_details(),
+            align="stretch",
+            spacing="4",
+            width="100%",
+        ),
+        padding="4",
+    )
+
+
 app = rx.App()
 app.add_page(index)
+app.add_page(
+    public_catalog_page,
+    route="/catalogo",
+    title="Catálogo | Voltix",
+    on_load=State.load_public_catalog,
+)
