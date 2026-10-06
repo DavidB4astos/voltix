@@ -34,6 +34,10 @@ XANO_PUBLIC_CATEGORIES_URL_ENV = "XANO_PUBLIC_CATEGORIES_URL"
 XANO_PUBLIC_PRODUCTS_URL_ENV = "XANO_PUBLIC_PRODUCTS_URL"
 XANO_PUBLIC_PRODUCT_DETAILS_URL_ENV = "XANO_PUBLIC_PRODUCT_DETAILS_URL"
 XANO_PUBLIC_PRODUCT_IMAGE_URL_ENV = "XANO_PUBLIC_PRODUCT_IMAGE_URL"
+XANO_CUSTOMER_URL_ENV = "XANO_CUSTOMER_URL"
+XANO_CUSTOMER_LOGIN_URL_ENV = "XANO_CUSTOMER_LOGIN_URL"
+XANO_CUSTOMER_ME_URL_ENV = "XANO_CUSTOMER_ME_URL"
+XANO_CUSTOMER_ADDRESSES_URL_ENV = "XANO_CUSTOMER_ADDRESSES_URL"
 
 XanoJson = dict[str, object] | list[dict[str, object]]
 
@@ -84,6 +88,117 @@ class PublicProductEntry:
     brand_name: str
     image_url: str
     variations: list[ProductVariation]
+
+
+@dataclass(frozen=True)
+class CustomerProfile:
+    id: int
+    name: str
+    cpf: str
+    email: str
+    phone: str
+    status: str
+
+
+@dataclass(frozen=True)
+class CustomerAddressEntry:
+    id: int
+    customer_id: int
+    cep: str
+    street: str
+    number: str
+    complement: str
+    neighborhood: str
+    city: str
+    state: str
+    label: str
+    is_primary: bool
+    status: str
+
+
+def _customer_profile(payload: object) -> CustomerProfile:
+    if not isinstance(payload, dict):
+        raise ValueError("Customer response must be an object.")
+
+    customer_id = payload.get("id")
+    name = payload.get("nome_completo")
+    cpf = payload.get("cpf")
+    email = payload.get("email")
+    phone = payload.get("telefone")
+    status = payload.get("status")
+    if (
+        not isinstance(customer_id, int)
+        or isinstance(customer_id, bool)
+        or not isinstance(name, str)
+        or not name.strip()
+        or not isinstance(cpf, str)
+        or not cpf.strip()
+        or not isinstance(email, str)
+        or not email.strip()
+        or (phone is not None and not isinstance(phone, str))
+        or status != "ATIVO"
+    ):
+        raise ValueError("Customer response has an invalid or inactive identity.")
+
+    return CustomerProfile(
+        id=customer_id,
+        name=name,
+        cpf=cpf,
+        email=email,
+        phone=phone or "",
+        status=status,
+    )
+
+
+def _customer_address(payload: object) -> CustomerAddressEntry:
+    if not isinstance(payload, dict):
+        raise ValueError("Address response must be an object.")
+
+    address_id = payload.get("id")
+    customer_id = payload.get("cliente_id")
+    text_fields = {
+        "cep": payload.get("cep"),
+        "logradouro": payload.get("logradouro"),
+        "numero": payload.get("numero"),
+        "complemento": payload.get("complemento"),
+        "bairro": payload.get("bairro"),
+        "cidade": payload.get("cidade"),
+        "estado": payload.get("estado"),
+        "identificacao": payload.get("identificacao"),
+    }
+    primary = payload.get("principal")
+    status = payload.get("status")
+    if (
+        not isinstance(address_id, int)
+        or isinstance(address_id, bool)
+        or not isinstance(customer_id, int)
+        or isinstance(customer_id, bool)
+        or not isinstance(primary, bool)
+        or status not in {"ATIVO", "INATIVO"}
+        or any(value is not None and not isinstance(value, str) for value in text_fields.values())
+    ):
+        raise ValueError("Address response has an invalid record.")
+
+    return CustomerAddressEntry(
+        id=address_id,
+        customer_id=customer_id,
+        cep=text_fields["cep"] or "",
+        street=text_fields["logradouro"] or "",
+        number=text_fields["numero"] or "",
+        complement=text_fields["complemento"] or "",
+        neighborhood=text_fields["bairro"] or "",
+        city=text_fields["cidade"] or "",
+        state=text_fields["estado"] or "",
+        label=text_fields["identificacao"] or "",
+        is_primary=primary,
+        status=status,
+    )
+
+
+def _customer_addresses(payload: XanoJson) -> list[CustomerAddressEntry]:
+    if not isinstance(payload, list):
+        raise ValueError("Customer address list must be an array.")
+    return [_customer_address(item) for item in payload]
 
 
 def _required_environment_url(name: str) -> str:
@@ -525,6 +640,32 @@ class State(rx.State):
     session_status: str = "idle"
     session_message: str = ""
     _auth_token: str = ""
+    customer_registration_status: str = "idle"
+    customer_registration_message: str = ""
+    customer_login_status: str = "idle"
+    customer_login_message: str = ""
+    customer_authenticated: bool = False
+    customer_session_status: str = "idle"
+    customer_session_message: str = ""
+    customer_id: int | None = None
+    customer_name: str = ""
+    customer_cpf: str = ""
+    customer_email: str = ""
+    customer_phone: str = ""
+    _customer_auth_token: str = ""
+    customer_profile_message: str = ""
+    customer_addresses: list[CustomerAddressEntry] = []
+    customer_addresses_loading: bool = False
+    customer_addresses_message: str = ""
+    customer_address_editing_id: int | None = None
+    customer_address_form_cep: str = ""
+    customer_address_form_street: str = ""
+    customer_address_form_number: str = ""
+    customer_address_form_complement: str = ""
+    customer_address_form_neighborhood: str = ""
+    customer_address_form_city: str = ""
+    customer_address_form_state: str = ""
+    customer_address_form_label: str = ""
     categories: list[CatalogEntry] = []
     categories_loading: bool = False
     categories_message: str = ""
@@ -1650,6 +1791,499 @@ class State(rx.State):
             session_status="idle",
         )
 
+    def _clear_customer_session(self, message: str, *, status: str = "idle"):
+        self._customer_auth_token = ""
+        self.customer_authenticated = False
+        self.customer_session_status = status
+        self.customer_session_message = message
+        self.customer_id = None
+        self.customer_name = ""
+        self.customer_cpf = ""
+        self.customer_email = ""
+        self.customer_phone = ""
+        self.customer_addresses = []
+        self.customer_addresses_loading = False
+        self.customer_addresses_message = ""
+        self.customer_profile_message = ""
+        self.customer_address_editing_id = None
+        self.customer_address_form_cep = ""
+        self.customer_address_form_street = ""
+        self.customer_address_form_number = ""
+        self.customer_address_form_complement = ""
+        self.customer_address_form_neighborhood = ""
+        self.customer_address_form_city = ""
+        self.customer_address_form_state = ""
+        self.customer_address_form_label = ""
+
+    def _set_customer_profile(self, profile: CustomerProfile):
+        self.customer_id = profile.id
+        self.customer_name = profile.name
+        self.customer_cpf = profile.cpf
+        self.customer_email = profile.email
+        self.customer_phone = profile.phone
+        self.customer_authenticated = True
+        self.customer_session_status = "success"
+
+    async def _customer_request(
+        self,
+        url_env: str,
+        *,
+        method: str = "GET",
+        record_id: int | None = None,
+        payload: dict[str, object] | None = None,
+    ) -> XanoJson:
+        if (
+            not self._customer_auth_token
+            or not self.customer_authenticated
+            or self.customer_session_status != "success"
+            or self.customer_id is None
+        ):
+            raise ValueError("Active customer session is required.")
+
+        url = _required_environment_url(url_env).rstrip("/")
+        if record_id is not None:
+            url = f"{url}/{record_id}"
+        return await _server_side_xano_request(
+            url,
+            method=method,
+            payload=payload,
+            authorization="Bearer " + self._customer_auth_token,
+        )
+
+    @rx.event
+    async def register_customer(self, form_data: dict[str, Any]):
+        self.customer_registration_status = "loading"
+        self.customer_registration_message = ""
+        name = str(form_data.get("nome_completo", "")).strip()
+        cpf = str(form_data.get("cpf", "")).strip()
+        email = str(form_data.get("email", "")).strip()
+        phone = str(form_data.get("telefone", "")).strip()
+        password = str(form_data.get("password", ""))
+        if not name or not cpf or not email or not password:
+            self.customer_registration_status = "error"
+            self.customer_registration_message = (
+                "Informe nome completo, CPF, e-mail e senha."
+            )
+            return
+
+        try:
+            response = await _server_side_xano_request(
+                _required_environment_url(XANO_CUSTOMER_URL_ENV),
+                method="POST",
+                payload={
+                    "nome_completo": name,
+                    "cpf": cpf,
+                    "email": email,
+                    "telefone": phone,
+                    "password": password,
+                },
+            )
+            profile = _customer_profile(response)
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.customer_registration_status = "error"
+            self.customer_registration_message = (
+                "Não foi possível cadastrar a conta. Verifique os dados e tente novamente."
+            )
+            return
+
+        self.customer_registration_status = "success"
+        self.customer_registration_message = (
+            f"Conta criada para {profile.name}. Faça login para continuar."
+        )
+
+    @rx.event
+    async def submit_customer_registration(self, form_data: dict[str, Any]):
+        await self.register_customer(form_data)
+
+    @rx.event
+    async def customer_login(self, email: str, password: str):
+        self._clear_customer_session("", status="loading")
+        self.customer_login_status = "loading"
+        self.customer_login_message = ""
+        if not email.strip() or not password:
+            self.customer_login_status = "error"
+            self.customer_login_message = "Informe e-mail e senha."
+            self.customer_session_status = "idle"
+            return
+
+        try:
+            response = await _server_side_xano_request(
+                _required_environment_url(XANO_CUSTOMER_LOGIN_URL_ENV),
+                method="POST",
+                payload={"email": email.strip(), "password": password},
+            )
+            if not isinstance(response, dict):
+                raise ValueError("Invalid customer login response.")
+            token = response.get("authToken")
+            login_profile = _customer_profile(response.get("customer"))
+            if not isinstance(token, str) or not token.strip():
+                raise ValueError("Invalid customer login token.")
+
+            profile_response = await _server_side_xano_request(
+                _required_environment_url(XANO_CUSTOMER_ME_URL_ENV),
+                authorization="Bearer " + token.strip(),
+            )
+            profile = _customer_profile(profile_response)
+            if profile.id != login_profile.id:
+                raise ValueError("Customer session identity mismatch.")
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self._clear_customer_session(
+                "Não foi possível validar o acesso do Cliente.",
+                status="error",
+            )
+            self.customer_login_status = "error"
+            self.customer_login_message = (
+                "Não foi possível autenticar. Verifique suas credenciais."
+            )
+            return
+
+        self._customer_auth_token = token.strip()
+        self._set_customer_profile(profile)
+        self.customer_login_status = "success"
+        self.customer_login_message = "Acesso do Cliente validado."
+        self.customer_session_message = "Sessão de Cliente ativa."
+        await self._load_customer_addresses()
+
+    @rx.event
+    async def submit_customer_login(self, form_data: dict[str, Any]):
+        email = str(form_data.get("email", "")).strip()
+        password = str(form_data.get("password", ""))
+        await self.customer_login(email, password)
+
+    @rx.event
+    async def validate_customer_session(self):
+        if not self._customer_auth_token:
+            self._clear_customer_session("", status="idle")
+            return
+
+        self.customer_session_status = "loading"
+        try:
+            profile_response = await _server_side_xano_request(
+                _required_environment_url(XANO_CUSTOMER_ME_URL_ENV),
+                authorization="Bearer " + self._customer_auth_token,
+            )
+            profile = _customer_profile(profile_response)
+            if self.customer_id is not None and profile.id != self.customer_id:
+                raise ValueError("Customer session identity mismatch.")
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self._clear_customer_session(
+                "Não foi possível validar a sessão do Cliente.",
+                status="error",
+            )
+            return
+
+        self._set_customer_profile(profile)
+        self.customer_session_message = "Sessão de Cliente validada."
+        await self._load_customer_addresses()
+
+    @rx.event
+    async def update_customer_profile(self, form_data: dict[str, Any]):
+        if not self.customer_authenticated or self.customer_id is None:
+            self.customer_profile_message = "Faça login para editar seu perfil."
+            return
+
+        name = str(form_data.get("nome_completo", "")).strip()
+        email = str(form_data.get("email", "")).strip()
+        phone = str(form_data.get("telefone", "")).strip()
+        if not name or not email:
+            self.customer_profile_message = (
+                "Nome completo e e-mail são obrigatórios."
+            )
+            return
+
+        try:
+            payload = await self._customer_request(
+                XANO_CUSTOMER_URL_ENV,
+                method="PATCH",
+                record_id=self.customer_id,
+                payload={
+                    "nome_completo": name,
+                    "email": email,
+                    "telefone": phone,
+                },
+            )
+            profile = _customer_profile(payload)
+            if profile.id != self.customer_id:
+                raise ValueError("Customer profile identity mismatch.")
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.customer_profile_message = (
+                "Não foi possível atualizar o perfil. Nenhuma alteração foi confirmada."
+            )
+            return
+
+        self._set_customer_profile(profile)
+        self.customer_profile_message = "Perfil atualizado."
+
+    async def _load_customer_addresses(self) -> bool:
+        self.customer_addresses_loading = True
+        self.customer_addresses_message = ""
+        try:
+            payload = await self._customer_request(
+                XANO_CUSTOMER_ADDRESSES_URL_ENV
+            )
+            addresses = _customer_addresses(payload)
+            if any(address.customer_id != self.customer_id for address in addresses):
+                raise ValueError("Customer address ownership mismatch.")
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.customer_addresses_message = (
+                "Não foi possível carregar os endereços do Cliente."
+            )
+            return False
+        finally:
+            self.customer_addresses_loading = False
+
+        self.customer_addresses = addresses
+        return True
+
+    @rx.event
+    async def load_customer_addresses(self):
+        await self._load_customer_addresses()
+
+    @rx.event
+    def start_new_customer_address(self):
+        self._clear_customer_address_form()
+
+    def _clear_customer_address_form(self):
+        self.customer_address_editing_id = None
+        self.customer_address_form_cep = ""
+        self.customer_address_form_street = ""
+        self.customer_address_form_number = ""
+        self.customer_address_form_complement = ""
+        self.customer_address_form_neighborhood = ""
+        self.customer_address_form_city = ""
+        self.customer_address_form_state = ""
+        self.customer_address_form_label = ""
+
+    @rx.event
+    def set_customer_address_form_cep(self, value: str):
+        self.customer_address_form_cep = value
+
+    @rx.event
+    def set_customer_address_form_street(self, value: str):
+        self.customer_address_form_street = value
+
+    @rx.event
+    def set_customer_address_form_number(self, value: str):
+        self.customer_address_form_number = value
+
+    @rx.event
+    def set_customer_address_form_complement(self, value: str):
+        self.customer_address_form_complement = value
+
+    @rx.event
+    def set_customer_address_form_neighborhood(self, value: str):
+        self.customer_address_form_neighborhood = value
+
+    @rx.event
+    def set_customer_address_form_city(self, value: str):
+        self.customer_address_form_city = value
+
+    @rx.event
+    def set_customer_address_form_state(self, value: str):
+        self.customer_address_form_state = value
+
+    @rx.event
+    def set_customer_address_form_label(self, value: str):
+        self.customer_address_form_label = value
+
+    @rx.event
+    def edit_customer_address(self, address_id: int):
+        address = next(
+            (item for item in self.customer_addresses if item.id == address_id),
+            None,
+        )
+        if address is None or address.customer_id != self.customer_id:
+            self.customer_addresses_message = "Endereço não encontrado."
+            return
+
+        self.customer_address_editing_id = address.id
+        self.customer_address_form_cep = address.cep
+        self.customer_address_form_street = address.street
+        self.customer_address_form_number = address.number
+        self.customer_address_form_complement = address.complement
+        self.customer_address_form_neighborhood = address.neighborhood
+        self.customer_address_form_city = address.city
+        self.customer_address_form_state = address.state
+        self.customer_address_form_label = address.label
+
+    @rx.event
+    async def save_customer_address(self, form_data: dict[str, Any]):
+        if not self.customer_authenticated:
+            self.customer_addresses_message = (
+                "Faça login para gerenciar endereços."
+            )
+            return
+
+        payload = {
+            "cep": str(form_data.get("cep", "")).strip(),
+            "logradouro": str(form_data.get("logradouro", "")).strip(),
+            "numero": str(form_data.get("numero", "")).strip(),
+            "complemento": str(form_data.get("complemento", "")).strip(),
+            "bairro": str(form_data.get("bairro", "")).strip(),
+            "cidade": str(form_data.get("cidade", "")).strip(),
+            "estado": str(form_data.get("estado", "")).strip(),
+            "identificacao": str(form_data.get("identificacao", "")).strip(),
+        }
+        editing_id = self.customer_address_editing_id
+        try:
+            response = await self._customer_request(
+                XANO_CUSTOMER_ADDRESSES_URL_ENV,
+                method="PATCH" if editing_id is not None else "POST",
+                record_id=editing_id,
+                payload=payload,
+            )
+            address = _customer_address(response)
+            if address.customer_id != self.customer_id:
+                raise ValueError("Customer address ownership mismatch.")
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.customer_addresses_message = (
+                "Não foi possível salvar o endereço. Tente novamente."
+            )
+            return
+
+        self._clear_customer_address_form()
+        if await self._load_customer_addresses():
+            self.customer_addresses_message = "Endereço salvo."
+        else:
+            self.customer_addresses_message = (
+                "O endereço foi salvo, mas não foi possível atualizar a lista."
+            )
+
+    @rx.event
+    async def set_customer_address_primary(self, address_id: int):
+        await self._update_customer_address(
+            address_id,
+            {"principal": True},
+            success_message="Endereço principal atualizado.",
+        )
+
+    @rx.event
+    async def set_customer_address_status(
+        self,
+        address_id: int,
+        status: str,
+    ):
+        if status not in {"ATIVO", "INATIVO"}:
+            self.customer_addresses_message = "Status de endereço inválido."
+            return
+        await self._update_customer_address(
+            address_id,
+            {"status": status},
+            success_message="Status do endereço atualizado.",
+        )
+
+    async def _update_customer_address(
+        self,
+        address_id: int,
+        payload: dict[str, object],
+        *,
+        success_message: str,
+    ):
+        if not self.customer_authenticated:
+            self.customer_addresses_message = (
+                "Faça login para gerenciar endereços."
+            )
+            return
+        try:
+            response = await self._customer_request(
+                XANO_CUSTOMER_ADDRESSES_URL_ENV,
+                method="PATCH",
+                record_id=address_id,
+                payload=payload,
+            )
+            address = _customer_address(response)
+            if address.customer_id != self.customer_id:
+                raise ValueError("Customer address ownership mismatch.")
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.customer_addresses_message = (
+                "Não foi possível atualizar o endereço."
+            )
+            return
+
+        if await self._load_customer_addresses():
+            self.customer_addresses_message = success_message
+
+    @rx.event
+    async def delete_customer_address(self, address_id: int):
+        if not self.customer_authenticated:
+            self.customer_addresses_message = (
+                "Faça login para gerenciar endereços."
+            )
+            return
+        try:
+            response = await self._customer_request(
+                XANO_CUSTOMER_ADDRESSES_URL_ENV,
+                method="DELETE",
+                record_id=address_id,
+            )
+            if not isinstance(response, dict) or response.get("deleted") is not True:
+                raise ValueError("Invalid address deletion response.")
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.customer_addresses_message = (
+                "Não foi possível remover o endereço."
+            )
+            return
+
+        if await self._load_customer_addresses():
+            self.customer_addresses_message = "Endereço removido."
+
+    @rx.event
+    def logout_customer(self):
+        self.customer_login_status = "idle"
+        self.customer_login_message = ""
+        self._clear_customer_session(
+            "Sessão de Cliente encerrada.",
+            status="idle",
+        )
+
     @rx.event
     async def check_integration(self):
         self.integration_loading = True
@@ -2303,6 +2937,7 @@ def index() -> rx.Component:
         rx.vstack(
             rx.heading("Voltix", size="8"),
             rx.text("Acesso interno", size="5"),
+            rx.link("Acessar conta de Cliente", href="/cliente"),
             rx.text(
                 "Entre com as credenciais do seu usuário interno.",
                 color="gray",
@@ -2520,6 +3155,7 @@ def public_catalog_page() -> rx.Component:
         rx.vstack(
             rx.hstack(
                 rx.heading("Voltix", size="8"),
+                rx.link("Área do Cliente", href="/cliente"),
                 rx.link("Acesso interno", href="/"),
                 justify="between",
                 width="100%",
@@ -2595,6 +3231,406 @@ def public_catalog_page() -> rx.Component:
     )
 
 
+def customer_account_page() -> rx.Component:
+    def address_card(address: CustomerAddressEntry) -> rx.Component:
+        return rx.box(
+            rx.vstack(
+                rx.hstack(
+                    rx.heading(
+                        rx.cond(
+                            address.label != "",
+                            address.label,
+                            "Endereço #" + address.id.to_string(),
+                        ),
+                        size="4",
+                    ),
+                    rx.cond(
+                        address.is_primary,
+                        rx.badge("Principal"),
+                        rx.fragment(),
+                    ),
+                    rx.badge(address.status),
+                    justify="between",
+                    width="100%",
+                ),
+                rx.cond(
+                    address.street != "",
+                    rx.text("Logradouro: " + address.street),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    address.number != "",
+                    rx.text("Número: " + address.number),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    address.complement != "",
+                    rx.text("Complemento: " + address.complement),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    address.neighborhood != "",
+                    rx.text("Bairro: " + address.neighborhood),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    address.city != "",
+                    rx.text("Cidade: " + address.city),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    address.state != "",
+                    rx.text("Estado: " + address.state),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    address.cep != "",
+                    rx.text("CEP: " + address.cep),
+                    rx.fragment(),
+                ),
+                rx.hstack(
+                    rx.button(
+                        "Editar",
+                        on_click=State.edit_customer_address(address.id),
+                    ),
+                    rx.cond(
+                        (address.status == "ATIVO") & (address.is_primary == False),
+                        rx.button(
+                            "Tornar principal",
+                            on_click=State.set_customer_address_primary(address.id),
+                        ),
+                        rx.fragment(),
+                    ),
+                    rx.cond(
+                        address.status == "ATIVO",
+                        rx.button(
+                            "Inativar",
+                            on_click=State.set_customer_address_status(
+                                address.id,
+                                "INATIVO",
+                            ),
+                        ),
+                        rx.button(
+                            "Reativar",
+                            on_click=State.set_customer_address_status(
+                                address.id,
+                                "ATIVO",
+                            ),
+                        ),
+                    ),
+                    rx.button(
+                        "Remover",
+                        on_click=State.delete_customer_address(address.id),
+                        color_scheme="red",
+                    ),
+                    wrap="wrap",
+                ),
+                align="stretch",
+                spacing="3",
+            ),
+            border="1px solid var(--gray-5)",
+            border_radius="8px",
+            padding="4",
+            width="100%",
+        )
+
+    public_forms = rx.vstack(
+        rx.text(
+            State.customer_session_message,
+            color="red",
+        ),
+        rx.box(
+            rx.vstack(
+                rx.heading("Criar conta de Cliente", size="5"),
+                rx.form(
+                    rx.vstack(
+                        rx.input(
+                            name="nome_completo",
+                            placeholder="Nome completo",
+                            required=True,
+                            width="100%",
+                        ),
+                        rx.input(
+                            name="cpf",
+                            placeholder="CPF",
+                            required=True,
+                            width="100%",
+                        ),
+                        rx.input(
+                            name="email",
+                            type="email",
+                            placeholder="E-mail",
+                            required=True,
+                            width="100%",
+                        ),
+                        rx.input(
+                            name="telefone",
+                            type="tel",
+                            placeholder="Telefone (opcional)",
+                            width="100%",
+                        ),
+                        rx.input(
+                            name="password",
+                            type="password",
+                            placeholder="Senha",
+                            required=True,
+                            width="100%",
+                        ),
+                        rx.button(
+                            "Cadastrar",
+                            type="submit",
+                            disabled=State.customer_registration_status == "loading",
+                        ),
+                        width="100%",
+                        align="stretch",
+                        spacing="3",
+                    ),
+                    on_submit=State.submit_customer_registration,
+                    width="100%",
+                ),
+                rx.text(State.customer_registration_message),
+                align="stretch",
+                spacing="3",
+                width="100%",
+            ),
+            border="1px solid var(--gray-5)",
+            border_radius="8px",
+            padding="4",
+            width="100%",
+        ),
+        rx.box(
+            rx.vstack(
+                rx.heading("Entrar como Cliente", size="5"),
+                rx.form(
+                    rx.vstack(
+                        rx.input(
+                            name="email",
+                            type="email",
+                            placeholder="E-mail",
+                            required=True,
+                            width="100%",
+                        ),
+                        rx.input(
+                            name="password",
+                            type="password",
+                            placeholder="Senha",
+                            required=True,
+                            width="100%",
+                        ),
+                        rx.button(
+                            rx.cond(
+                                State.customer_login_status == "loading",
+                                "Entrando...",
+                                "Entrar",
+                            ),
+                            type="submit",
+                            disabled=State.customer_login_status == "loading",
+                        ),
+                        width="100%",
+                        align="stretch",
+                        spacing="3",
+                    ),
+                    on_submit=State.submit_customer_login,
+                    width="100%",
+                ),
+                rx.text(State.customer_login_message),
+                align="stretch",
+                spacing="3",
+                width="100%",
+            ),
+            border="1px solid var(--gray-5)",
+            border_radius="8px",
+            padding="4",
+            width="100%",
+        ),
+        width="100%",
+        spacing="4",
+    )
+
+    authenticated_customer = rx.vstack(
+        rx.hstack(
+            rx.heading("Minha conta", size="6"),
+            rx.button("Sair", on_click=State.logout_customer),
+            justify="between",
+            width="100%",
+        ),
+        rx.text("Cliente: " + State.customer_name, weight="bold"),
+        rx.text("CPF: " + State.customer_cpf),
+        rx.form(
+            rx.vstack(
+                rx.input(
+                    name="nome_completo",
+                    default_value=State.customer_name,
+                    placeholder="Nome completo",
+                    required=True,
+                    width="100%",
+                ),
+                rx.input(
+                    name="email",
+                    type="email",
+                    default_value=State.customer_email,
+                    placeholder="E-mail",
+                    required=True,
+                    width="100%",
+                ),
+                rx.input(
+                    name="telefone",
+                    type="tel",
+                    default_value=State.customer_phone,
+                    placeholder="Telefone",
+                    width="100%",
+                ),
+                rx.button("Salvar perfil", type="submit"),
+                width="100%",
+                align="stretch",
+                spacing="3",
+            ),
+            on_submit=State.update_customer_profile,
+            width="100%",
+        ),
+        rx.text(State.customer_profile_message),
+        rx.heading("Meus endereços", size="5"),
+        rx.hstack(
+            rx.button(
+                "Novo endereço",
+                on_click=State.start_new_customer_address,
+            ),
+            rx.button(
+                "Atualizar endereços",
+                on_click=State.load_customer_addresses,
+                disabled=State.customer_addresses_loading,
+            ),
+        ),
+        rx.text(State.customer_addresses_message, color="red"),
+        rx.cond(
+            State.customer_addresses_loading,
+            rx.text("Carregando endereços..."),
+            rx.fragment(),
+        ),
+        rx.cond(
+            State.customer_address_editing_id != None,
+            rx.heading("Editar endereço", size="4"),
+            rx.heading("Novo endereço", size="4"),
+        ),
+        rx.form(
+            rx.vstack(
+                rx.input(
+                    name="cep",
+                    value=State.customer_address_form_cep,
+                    on_change=State.set_customer_address_form_cep,
+                    placeholder="CEP",
+                    width="100%",
+                ),
+                rx.input(
+                    name="logradouro",
+                    value=State.customer_address_form_street,
+                    on_change=State.set_customer_address_form_street,
+                    placeholder="Logradouro",
+                    width="100%",
+                ),
+                rx.input(
+                    name="numero",
+                    value=State.customer_address_form_number,
+                    on_change=State.set_customer_address_form_number,
+                    placeholder="Número",
+                    width="100%",
+                ),
+                rx.input(
+                    name="complemento",
+                    value=State.customer_address_form_complement,
+                    on_change=State.set_customer_address_form_complement,
+                    placeholder="Complemento",
+                    width="100%",
+                ),
+                rx.input(
+                    name="bairro",
+                    value=State.customer_address_form_neighborhood,
+                    on_change=State.set_customer_address_form_neighborhood,
+                    placeholder="Bairro",
+                    width="100%",
+                ),
+                rx.input(
+                    name="cidade",
+                    value=State.customer_address_form_city,
+                    on_change=State.set_customer_address_form_city,
+                    placeholder="Cidade",
+                    width="100%",
+                ),
+                rx.input(
+                    name="estado",
+                    value=State.customer_address_form_state,
+                    on_change=State.set_customer_address_form_state,
+                    placeholder="Estado",
+                    width="100%",
+                ),
+                rx.input(
+                    name="identificacao",
+                    value=State.customer_address_form_label,
+                    on_change=State.set_customer_address_form_label,
+                    placeholder="Identificação (ex.: Casa)",
+                    width="100%",
+                ),
+                rx.hstack(
+                    rx.button(
+                        rx.cond(
+                            State.customer_address_editing_id != None,
+                            "Salvar endereço",
+                            "Cadastrar endereço",
+                        ),
+                        type="submit",
+                    ),
+                    rx.cond(
+                        State.customer_address_editing_id != None,
+                        rx.button(
+                            "Cancelar edição",
+                            type="button",
+                            on_click=State.start_new_customer_address,
+                        ),
+                        rx.fragment(),
+                    ),
+                ),
+                width="100%",
+                align="stretch",
+                spacing="3",
+            ),
+            on_submit=State.save_customer_address,
+            width="100%",
+        ),
+        rx.cond(
+            State.customer_addresses.length() == 0,
+            rx.text("Nenhum endereço cadastrado."),
+            rx.foreach(State.customer_addresses, address_card),
+        ),
+        align="stretch",
+        spacing="4",
+        width="100%",
+    )
+
+    return rx.container(
+        rx.vstack(
+            rx.hstack(
+                rx.heading("Voltix", size="8"),
+                rx.link("Catálogo público", href="/catalogo"),
+                rx.link("Acesso interno", href="/"),
+                justify="between",
+                width="100%",
+            ),
+            rx.cond(
+                State.customer_authenticated,
+                authenticated_customer,
+                public_forms,
+            ),
+            align="stretch",
+            spacing="5",
+            width="100%",
+            max_width="48rem",
+            margin="0 auto",
+            min_height="100vh",
+        ),
+        padding="4",
+    )
+
+
 app = rx.App()
 app.add_page(index)
 app.add_page(
@@ -2602,4 +3638,10 @@ app.add_page(
     route="/catalogo",
     title="Catálogo | Voltix",
     on_load=State.load_public_catalog,
+)
+app.add_page(
+    customer_account_page,
+    route="/cliente",
+    title="Minha conta | Voltix",
+    on_load=State.validate_customer_session,
 )
