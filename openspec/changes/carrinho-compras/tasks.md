@@ -1,0 +1,20 @@
+## 1. Persistência do Carrinho
+
+- [x] 1.1 Auditar somente leitura no Xano autorizado para confirmar as estruturas e endpoints existentes de Cliente, Produto e VariaçãoProduto; registrar indisponibilidades e não publicar nem alterar dados se a dependência estiver ausente ou bloqueada. Evidência: o snapshot read-only contém as tabelas `CLIENTE`, `categoria` e `marca`, mas não contém `produto`, `variacao_produto` nem APIs publicadas de Cliente/Produto; nenhuma publicação ou alteração remota foi feita.
+- [x] 1.2 Criar tabelas Xano `carrinho` e `item_carrinho` com referências a `CLIENTE`/`variacao_produto`, timestamps, quantidade inteira e índices que garantam no máximo um Carrinho por Cliente e uma ocorrência por variação no Carrinho; validar XanoScript e confirmar que tabelas comerciais existentes não mudaram. Evidência: schemas locais adicionados e validados; nenhum schema existente foi editado e nenhuma publicação remota foi feita.
+
+## 2. APIs Xano
+
+- [x] 2.1 Criar endpoint autenticado de leitura do Carrinho que derive o Cliente de `$auth.id`, retorne lista vazia quando ainda não houver Carrinho e apresente linhas com status atual de Produto/Variação, quantidade, preço, subtotal e total; validar autorização, resposta e ausência de preço não persistido. Evidência: endpoint XanoScript autenticado e testes de contrato/parser; preços não são campos persistidos.
+- [x] 2.2 Criar endpoints autenticados de inclusão/atualização e remoção que verifiquem propriedade, Produto/Variação `ATIVO`, quantidade inteira e estoque corrente, atualizem a quantidade total existente, removam com quantidade zero e preservem linhas indisponíveis; testar IDOR, duplicidade, corrida, valores inválidos e ausência de mudança no estoque. Evidência: mutações owner-scoped em transação, índice único composto, validações e testes automatizados de contrato; nenhuma mutação de estoque existe.
+- [x] 2.3 Garantir no backend subtotais/total usando preços atuais e decimal, preservando linhas quando status ou estoque mudarem; validar preço enviado ignorado, preço alterado refletido na consulta seguinte e itens indisponíveis removíveis. Evidência: valores calculados no endpoint de leitura sobre preço/estoque atuais; linhas inativas ou acima do estoque permanecem legíveis e removíveis.
+
+## 3. Integração Reflex
+
+- [x] 3.1 Configurar URL do Carrinho por ambiente e implementar no State/Python leitura e mutações usando exclusivamente token de Cliente; testar isolamento do token interno, chamadas server-side, respostas inválidas e falhas sem sucesso simulado. Evidência: `XANO_CART_URL` documentada no `.env.example`; chamadas pelo helper server-side de Cliente; testes verificam token e falhas preservando estado.
+- [x] 3.2 Integrar inclusão de variações no catálogo e criar visualização do Carrinho para Cliente autenticado, incluindo alteração de quantidade, remoção, indisponibilidade e valores; testar que visitante precisa autenticar como Cliente e que não há fluxo de checkout ou compra. Evidência: ação de inclusão no catálogo, página `/carrinho`, formulários de quantidade/remoção e compilação Reflex concluída.
+
+## 4. Verificação final
+
+- [x] 4.1 Executar testes automatizados para persistência, isolamento por Cliente, inclusão repetida, quantidades inteiras/zero/estoque, estados inativos, cálculos, falhas e preservação do Carrinho; confirmar ausência de baixa/reserva de estoque, Pedido, checkout, pagamento, frete e CRM. Evidência: suíte automatizada completa passou (58 testes), incluindo testes de contrato Xano e testes de parser/State/UI da Change.
+- [x] 4.2 Compilar Reflex, validar XanoScript e OpenSpec estritamente e executar E2E no Xano autorizado sem criar dados desnecessários; se publicação ou ambiente bloquear, documentar o bloqueio e não declarar E2E como executado. Evidência local: compilação Reflex, validação XanoScript de 6 arquivos e validação OpenSpec estrita passaram; E2E remoto não executado porque o snapshot read-only não contém as tabelas/APIs dependentes e a publicação está bloqueada por `allow_push: false` previamente confirmado; não houve publicação nem alteração remota.

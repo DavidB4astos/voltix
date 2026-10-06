@@ -248,12 +248,13 @@ class PublicCatalogTests(unittest.TestCase):
         self.assertIn("ttl = 3600", image)
         self.assertNotIn("response = $product", image)
 
-    def test_public_route_is_anonymous_and_contains_no_purchase_controls(self):
+    def test_public_route_is_anonymous_and_cart_actions_use_customer_state(self):
         source = Path("voltix/voltix.py").read_text(encoding="utf-8")
         self.assertIn('route="/catalogo"', source)
         self.assertIn("on_load=State.load_public_catalog", source)
         self.assertIn("Indisponível para compra (estoque zero)", source)
-        self.assertNotIn("Adicionar ao carrinho", source)
+        self.assertIn("Adicionar ao carrinho", source)
+        self.assertIn("State.add_to_cart(variation.id)", source)
         self.assertNotIn("checkout", source.lower())
 
 

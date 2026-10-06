@@ -38,6 +38,7 @@ XANO_CUSTOMER_URL_ENV = "XANO_CUSTOMER_URL"
 XANO_CUSTOMER_LOGIN_URL_ENV = "XANO_CUSTOMER_LOGIN_URL"
 XANO_CUSTOMER_ME_URL_ENV = "XANO_CUSTOMER_ME_URL"
 XANO_CUSTOMER_ADDRESSES_URL_ENV = "XANO_CUSTOMER_ADDRESSES_URL"
+XANO_CART_URL_ENV = "XANO_CART_URL"
 
 XanoJson = dict[str, object] | list[dict[str, object]]
 
@@ -114,6 +115,27 @@ class CustomerAddressEntry:
     label: str
     is_primary: bool
     status: str
+
+
+@dataclass(frozen=True)
+class CartItemEntry:
+    id: int
+    variation_id: int
+    product_name: str
+    variation_name: str
+    sku: str
+    quantity: int
+    price: str
+    available_quantity: str
+    subtotal: str
+    available: bool
+
+
+@dataclass(frozen=True)
+class CartSnapshot:
+    id: int | None
+    items: list[CartItemEntry]
+    total: str
 
 
 def _customer_profile(payload: object) -> CustomerProfile:
@@ -199,6 +221,153 @@ def _customer_addresses(payload: XanoJson) -> list[CustomerAddressEntry]:
     if not isinstance(payload, list):
         raise ValueError("Customer address list must be an array.")
     return [_customer_address(item) for item in payload]
+
+
+def _cart_decimal(payload: object, *, strictly_positive: bool = False) -> Decimal:
+    if isinstance(payload, bool) or not isinstance(payload, (int, float, str)):
+        raise ValueError("Cart monetary or stock field has an invalid value.")
+    try:
+        number = Decimal(str(payload))
+    except InvalidOperation as error:
+        raise ValueError("Cart monetary or stock field has an invalid value.") from error
+    if (
+        not number.is_finite()
+        or number < 0
+        or (strictly_positive and number == 0)
+    ):
+        raise ValueError("Cart monetary or stock field is outside the allowed range.")
+    return number
+
+
+def _cart_decimal_text(number: Decimal) -> str:
+    return format(number, "f")
+
+
+def _cart_item(payload: object) -> CartItemEntry:
+    if not isinstance(payload, dict):
+        raise ValueError("Cart item response must be an object.")
+
+    item_id = payload.get("id")
+    variation_id = payload.get("variacao_produto_id")
+    quantity = payload.get("quantidade")
+    product_name = payload.get("produto_nome")
+    variation_name = payload.get("variacao_nome")
+    sku = payload.get("variacao_sku")
+    product_status = payload.get("produto_status")
+    variation_status = payload.get("variacao_status")
+    available = payload.get("disponivel")
+    if (
+        not isinstance(item_id, int)
+        or isinstance(item_id, bool)
+        or item_id < 1
+        or not isinstance(variation_id, int)
+        or isinstance(variation_id, bool)
+        or variation_id < 1
+        or not isinstance(quantity, int)
+        or isinstance(quantity, bool)
+        or quantity < 1
+        or (product_name is not None and not isinstance(product_name, str))
+        or (variation_name is not None and not isinstance(variation_name, str))
+        or not isinstance(sku, str)
+        or not sku.strip()
+        or product_status not in {"ATIVO", "INATIVO"}
+        or variation_status not in {"ATIVO", "INATIVO"}
+        or not isinstance(available, bool)
+    ):
+        raise ValueError("Cart item response has an invalid record.")
+
+    price = _cart_decimal(payload.get("preco"), strictly_positive=True)
+    stock = _cart_decimal(payload.get("quantidade_disponivel"))
+    subtotal = _cart_decimal(payload.get("subtotal"))
+    expected_available = (
+        product_status == "ATIVO"
+        and variation_status == "ATIVO"
+        and stock >= quantity
+    )
+    if subtotal != price * quantity or available != expected_available:
+        raise ValueError("Cart item response has inconsistent totals or availability.")
+
+    return CartItemEntry(
+        id=item_id,
+        variation_id=variation_id,
+        product_name=product_name or "",
+        variation_name=variation_name or "",
+        sku=sku,
+        quantity=quantity,
+        price=_cart_decimal_text(price),
+        available_quantity=_cart_decimal_text(stock),
+        subtotal=_cart_decimal_text(subtotal),
+        available=available,
+    )
+
+
+def _cart_snapshot(payload: object) -> CartSnapshot:
+    if not isinstance(payload, dict):
+        raise ValueError("Cart response must be an object.")
+
+    cart_id = payload.get("carrinho_id")
+    items_payload = payload.get("itens")
+    if (
+        cart_id is not None
+        and (
+            not isinstance(cart_id, int)
+            or isinstance(cart_id, bool)
+            or cart_id < 1
+        )
+    ):
+        raise ValueError("Cart response has an invalid cart identity.")
+    if not isinstance(items_payload, list):
+        raise ValueError("Cart items response must be an array.")
+
+    items = [_cart_item(item) for item in items_payload]
+    variation_ids = [item.variation_id for item in items]
+    if len(variation_ids) != len(set(variation_ids)):
+        raise ValueError("Cart response contains a duplicate variation.")
+    if cart_id is None and items:
+        raise ValueError("An empty cart identity cannot contain items.")
+
+    total = _cart_decimal(payload.get("total"))
+    calculated_total = sum(
+        (_cart_decimal(item.subtotal) for item in items),
+        start=Decimal("0"),
+    )
+    if total != calculated_total:
+        raise ValueError("Cart response total does not match its item subtotals.")
+
+    return CartSnapshot(
+        id=cart_id,
+        items=items,
+        total=_cart_decimal_text(total),
+    )
+
+
+def _cart_mutation_response(
+    payload: object,
+    *,
+    expected_item_id: int | None = None,
+    expected_variation_id: int | None = None,
+    expected_removed: bool | None = None,
+) -> None:
+    if not isinstance(payload, dict):
+        raise ValueError("Cart mutation response must be an object.")
+    item_id = payload.get("id")
+    variation_id = payload.get("variacao_produto_id")
+    removed = payload.get("removido")
+    if (
+        not isinstance(item_id, int)
+        or isinstance(item_id, bool)
+        or item_id < 1
+        or (expected_item_id is not None and item_id != expected_item_id)
+        or (
+            expected_variation_id is not None
+            and variation_id != expected_variation_id
+        )
+        or (
+            expected_removed is not None
+            and removed is not expected_removed
+        )
+    ):
+        raise ValueError("Cart mutation response does not match the request.")
 
 
 def _required_environment_url(name: str) -> str:
@@ -654,6 +823,11 @@ class State(rx.State):
     customer_phone: str = ""
     _customer_auth_token: str = ""
     customer_profile_message: str = ""
+    cart_id: int | None = None
+    cart_items: list[CartItemEntry] = []
+    cart_total: str = "0"
+    cart_loading: bool = False
+    cart_message: str = ""
     customer_addresses: list[CustomerAddressEntry] = []
     customer_addresses_loading: bool = False
     customer_addresses_message: str = ""
@@ -1801,6 +1975,11 @@ class State(rx.State):
         self.customer_cpf = ""
         self.customer_email = ""
         self.customer_phone = ""
+        self.cart_id = None
+        self.cart_items = []
+        self.cart_total = "0"
+        self.cart_loading = False
+        self.cart_message = ""
         self.customer_addresses = []
         self.customer_addresses_loading = False
         self.customer_addresses_message = ""
@@ -1829,6 +2008,7 @@ class State(rx.State):
         url_env: str,
         *,
         method: str = "GET",
+        path: str | None = None,
         record_id: int | None = None,
         payload: dict[str, object] | None = None,
     ) -> XanoJson:
@@ -1841,6 +2021,8 @@ class State(rx.State):
             raise ValueError("Active customer session is required.")
 
         url = _required_environment_url(url_env).rstrip("/")
+        if path is not None:
+            url = f"{url}/{path.strip('/')}"
         if record_id is not None:
             url = f"{url}/{record_id}"
         return await _server_side_xano_request(
@@ -1848,6 +2030,216 @@ class State(rx.State):
             method=method,
             payload=payload,
             authorization="Bearer " + self._customer_auth_token,
+        )
+
+    async def _load_cart(self, *, clear_message: bool = True) -> bool:
+        self.cart_loading = True
+        if clear_message:
+            self.cart_message = ""
+        try:
+            payload = await self._customer_request(XANO_CART_URL_ENV)
+            snapshot = _cart_snapshot(payload)
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.cart_message = (
+                "Não foi possível carregar o carrinho. Tente novamente."
+            )
+            return False
+        finally:
+            self.cart_loading = False
+
+        self.cart_id = snapshot.id
+        self.cart_items = snapshot.items
+        self.cart_total = snapshot.total
+        return True
+
+    @rx.event
+    async def load_cart(self):
+        if (
+            not self._customer_auth_token
+            or not self.customer_authenticated
+            or self.customer_session_status != "success"
+        ):
+            self.cart_message = "Entre como Cliente para acessar seu carrinho."
+            return
+        await self._load_cart()
+
+    async def _finish_cart_mutation(
+        self,
+        payload: object,
+        *,
+        expected_item_id: int | None = None,
+        expected_variation_id: int | None = None,
+        expected_removed: bool | None = None,
+        success_message: str,
+    ):
+        _cart_mutation_response(
+            payload,
+            expected_item_id=expected_item_id,
+            expected_variation_id=expected_variation_id,
+            expected_removed=expected_removed,
+        )
+        if await self._load_cart(clear_message=False):
+            self.cart_message = success_message
+        else:
+            self.cart_message = (
+                "A alteração foi aceita, mas não foi possível atualizar o carrinho. "
+                "Atualize para confirmar."
+            )
+
+    @rx.event
+    async def add_to_cart(self, variation_id: int):
+        if (
+            not self._customer_auth_token
+            or not self.customer_authenticated
+            or self.customer_session_status != "success"
+        ):
+            self.cart_message = "Entre como Cliente para adicionar ao carrinho."
+            return
+        if not isinstance(variation_id, int) or isinstance(variation_id, bool) or variation_id < 1:
+            self.cart_message = "Informe uma variação e quantidade válidas."
+            return
+        quantity = 1
+
+        self.cart_loading = True
+        self.cart_message = ""
+        try:
+            response = await self._customer_request(
+                XANO_CART_URL_ENV,
+                method="POST",
+                path="items",
+                payload={
+                    "variacao_id": variation_id,
+                    "quantidade": quantity,
+                },
+            )
+            _cart_mutation_response(
+                response,
+                expected_variation_id=variation_id,
+            )
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.cart_message = (
+                "Não foi possível adicionar a variação. Verifique disponibilidade "
+                "e tente novamente."
+            )
+            return
+        finally:
+            self.cart_loading = False
+
+        await self._finish_cart_mutation(
+            response,
+            expected_variation_id=variation_id,
+            success_message="Variação adicionada ao carrinho.",
+        )
+
+    @rx.event
+    async def update_cart_item(self, item_id: int, form_data: dict[str, Any]):
+        item = next((entry for entry in self.cart_items if entry.id == item_id), None)
+        raw_quantity = form_data.get("quantidade") if isinstance(form_data, dict) else None
+        if item is None:
+            self.cart_message = "Item não encontrado no carrinho. Atualize a lista."
+            return
+        if (
+            not isinstance(raw_quantity, (int, str))
+            or isinstance(raw_quantity, bool)
+            or (isinstance(raw_quantity, str) and not raw_quantity.strip().isdigit())
+            or (isinstance(raw_quantity, int) and raw_quantity < 0)
+        ):
+            self.cart_message = "A quantidade deve ser um inteiro não negativo."
+            return
+        quantity = int(raw_quantity)
+
+        self.cart_loading = True
+        self.cart_message = ""
+        try:
+            response = await self._customer_request(
+                XANO_CART_URL_ENV,
+                method="PATCH",
+                path="items",
+                record_id=item_id,
+                payload={"quantidade": quantity},
+            )
+            _cart_mutation_response(
+                response,
+                expected_item_id=item_id,
+                expected_removed=quantity == 0,
+            )
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.cart_message = (
+                "Não foi possível atualizar a quantidade. A quantidade confirmada "
+                "foi preservada."
+            )
+            return
+        finally:
+            self.cart_loading = False
+
+        await self._finish_cart_mutation(
+            response,
+            expected_item_id=item_id,
+            expected_removed=quantity == 0,
+            success_message=(
+                "Item removido do carrinho."
+                if quantity == 0
+                else "Quantidade atualizada."
+            ),
+        )
+
+    @rx.event
+    async def remove_cart_item(self, item_id: int):
+        if not any(item.id == item_id for item in self.cart_items):
+            self.cart_message = "Item não encontrado no carrinho. Atualize a lista."
+            return
+
+        self.cart_loading = True
+        self.cart_message = ""
+        try:
+            response = await self._customer_request(
+                XANO_CART_URL_ENV,
+                method="DELETE",
+                path="items",
+                record_id=item_id,
+            )
+            _cart_mutation_response(
+                response,
+                expected_item_id=item_id,
+                expected_removed=True,
+            )
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.cart_message = (
+                "Não foi possível remover o item. O carrinho confirmado foi preservado."
+            )
+            return
+        finally:
+            self.cart_loading = False
+
+        await self._finish_cart_mutation(
+            response,
+            expected_item_id=item_id,
+            expected_removed=True,
+            success_message="Item removido do carrinho.",
         )
 
     @rx.event
@@ -3129,6 +3521,14 @@ def public_catalog_page() -> rx.Component:
                                             "Indisponível para compra (estoque zero)",
                                         )
                                     ),
+                                    rx.button(
+                                        "Adicionar ao carrinho",
+                                        on_click=State.add_to_cart(variation.id),
+                                        disabled=(
+                                            State.cart_loading
+                                            | (variation.available_quantity <= 0)
+                                        ),
+                                    ),
                                     align="stretch",
                                     spacing="2",
                                 ),
@@ -3138,6 +3538,16 @@ def public_catalog_page() -> rx.Component:
                                 width="100%",
                             ),
                         ),
+                    ),
+                    rx.text(State.cart_message, color="red"),
+                    rx.cond(
+                        State.cart_message != "",
+                        rx.cond(
+                            State.customer_authenticated,
+                            rx.link("Ver carrinho", href="/carrinho"),
+                            rx.link("Entrar como Cliente", href="/cliente"),
+                        ),
+                        rx.fragment(),
                     ),
                     align="stretch",
                     spacing="3",
@@ -3156,6 +3566,7 @@ def public_catalog_page() -> rx.Component:
             rx.hstack(
                 rx.heading("Voltix", size="8"),
                 rx.link("Área do Cliente", href="/cliente"),
+                rx.link("Carrinho", href="/carrinho"),
                 rx.link("Acesso interno", href="/"),
                 justify="between",
                 width="100%",
@@ -3611,6 +4022,7 @@ def customer_account_page() -> rx.Component:
             rx.hstack(
                 rx.heading("Voltix", size="8"),
                 rx.link("Catálogo público", href="/catalogo"),
+                rx.link("Carrinho", href="/carrinho"),
                 rx.link("Acesso interno", href="/"),
                 justify="between",
                 width="100%",
@@ -3619,6 +4031,117 @@ def customer_account_page() -> rx.Component:
                 State.customer_authenticated,
                 authenticated_customer,
                 public_forms,
+            ),
+            align="stretch",
+            spacing="5",
+            width="100%",
+            max_width="48rem",
+            margin="0 auto",
+            min_height="100vh",
+        ),
+        padding="4",
+    )
+
+
+def customer_cart_page() -> rx.Component:
+    def cart_item_card(item: CartItemEntry) -> rx.Component:
+        return rx.box(
+            rx.vstack(
+                rx.heading(
+                    rx.cond(item.product_name != "", item.product_name, item.sku),
+                    size="4",
+                ),
+                rx.cond(
+                    item.variation_name != "",
+                    rx.text("Variação: " + item.variation_name),
+                    rx.fragment(),
+                ),
+                rx.text("SKU: " + item.sku),
+                rx.cond(
+                    item.available,
+                    rx.badge("Disponível"),
+                    rx.badge("Indisponível", color_scheme="red"),
+                ),
+                rx.text("Preço atual: R$ " + item.price),
+                rx.text("Subtotal: R$ " + item.subtotal),
+                rx.form(
+                    rx.hstack(
+                        rx.input(
+                            name="quantidade",
+                            type="number",
+                            min="0",
+                            step="1",
+                            default_value=item.quantity.to_string(),
+                            width="8rem",
+                        ),
+                        rx.button(
+                            "Atualizar quantidade",
+                            type="submit",
+                            disabled=State.cart_loading,
+                        ),
+                        wrap="wrap",
+                    ),
+                    on_submit=State.update_cart_item(item.id),
+                ),
+                rx.button(
+                    "Remover item",
+                    on_click=State.remove_cart_item(item.id),
+                    disabled=State.cart_loading,
+                    color_scheme="red",
+                ),
+                align="stretch",
+                spacing="2",
+                width="100%",
+            ),
+            border="1px solid var(--gray-5)",
+            border_radius="8px",
+            padding="4",
+            width="100%",
+        )
+
+    authenticated_cart = rx.vstack(
+        rx.text("Cliente: " + State.customer_name, weight="bold"),
+        rx.button(
+            "Atualizar carrinho",
+            on_click=State.load_cart,
+            disabled=State.cart_loading,
+        ),
+        rx.text(State.cart_message),
+        rx.cond(
+            State.cart_loading,
+            rx.text("Carregando carrinho..."),
+            rx.fragment(),
+        ),
+        rx.cond(
+            State.cart_items.length() == 0,
+            rx.text("Seu carrinho está vazio."),
+            rx.foreach(State.cart_items, cart_item_card),
+        ),
+        rx.heading("Total: R$ " + State.cart_total, size="5"),
+        align="stretch",
+        spacing="3",
+        width="100%",
+    )
+
+    return rx.container(
+        rx.vstack(
+            rx.hstack(
+                rx.heading("Voltix", size="8"),
+                rx.link("Catálogo público", href="/catalogo"),
+                rx.link("Minha conta", href="/cliente"),
+                justify="between",
+                width="100%",
+            ),
+            rx.heading("Seu carrinho", size="6"),
+            rx.cond(
+                State.customer_authenticated,
+                authenticated_cart,
+                rx.vstack(
+                    rx.text("Entre como Cliente para acessar seu carrinho."),
+                    rx.link("Acessar conta de Cliente", href="/cliente"),
+                    align="stretch",
+                    spacing="3",
+                ),
             ),
             align="stretch",
             spacing="5",
@@ -3644,4 +4167,10 @@ app.add_page(
     route="/cliente",
     title="Minha conta | Voltix",
     on_load=State.validate_customer_session,
+)
+app.add_page(
+    customer_cart_page,
+    route="/carrinho",
+    title="Carrinho | Voltix",
+    on_load=State.load_cart,
 )
