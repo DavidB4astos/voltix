@@ -334,13 +334,13 @@ class ShoppingCartTests(unittest.TestCase):
             delete.index("db.del item_carrinho"),
         )
 
-    def test_catalog_and_customer_cart_pages_use_reflex_state_without_checkout(self):
+    def test_catalog_and_customer_cart_pages_use_reflex_state_with_checkout_entry(self):
         source = Path("voltix/voltix.py").read_text(encoding="utf-8")
         catalog_page = source.split("def public_catalog_page()", 1)[1].split(
             "\ndef customer_account_page()", 1
         )[0]
         cart_page = source.split("def customer_cart_page()", 1)[1].split(
-            "\n\napp = rx.App()", 1
+            "\ndef customer_checkout_page()", 1
         )[0]
         self.assertIn("State.add_to_cart(variation.id)", catalog_page)
         self.assertIn('route="/carrinho"', source)
@@ -348,9 +348,10 @@ class ShoppingCartTests(unittest.TestCase):
         self.assertIn("State.update_cart_item(item.id)", cart_page)
         self.assertIn("State.remove_cart_item(item.id)", cart_page)
         self.assertIn("State.cart_total", cart_page)
+        self.assertIn('href="/checkout"', cart_page)
         self.assertNotIn("_customer_auth_token", catalog_page)
         self.assertNotIn("_customer_auth_token", cart_page)
-        for out_of_scope in ("checkout", "pagamento", "pedido", "CRM"):
+        for out_of_scope in ("pagamento", "pedido", "CRM"):
             self.assertNotIn(out_of_scope, cart_page.lower())
 
 

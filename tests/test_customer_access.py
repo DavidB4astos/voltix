@@ -10,6 +10,8 @@ import voltix.voltix as app
 
 class _FakeCustomerState:
     _clear_customer_session = app.State._clear_customer_session
+    _set_checkout_review = app.State._set_checkout_review
+    _set_selected_order = app.State._set_selected_order
     _clear_customer_address_form = app.State._clear_customer_address_form
     _set_customer_profile = app.State._set_customer_profile
     _customer_request = app.State._customer_request

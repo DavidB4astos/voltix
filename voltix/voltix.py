@@ -39,6 +39,9 @@ XANO_CUSTOMER_LOGIN_URL_ENV = "XANO_CUSTOMER_LOGIN_URL"
 XANO_CUSTOMER_ME_URL_ENV = "XANO_CUSTOMER_ME_URL"
 XANO_CUSTOMER_ADDRESSES_URL_ENV = "XANO_CUSTOMER_ADDRESSES_URL"
 XANO_CART_URL_ENV = "XANO_CART_URL"
+XANO_CHECKOUT_REVIEW_URL_ENV = "XANO_CHECKOUT_REVIEW_URL"
+XANO_CHECKOUT_CONFIRM_URL_ENV = "XANO_CHECKOUT_CONFIRM_URL"
+XANO_ORDERS_URL_ENV = "XANO_ORDERS_URL"
 
 XanoJson = dict[str, object] | list[dict[str, object]]
 
@@ -136,6 +139,71 @@ class CartSnapshot:
     id: int | None
     items: list[CartItemEntry]
     total: str
+
+
+@dataclass(frozen=True)
+class CheckoutAddressSnapshot:
+    cep: str
+    street: str
+    number: str
+    complement: str
+    neighborhood: str
+    city: str
+    state: str
+    label: str
+
+
+@dataclass(frozen=True)
+class CheckoutItemEntry:
+    item_id: int
+    variation_id: int
+    product_name: str
+    variation_name: str
+    sku: str
+    quantity: int
+    unit_price: str
+    subtotal: str
+    product_status: str
+    variation_status: str
+    available_quantity: str
+    available: bool
+
+
+@dataclass(frozen=True)
+class CheckoutReview:
+    address_id: int
+    address: CheckoutAddressSnapshot
+    items: list[CheckoutItemEntry]
+    revision: list[dict[str, object]]
+    subtotal: str
+    freight: str
+    total: str
+
+
+@dataclass(frozen=True)
+class OrderItemSummary:
+    variation_id: int
+    sku: str
+    variation_name: str
+    quantity: int
+    unit_price: str
+    subtotal: str
+
+
+@dataclass(frozen=True)
+class OrderSummary:
+    id: int
+    code: str
+    order_date: str
+    status: str
+    order_items: list[OrderItemSummary]
+    subtotal: str
+    freight: str
+    total: str
+    delivery: CheckoutAddressSnapshot
+    payment_method: str
+    payment_status: str
+    payment_value: str
 
 
 def _customer_profile(payload: object) -> CustomerProfile:
@@ -338,6 +406,269 @@ def _cart_snapshot(payload: object) -> CartSnapshot:
         id=cart_id,
         items=items,
         total=_cart_decimal_text(total),
+    )
+
+
+def _checkout_address_snapshot(payload: object) -> CheckoutAddressSnapshot:
+    if not isinstance(payload, dict):
+        raise ValueError("Delivery address snapshot must be an object.")
+    fields = {
+        "cep": payload.get("cep"),
+        "street": payload.get("logradouro"),
+        "number": payload.get("numero"),
+        "complement": payload.get("complemento"),
+        "neighborhood": payload.get("bairro"),
+        "city": payload.get("cidade"),
+        "state": payload.get("estado"),
+        "label": payload.get("identificacao"),
+    }
+    if any(value is not None and not isinstance(value, str) for value in fields.values()):
+        raise ValueError("Delivery address snapshot has an invalid field.")
+    return CheckoutAddressSnapshot(
+        cep=fields["cep"] or "",
+        street=fields["street"] or "",
+        number=fields["number"] or "",
+        complement=fields["complement"] or "",
+        neighborhood=fields["neighborhood"] or "",
+        city=fields["city"] or "",
+        state=fields["state"] or "",
+        label=fields["label"] or "",
+    )
+
+
+def _checkout_review_item(payload: object) -> CheckoutItemEntry:
+    if not isinstance(payload, dict):
+        raise ValueError("Checkout review item must be an object.")
+    item_id = payload.get("item_id")
+    variation_id = payload.get("variacao_id")
+    quantity = payload.get("quantidade")
+    product_name = payload.get("produto_nome")
+    variation_name = payload.get("variacao_nome")
+    sku = payload.get("sku")
+    product_status = payload.get("produto_status")
+    variation_status = payload.get("variacao_status")
+    available = payload.get("disponivel")
+    if (
+        not isinstance(item_id, int)
+        or isinstance(item_id, bool)
+        or item_id < 1
+        or not isinstance(variation_id, int)
+        or isinstance(variation_id, bool)
+        or variation_id < 1
+        or not isinstance(quantity, int)
+        or isinstance(quantity, bool)
+        or quantity < 1
+        or (product_name is not None and not isinstance(product_name, str))
+        or (variation_name is not None and not isinstance(variation_name, str))
+        or not isinstance(sku, str)
+        or not sku.strip()
+        or product_status not in {"ATIVO", "INATIVO"}
+        or variation_status not in {"ATIVO", "INATIVO"}
+        or not isinstance(available, bool)
+    ):
+        raise ValueError("Checkout review item has an invalid record.")
+    price = _cart_decimal(payload.get("preco_unitario"), strictly_positive=True)
+    subtotal = _cart_decimal(payload.get("subtotal"), strictly_positive=True)
+    stock = _cart_decimal(payload.get("estoque_disponivel"))
+    if subtotal != price * quantity:
+        raise ValueError("Checkout review item subtotal is inconsistent.")
+    expected_available = (
+        product_status == "ATIVO"
+        and variation_status == "ATIVO"
+        and stock >= quantity
+    )
+    if available != expected_available:
+        raise ValueError("Checkout review item availability is inconsistent.")
+    return CheckoutItemEntry(
+        item_id=item_id,
+        variation_id=variation_id,
+        product_name=product_name or "",
+        variation_name=variation_name or "",
+        sku=sku,
+        quantity=quantity,
+        unit_price=_cart_decimal_text(price),
+        subtotal=_cart_decimal_text(subtotal),
+        product_status=product_status,
+        variation_status=variation_status,
+        available_quantity=_cart_decimal_text(stock),
+        available=available,
+    )
+
+
+def _checkout_review(payload: object) -> CheckoutReview:
+    if not isinstance(payload, dict):
+        raise ValueError("Checkout review response must be an object.")
+    address_id = payload.get("endereco_id")
+    items_payload = payload.get("itens")
+    revision_payload = payload.get("revisao")
+    if (
+        not isinstance(address_id, int)
+        or isinstance(address_id, bool)
+        or address_id < 1
+        or not isinstance(items_payload, list)
+        or not isinstance(revision_payload, list)
+    ):
+        raise ValueError("Checkout review identity or collections are invalid.")
+    items = [_checkout_review_item(item) for item in items_payload]
+    revision = [
+        dict(item) if isinstance(item, dict) else None for item in revision_payload
+    ]
+    if (
+        not items
+        or len(items) != len(revision)
+        or any(item is None for item in revision)
+        or len({item.variation_id for item in items}) != len(items)
+    ):
+        raise ValueError("Checkout review contains empty or inconsistent items.")
+    for item, reviewed in zip(items, revision, strict=True):
+        if (
+            reviewed["item_id"] != item.item_id
+            or reviewed["variacao_id"] != item.variation_id
+            or reviewed["quantidade"] != item.quantity
+            or reviewed["produto_status"] != item.product_status
+            or reviewed["variacao_status"] != item.variation_status
+            or _cart_decimal(reviewed["preco_unitario"]) != _cart_decimal(item.unit_price)
+            or _cart_decimal(reviewed["estoque_disponivel"])
+            != _cart_decimal(item.available_quantity)
+        ):
+            raise ValueError("Checkout review snapshot does not match its items.")
+
+    subtotal = _cart_decimal(payload.get("subtotal"))
+    freight = _cart_decimal(payload.get("valor_frete"))
+    total = _cart_decimal(payload.get("valor_total"))
+    calculated_subtotal = sum(
+        (_cart_decimal(item.subtotal) for item in items),
+        start=Decimal("0"),
+    )
+    if (
+        subtotal != calculated_subtotal
+        or freight != 0
+        or total != subtotal + freight
+    ):
+        raise ValueError("Checkout review totals are inconsistent.")
+    return CheckoutReview(
+        address_id=address_id,
+        address=_checkout_address_snapshot(payload.get("endereco")),
+        items=items,
+        revision=[dict(item) for item in revision if item is not None],
+        subtotal=_cart_decimal_text(subtotal),
+        freight=_cart_decimal_text(freight),
+        total=_cart_decimal_text(total),
+    )
+
+
+def _order_item_summary(payload: object) -> OrderItemSummary:
+    if not isinstance(payload, dict):
+        raise ValueError("Order item response must be an object.")
+    variation_id = payload.get("variacao_id")
+    quantity = payload.get("quantidade")
+    sku = payload.get("sku")
+    variation_name = payload.get("nome_ou_descricao")
+    if (
+        not isinstance(variation_id, int)
+        or isinstance(variation_id, bool)
+        or variation_id < 1
+        or not isinstance(quantity, int)
+        or isinstance(quantity, bool)
+        or quantity < 1
+        or not isinstance(sku, str)
+        or not sku.strip()
+        or (variation_name is not None and not isinstance(variation_name, str))
+    ):
+        raise ValueError("Order item response has an invalid record.")
+    price = _cart_decimal(payload.get("preco_unitario"), strictly_positive=True)
+    subtotal = _cart_decimal(payload.get("subtotal"), strictly_positive=True)
+    if subtotal != price * quantity:
+        raise ValueError("Order item subtotal is inconsistent.")
+    return OrderItemSummary(
+        variation_id=variation_id,
+        sku=sku,
+        variation_name=variation_name or "",
+        quantity=quantity,
+        unit_price=_cart_decimal_text(price),
+        subtotal=_cart_decimal_text(subtotal),
+    )
+
+
+def _order_summary(payload: object, *, detail: bool) -> OrderSummary:
+    if not isinstance(payload, dict):
+        raise ValueError("Order response must be an object.")
+    order_id = payload.get("id")
+    code = payload.get("codigo")
+    order_date = payload.get("data_pedido")
+    status = payload.get("status")
+    items_payload = payload.get("itens")
+    if (
+        not isinstance(order_id, int)
+        or isinstance(order_id, bool)
+        or order_id < 1
+        or not isinstance(code, str)
+        or not code.strip()
+        or not isinstance(order_date, (int, float, str))
+        or isinstance(order_date, bool)
+        or not isinstance(status, str)
+        or status
+        not in {
+            "AGUARDANDO_PAGAMENTO",
+            "PAGAMENTO_CONFIRMADO",
+            "EM_PREPARACAO",
+            "ENVIADO",
+            "ENTREGUE",
+            "CANCELADO",
+        }
+        or not isinstance(items_payload, list)
+        or not items_payload
+    ):
+        raise ValueError("Order response has an invalid identity or status.")
+    items = [_order_item_summary(item) for item in items_payload]
+    if len({item.variation_id for item in items}) != len(items):
+        raise ValueError("Order response contains duplicate variations.")
+
+    subtotal = _cart_decimal(payload.get("subtotal"))
+    freight = _cart_decimal(payload.get("valor_frete"))
+    total = _cart_decimal(payload.get("valor_total"))
+    if (
+        subtotal
+        != sum(
+            (_cart_decimal(item.subtotal) for item in items),
+            start=Decimal("0"),
+        )
+        or total != subtotal + freight
+    ):
+        raise ValueError("Order totals are inconsistent.")
+
+    payment = payload.get("pagamento")
+    if detail:
+        if not isinstance(payment, dict):
+            raise ValueError("Order payment response is missing.")
+        payment_method = payment.get("metodo")
+        payment_status = payment.get("status")
+        payment_value = _cart_decimal(payment.get("valor"))
+        if (
+            payment_method not in {"PIX", "CARTAO", "BOLETO"}
+            or payment_status not in {"PENDENTE", "APROVADO", "RECUSADO", "CANCELADO"}
+            or payment_status != "PENDENTE"
+            or payment_value != total
+        ):
+            raise ValueError("Order payment response is inconsistent.")
+    else:
+        payment_method = ""
+        payment_status = ""
+        payment_value = total
+
+    return OrderSummary(
+        id=order_id,
+        code=code,
+        order_date=str(order_date),
+        status=status,
+        order_items=items,
+        subtotal=_cart_decimal_text(subtotal),
+        freight=_cart_decimal_text(freight),
+        total=_cart_decimal_text(total),
+        delivery=_checkout_address_snapshot(payload.get("entrega")),
+        payment_method=payment_method,
+        payment_status=payment_status,
+        payment_value=_cart_decimal_text(payment_value),
     )
 
 
@@ -828,6 +1159,44 @@ class State(rx.State):
     cart_total: str = "0"
     cart_loading: bool = False
     cart_message: str = ""
+    checkout_address_id: str = ""
+    _checkout_review: CheckoutReview | None = None
+    checkout_review_ready: bool = False
+    checkout_review_items: list[CheckoutItemEntry] = []
+    checkout_address_label: str = ""
+    checkout_address_street: str = ""
+    checkout_address_number: str = ""
+    checkout_address_neighborhood: str = ""
+    checkout_address_city: str = ""
+    checkout_address_state: str = ""
+    checkout_address_cep: str = ""
+    checkout_subtotal: str = "0"
+    checkout_freight: str = "0"
+    checkout_total: str = "0"
+    checkout_loading: bool = False
+    checkout_message: str = ""
+    checkout_method: str = "PIX"
+    orders: list[OrderSummary] = []
+    orders_loading: bool = False
+    orders_message: str = ""
+    _selected_order: OrderSummary | None = None
+    selected_order_present: bool = False
+    selected_order_code: str = ""
+    selected_order_status: str = ""
+    selected_order_delivery_label: str = ""
+    selected_order_delivery_street: str = ""
+    selected_order_delivery_number: str = ""
+    selected_order_delivery_neighborhood: str = ""
+    selected_order_delivery_city: str = ""
+    selected_order_delivery_state: str = ""
+    selected_order_delivery_cep: str = ""
+    selected_order_items: list[OrderItemSummary] = []
+    selected_order_subtotal: str = "0"
+    selected_order_freight: str = "0"
+    selected_order_total: str = "0"
+    selected_order_payment_method: str = ""
+    selected_order_payment_status: str = ""
+    order_loading: bool = False
     customer_addresses: list[CustomerAddressEntry] = []
     customer_addresses_loading: bool = False
     customer_addresses_message: str = ""
@@ -1965,6 +2334,62 @@ class State(rx.State):
             session_status="idle",
         )
 
+    def _set_checkout_review(self, review: CheckoutReview | None):
+        self._checkout_review = review
+        self.checkout_review_ready = review is not None
+        self.checkout_review_items = review.items if review is not None else []
+        address = review.address if review is not None else None
+        self.checkout_address_label = address.label if address is not None else ""
+        self.checkout_address_street = address.street if address is not None else ""
+        self.checkout_address_number = address.number if address is not None else ""
+        self.checkout_address_neighborhood = (
+            address.neighborhood if address is not None else ""
+        )
+        self.checkout_address_city = address.city if address is not None else ""
+        self.checkout_address_state = address.state if address is not None else ""
+        self.checkout_address_cep = address.cep if address is not None else ""
+        self.checkout_subtotal = review.subtotal if review is not None else "0"
+        self.checkout_freight = review.freight if review is not None else "0"
+        self.checkout_total = review.total if review is not None else "0"
+
+    def _set_selected_order(self, order: OrderSummary | None):
+        self._selected_order = order
+        self.selected_order_present = order is not None
+        self.selected_order_code = order.code if order is not None else ""
+        self.selected_order_status = order.status if order is not None else ""
+        delivery = order.delivery if order is not None else None
+        self.selected_order_delivery_label = (
+            delivery.label if delivery is not None else ""
+        )
+        self.selected_order_delivery_street = (
+            delivery.street if delivery is not None else ""
+        )
+        self.selected_order_delivery_number = (
+            delivery.number if delivery is not None else ""
+        )
+        self.selected_order_delivery_neighborhood = (
+            delivery.neighborhood if delivery is not None else ""
+        )
+        self.selected_order_delivery_city = (
+            delivery.city if delivery is not None else ""
+        )
+        self.selected_order_delivery_state = (
+            delivery.state if delivery is not None else ""
+        )
+        self.selected_order_delivery_cep = delivery.cep if delivery is not None else ""
+        self.selected_order_items = (
+            order.order_items if order is not None else []
+        )
+        self.selected_order_subtotal = order.subtotal if order is not None else "0"
+        self.selected_order_freight = order.freight if order is not None else "0"
+        self.selected_order_total = order.total if order is not None else "0"
+        self.selected_order_payment_method = (
+            order.payment_method if order is not None else ""
+        )
+        self.selected_order_payment_status = (
+            order.payment_status if order is not None else ""
+        )
+
     def _clear_customer_session(self, message: str, *, status: str = "idle"):
         self._customer_auth_token = ""
         self.customer_authenticated = False
@@ -1980,6 +2405,16 @@ class State(rx.State):
         self.cart_total = "0"
         self.cart_loading = False
         self.cart_message = ""
+        self.checkout_address_id = ""
+        self._set_checkout_review(None)
+        self.checkout_loading = False
+        self.checkout_message = ""
+        self.checkout_method = "PIX"
+        self.orders = []
+        self.orders_loading = False
+        self.orders_message = ""
+        self._set_selected_order(None)
+        self.order_loading = False
         self.customer_addresses = []
         self.customer_addresses_loading = False
         self.customer_addresses_message = ""
@@ -2241,6 +2676,276 @@ class State(rx.State):
             expected_removed=True,
             success_message="Item removido do carrinho.",
         )
+
+    @rx.event
+    def set_checkout_address(self, address_id: str):
+        self.checkout_address_id = address_id
+        self._set_checkout_review(None)
+        self.checkout_message = ""
+
+    @rx.event
+    def set_checkout_method(self, method: str):
+        if method in {"PIX", "CARTAO", "BOLETO"}:
+            self.checkout_method = method
+
+    @rx.event
+    async def prepare_checkout(self):
+        await self.validate_customer_session()
+        if (
+            not self._customer_auth_token
+            or not self.customer_authenticated
+            or self.customer_session_status != "success"
+        ):
+            self.checkout_message = "Entre como Cliente para iniciar o checkout."
+            return
+        active_addresses = [
+            address
+            for address in self.customer_addresses
+            if address.customer_id == self.customer_id and address.status == "ATIVO"
+        ]
+        if not active_addresses:
+            self.checkout_address_id = ""
+            self.checkout_message = (
+                "Cadastre um Endereço ativo na sua conta para continuar."
+            )
+            return
+        if not any(str(address.id) == self.checkout_address_id for address in active_addresses):
+            primary = next(
+                (address for address in active_addresses if address.is_primary),
+                active_addresses[0],
+            )
+            self.checkout_address_id = str(primary.id)
+
+    @rx.event
+    async def load_checkout_review(self):
+        if (
+            not self._customer_auth_token
+            or not self.customer_authenticated
+            or self.customer_session_status != "success"
+        ):
+            self.checkout_message = "Entre como Cliente para revisar o pedido."
+            return
+        if not self.checkout_address_id.isdigit():
+            self.checkout_message = "Selecione um Endereço ativo."
+            return
+        address_id = int(self.checkout_address_id)
+        address = next(
+            (
+                entry
+                for entry in self.customer_addresses
+                if entry.id == address_id
+                and entry.customer_id == self.customer_id
+                and entry.status == "ATIVO"
+            ),
+            None,
+        )
+        if address is None:
+            self.checkout_message = "Selecione um Endereço ativo da sua conta."
+            return
+
+        self.checkout_loading = True
+        self.checkout_message = ""
+        try:
+            response = await self._customer_request(
+                XANO_CHECKOUT_REVIEW_URL_ENV,
+                method="POST",
+                payload={"endereco_id": address_id},
+            )
+            review = _checkout_review(response)
+            if review.address_id != address_id:
+                raise ValueError("Checkout review address mismatch.")
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.checkout_message = (
+                "Não foi possível revisar o carrinho. Nenhum pedido foi criado."
+            )
+            return
+        finally:
+            self.checkout_loading = False
+
+        self._set_checkout_review(review)
+        if any(not item.available for item in review.items):
+            self.checkout_message = (
+                "Há itens indisponíveis ou com estoque insuficiente. Atualize o "
+                "carrinho antes de confirmar."
+            )
+
+    @rx.event
+    async def confirm_checkout(self, form_data: dict[str, Any]):
+        review = self._checkout_review
+        if (
+            not self._customer_auth_token
+            or not self.customer_authenticated
+            or self.customer_session_status != "success"
+        ):
+            self.checkout_message = "Entre como Cliente para confirmar o pedido."
+            return
+        if review is None:
+            self.checkout_message = "Revise o carrinho antes de confirmar."
+            return
+        if any(not item.available for item in review.items):
+            self.checkout_message = (
+                "Remova ou atualize os itens indisponíveis antes de confirmar."
+            )
+            return
+        if review.address_id != int(self.checkout_address_id or 0):
+            self._set_checkout_review(None)
+            self.checkout_message = "O Endereço mudou. Faça uma nova revisão."
+            return
+        method = str(form_data.get("metodo_pagamento", self.checkout_method))
+        if method not in {"PIX", "CARTAO", "BOLETO"}:
+            self.checkout_message = "Selecione um método de pagamento permitido."
+            return
+
+        self.checkout_loading = True
+        self.checkout_message = ""
+        try:
+            response = await self._customer_request(
+                XANO_CHECKOUT_CONFIRM_URL_ENV,
+                method="POST",
+                payload={
+                    "endereco_id": review.address_id,
+                    "metodo_pagamento": method,
+                    "revisao": review.revision,
+                },
+            )
+            if not isinstance(response, dict) or not isinstance(
+                response.get("confirmado"), bool
+            ):
+                raise ValueError("Checkout confirmation response is invalid.")
+            current_review = _checkout_review(response)
+            if current_review.address_id != review.address_id:
+                raise ValueError("Checkout confirmation address mismatch.")
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.checkout_message = (
+                "Não foi possível confirmar o pedido. O carrinho permanece "
+                "disponível para revisão."
+            )
+            return
+        finally:
+            self.checkout_loading = False
+
+        if not response["confirmado"]:
+            self._set_checkout_review(current_review)
+            if response.get("revisao_alterada") is True:
+                self.checkout_message = (
+                    "Os valores ou itens mudaram. Revise os dados atualizados e "
+                    "confirme novamente."
+                )
+            elif any(not item.available for item in current_review.items):
+                self.checkout_message = (
+                    "Há itens indisponíveis ou com estoque insuficiente. "
+                    "Atualize o carrinho antes de confirmar."
+                )
+            else:
+                self.checkout_message = (
+                    "O pedido não foi confirmado. Confira a revisão e tente novamente."
+                )
+            return
+
+        order_id = response.get("pedido_id")
+        order_code = response.get("codigo")
+        if (
+            not isinstance(order_id, int)
+            or isinstance(order_id, bool)
+            or order_id < 1
+            or not isinstance(order_code, str)
+            or not order_code.strip()
+        ):
+            self.checkout_message = (
+                "O servidor confirmou o pedido, mas retornou uma confirmação "
+                "inválida. Consulte seu histórico de pedidos."
+            )
+            return
+        self._set_checkout_review(None)
+        self.checkout_message = f"Pedido {order_code} confirmado."
+        await self.load_customer_orders()
+        await self.load_customer_order(order_id)
+        return rx.redirect("/pedidos")
+
+    @rx.event
+    async def load_customer_orders(self):
+        if (
+            not self._customer_auth_token
+            or not self.customer_authenticated
+            or self.customer_session_status != "success"
+        ):
+            self.orders_message = "Entre como Cliente para consultar seus pedidos."
+            self.orders = []
+            return
+        self.orders_loading = True
+        self.orders_message = ""
+        try:
+            response = await self._customer_request(XANO_ORDERS_URL_ENV)
+            if not isinstance(response, list):
+                raise ValueError("Order list response must be an array.")
+            orders = [_order_summary(order, detail=False) for order in response]
+            if len({order.id for order in orders}) != len(orders):
+                raise ValueError("Order list contains duplicate records.")
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.orders_message = (
+                "Não foi possível carregar seu histórico de pedidos."
+            )
+            return
+        finally:
+            self.orders_loading = False
+        self.orders = orders
+
+    @rx.event
+    async def load_customer_order(self, order_id: int):
+        if (
+            not self._customer_auth_token
+            or not self.customer_authenticated
+            or self.customer_session_status != "success"
+        ):
+            self.orders_message = "Entre como Cliente para consultar seus pedidos."
+            return
+        if (
+            not isinstance(order_id, int)
+            or isinstance(order_id, bool)
+            or order_id < 1
+        ):
+            self.orders_message = "Informe um pedido válido."
+            return
+        self.order_loading = True
+        self.orders_message = ""
+        try:
+            response = await self._customer_request(
+                XANO_ORDERS_URL_ENV,
+                record_id=order_id,
+            )
+            order = _order_summary(response, detail=True)
+            if order.id != order_id:
+                raise ValueError("Order identity mismatch.")
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ):
+            self.orders_message = "Não foi possível carregar o resumo do pedido."
+            return
+        finally:
+            self.order_loading = False
+        self._set_selected_order(order)
 
     @rx.event
     async def register_customer(self, form_data: dict[str, Any]):
@@ -3861,6 +4566,8 @@ def customer_account_page() -> rx.Component:
     authenticated_customer = rx.vstack(
         rx.hstack(
             rx.heading("Minha conta", size="6"),
+            rx.link("Carrinho", href="/carrinho"),
+            rx.link("Meus pedidos", href="/pedidos"),
             rx.button("Sair", on_click=State.logout_customer),
             justify="between",
             width="100%",
@@ -4118,6 +4825,11 @@ def customer_cart_page() -> rx.Component:
             rx.foreach(State.cart_items, cart_item_card),
         ),
         rx.heading("Total: R$ " + State.cart_total, size="5"),
+        rx.cond(
+            State.cart_items.length() > 0,
+            rx.link("Continuar para checkout", href="/checkout"),
+            rx.fragment(),
+        ),
         align="stretch",
         spacing="3",
         width="100%",
@@ -4154,6 +4866,346 @@ def customer_cart_page() -> rx.Component:
     )
 
 
+def customer_checkout_page() -> rx.Component:
+    def review_item(item: CheckoutItemEntry) -> rx.Component:
+        return rx.box(
+            rx.vstack(
+                rx.heading(
+                    rx.cond(item.product_name != "", item.product_name, item.sku),
+                    size="4",
+                ),
+                rx.text("Variação: " + item.variation_name),
+                rx.text("SKU: " + item.sku),
+                rx.text("Quantidade: " + item.quantity.to_string()),
+                rx.text("Preço unitário atual: R$ " + item.unit_price),
+                rx.text("Subtotal: R$ " + item.subtotal),
+                rx.cond(
+                    item.available,
+                    rx.badge("Disponível"),
+                    rx.badge("Indisponível", color_scheme="red"),
+                ),
+                align="stretch",
+                spacing="2",
+            ),
+            border="1px solid var(--gray-5)",
+            border_radius="8px",
+            padding="4",
+            width="100%",
+        )
+
+    delivery_address = rx.cond(
+        State.checkout_review_ready,
+        rx.vstack(
+            rx.heading("Endereço de entrega", size="4"),
+            rx.text(State.checkout_address_label),
+            rx.text(
+                State.checkout_address_street
+                + ", "
+                + State.checkout_address_number
+            ),
+            rx.text(
+                State.checkout_address_neighborhood
+                + " - "
+                + State.checkout_address_city
+                + "/"
+                + State.checkout_address_state
+            ),
+            rx.text("CEP: " + State.checkout_address_cep),
+            align="stretch",
+            spacing="2",
+            width="100%",
+        ),
+        rx.fragment(),
+    )
+
+    checkout_review_section = rx.cond(
+        State.checkout_review_ready,
+        rx.vstack(
+            rx.heading("Revise seu pedido", size="5"),
+            rx.foreach(State.checkout_review_items, review_item),
+            delivery_address,
+            rx.text("Subtotal: R$ " + State.checkout_subtotal),
+            rx.text("Frete: R$ " + State.checkout_freight),
+            rx.heading("Total: R$ " + State.checkout_total, size="5"),
+            rx.cond(
+                State.checkout_review_items.length() > 0,
+                rx.form(
+                    rx.vstack(
+                        rx.select.root(
+                            rx.select.trigger(),
+                            rx.select.content(
+                                rx.select.item("PIX", value="PIX"),
+                                rx.select.item("Cartão", value="CARTAO"),
+                                rx.select.item("Boleto", value="BOLETO"),
+                            ),
+                            name="metodo_pagamento",
+                            value=State.checkout_method,
+                            on_change=State.set_checkout_method,
+                            width="100%",
+                        ),
+                        rx.text(
+                            "O pagamento ficará pendente. Nenhuma cobrança será "
+                            "processada nesta etapa."
+                        ),
+                        rx.button(
+                            "Confirmar pedido",
+                            type="submit",
+                            disabled=(
+                                State.checkout_loading
+                                | (State.checkout_review_items.length() == 0)
+                            ),
+                        ),
+                        align="stretch",
+                        spacing="3",
+                        width="100%",
+                    ),
+                    on_submit=State.confirm_checkout,
+                ),
+                rx.fragment(),
+            ),
+            align="stretch",
+            spacing="3",
+            width="100%",
+        ),
+        rx.fragment(),
+    )
+
+    authenticated_checkout = rx.vstack(
+        rx.text("Cliente: " + State.customer_name, weight="bold"),
+        rx.text(State.checkout_message, color="red"),
+        rx.cond(
+            State.customer_addresses.length() == 0,
+            rx.vstack(
+                rx.text(
+                    "Cadastre um Endereço ativo antes de continuar o checkout."
+                ),
+                rx.link("Gerenciar endereços", href="/cliente"),
+                align="stretch",
+                spacing="2",
+            ),
+            rx.fragment(),
+        ),
+        rx.select.root(
+            rx.select.trigger(placeholder="Selecione o endereço de entrega"),
+            rx.select.content(
+                rx.foreach(
+                    State.customer_addresses,
+                    lambda address: rx.cond(
+                        address.status == "ATIVO",
+                        rx.select.item(
+                            address.label
+                            + " - "
+                            + address.street
+                            + ", "
+                            + address.number,
+                            value=address.id.to_string(),
+                        ),
+                        rx.fragment(),
+                    ),
+                )
+            ),
+            value=State.checkout_address_id,
+            on_change=State.set_checkout_address,
+            width="100%",
+        ),
+        rx.button(
+            "Revisar carrinho",
+            on_click=State.load_checkout_review,
+            disabled=(
+                State.checkout_loading
+                | (State.checkout_address_id == "")
+                | (State.customer_addresses.length() == 0)
+            ),
+        ),
+        rx.cond(
+            State.checkout_loading,
+            rx.text("Validando itens e valores..."),
+            rx.fragment(),
+        ),
+        checkout_review_section,
+        align="stretch",
+        spacing="4",
+        width="100%",
+    )
+
+    return rx.container(
+        rx.vstack(
+            rx.hstack(
+                rx.heading("Voltix", size="8"),
+                rx.link("Carrinho", href="/carrinho"),
+                rx.link("Minha conta", href="/cliente"),
+                justify="between",
+                width="100%",
+            ),
+            rx.heading("Checkout", size="6"),
+            rx.cond(
+                State.customer_authenticated,
+                authenticated_checkout,
+                rx.vstack(
+                    rx.text("Entre como Cliente para finalizar o pedido."),
+                    rx.link("Acessar conta de Cliente", href="/cliente"),
+                    align="stretch",
+                    spacing="3",
+                ),
+            ),
+            align="stretch",
+            spacing="5",
+            width="100%",
+            max_width="48rem",
+            margin="0 auto",
+            min_height="100vh",
+        ),
+        padding="4",
+    )
+
+
+def customer_orders_page() -> rx.Component:
+    def order_card(order: OrderSummary) -> rx.Component:
+        return rx.box(
+            rx.vstack(
+                rx.heading("Pedido " + order.code, size="4"),
+                rx.text("Data: " + order.order_date),
+                rx.badge(order.status),
+                rx.text("Itens: " + order.order_items.length().to_string()),
+                rx.text("Total: R$ " + order.total),
+                rx.button(
+                    "Ver resumo",
+                    on_click=State.load_customer_order(order.id),
+                    disabled=State.order_loading,
+                ),
+                align="stretch",
+                spacing="2",
+                width="100%",
+            ),
+            border="1px solid var(--gray-5)",
+            border_radius="8px",
+            padding="4",
+            width="100%",
+        )
+
+    def order_item(item: OrderItemSummary) -> rx.Component:
+        return rx.box(
+            rx.vstack(
+                rx.text(
+                    rx.cond(
+                        item.variation_name != "",
+                        item.variation_name,
+                        item.sku,
+                    ),
+                    weight="bold",
+                ),
+                rx.text("SKU: " + item.sku),
+                rx.text("Quantidade: " + item.quantity.to_string()),
+                rx.text("Preço unitário: R$ " + item.unit_price),
+                rx.text("Subtotal: R$ " + item.subtotal),
+                align="stretch",
+                spacing="2",
+            ),
+            border="1px solid var(--gray-4)",
+            border_radius="8px",
+            padding="3",
+            width="100%",
+        )
+
+    order_details = rx.cond(
+        State.selected_order_present,
+        rx.box(
+            rx.vstack(
+                rx.heading(
+                    "Pedido " + State.selected_order_code,
+                    size="5",
+                ),
+                rx.badge(State.selected_order_status),
+                rx.heading("Entrega", size="4"),
+                rx.text(State.selected_order_delivery_label),
+                rx.text(
+                    State.selected_order_delivery_street
+                    + ", "
+                    + State.selected_order_delivery_number
+                ),
+                rx.text(
+                    State.selected_order_delivery_neighborhood
+                    + " - "
+                    + State.selected_order_delivery_city
+                    + "/"
+                    + State.selected_order_delivery_state
+                ),
+                rx.text("CEP: " + State.selected_order_delivery_cep),
+                rx.heading("Itens", size="4"),
+                rx.foreach(State.selected_order_items, order_item),
+                rx.text("Subtotal: R$ " + State.selected_order_subtotal),
+                rx.text("Frete: R$ " + State.selected_order_freight),
+                rx.heading("Total: R$ " + State.selected_order_total, size="5"),
+                rx.text(
+                    "Pagamento: "
+                    + State.selected_order_payment_method
+                    + " — "
+                    + State.selected_order_payment_status
+                ),
+                align="stretch",
+                spacing="3",
+                width="100%",
+            ),
+            border="1px solid var(--gray-6)",
+            border_radius="8px",
+            padding="4",
+            width="100%",
+        ),
+        rx.fragment(),
+    )
+
+    return rx.container(
+        rx.vstack(
+            rx.hstack(
+                rx.heading("Voltix", size="8"),
+                rx.link("Carrinho", href="/carrinho"),
+                rx.link("Minha conta", href="/cliente"),
+                justify="between",
+                width="100%",
+            ),
+            rx.heading("Meus pedidos", size="6"),
+            rx.cond(
+                State.customer_authenticated,
+                rx.vstack(
+                    rx.text(State.orders_message, color="red"),
+                    rx.button(
+                        "Atualizar histórico",
+                        on_click=State.load_customer_orders,
+                        disabled=State.orders_loading,
+                    ),
+                    rx.cond(
+                        State.orders_loading,
+                        rx.text("Carregando pedidos..."),
+                        rx.fragment(),
+                    ),
+                    rx.cond(
+                        State.orders.length() == 0,
+                        rx.text("Você ainda não possui pedidos."),
+                        rx.foreach(State.orders, order_card),
+                    ),
+                    order_details,
+                    align="stretch",
+                    spacing="4",
+                    width="100%",
+                ),
+                rx.vstack(
+                    rx.text("Entre como Cliente para consultar seus pedidos."),
+                    rx.link("Acessar conta de Cliente", href="/cliente"),
+                    align="stretch",
+                    spacing="3",
+                ),
+            ),
+            align="stretch",
+            spacing="5",
+            width="100%",
+            max_width="48rem",
+            margin="0 auto",
+            min_height="100vh",
+        ),
+        padding="4",
+    )
+
+
 app = rx.App()
 app.add_page(index)
 app.add_page(
@@ -4173,4 +5225,16 @@ app.add_page(
     route="/carrinho",
     title="Carrinho | Voltix",
     on_load=State.load_cart,
+)
+app.add_page(
+    customer_checkout_page,
+    route="/checkout",
+    title="Checkout | Voltix",
+    on_load=State.prepare_checkout,
+)
+app.add_page(
+    customer_orders_page,
+    route="/pedidos",
+    title="Meus pedidos | Voltix",
+    on_load=State.load_customer_orders,
 )

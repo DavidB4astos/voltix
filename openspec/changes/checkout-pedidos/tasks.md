@@ -1,0 +1,20 @@
+## 1. Persistência de Pedidos
+
+- [x] 1.1 Auditar somente leitura no Xano autorizado as tabelas/APIs de Cliente, Endereço, Carrinho, Produto e VariaçãoProduto; registrar ausências e não publicar nem alterar dependências existentes se alguma estiver ausente ou bloqueada. Evidência: auditoria read-only anterior do workspace registrou `allow_push: false` e ausência de tabelas/APIs publicadas de Produto/VariaçãoProduto e APIs de Cliente necessárias; dependências locais existem, nenhuma publicação ou alteração remota foi feita.
+- [x] 1.2 Criar tabelas Xano Pedido, ItemPedido e Pagamento conforme Domain Model e decisões aprovadas, incluindo endereço de entrega em snapshot e índices para código comercial e relações únicas; validar XanoScript e confirmar que schemas existentes não foram alterados. Evidência: os três schemas locais passaram na validação XanoScript; nenhum schema comercial existente foi alterado.
+
+## 2. APIs Xano
+
+- [ ] 2.1 Criar endpoints autenticados de revisão e confirmação que derivem Cliente de `$auth.id`, validem propriedade/status do Endereço, Carrinho não vazio, Produtos/Variações ativos e estoque/preço atuais; exigir nova confirmação se a revisão mudou e verificar rollback integral em falhas. Implementação local criada e validada sintaticamente; comportamento e rollback não foram executados no Xano, bloqueado externamente por `allow_push: false`.
+- [ ] 2.2 Na confirmação válida, persistir atomicamente Pedido, ItemPedido com quantidade e preço unitário atuais, snapshot de endereço e Pagamento `PENDENTE` no método permitido; calcular totais com frete zero e esvaziar somente o Carrinho do Cliente após persistência completa, sem alterar estoque. Implementação local usa transação e passou nas verificações de contrato; persistência/rollback reais permanecem sem E2E pelo bloqueio externo `allow_push: false`.
+- [ ] 2.3 Criar listagem e detalhe de Pedidos owner-scoped com resumos históricos; validar que Cliente não lista nem acessa Pedido de terceiro e que mudanças posteriores de preço/endereço não alteram o resumo. Endpoints locais e verificações estáticas owner-scoped concluídos; isolamento e snapshots não foram validados em execução no Xano por `allow_push: false`.
+
+## 3. Integração Reflex
+
+- [x] 3.1 Configurar URL por ambiente e implementar State/Python server-side com token exclusivo de Cliente para revisão, confirmação e consultas; testar falhas, respostas inválidas, comparação de revisão e preservação do estado confirmado. Evidência: endpoints configurados por variáveis de ambiente; State usa a sessão/token exclusivo de Cliente; testes locais cobrem sessão ausente, item indisponível, revisão alterada, resposta inválida e confirmação que carrega o resumo.
+- [x] 3.2 Integrar a revisão e confirmação do Carrinho com seleção de Endereço próprio ativo e método de pagamento permitido, além de páginas/listas de resumo e histórico; validar a navegação sem processamento real de pagamento ou frete. Evidência: rotas `/checkout` e `/pedidos`, seleção de Endereço e método permitido, fluxo de resumo/histórico; compilação Reflex concluída sem processamento de pagamento ou frete.
+
+## 4. Verificação final
+
+- [ ] 4.1 Executar testes automatizados para autorização, carrinho vazio, endereço próprio/ativo, status/preço/estoque, revisão alterada, snapshots, totais, pagamento pendente, consistência transacional, limpeza do carrinho e ausência de baixa de estoque. Testes locais de State/parsers e contratos foram executados; testes de execução/rollback/ownership dos endpoints Xano seguem bloqueados por `allow_push: false`.
+- [x] 4.2 Compilar Reflex, validar todos os XanoScript e OpenSpec estritamente; executar E2E apenas se o Xano autorizado permitir, sem criar dados desnecessários, e registrar qualquer bloqueio sem alegar validação remota. Evidência: compilação Reflex, validação XanoScript dos 7 arquivos e OpenSpec estrito passaram; E2E não executado por bloqueio ambiental previamente confirmado (`allow_push: false`), sem publicação ou alteração remota.
