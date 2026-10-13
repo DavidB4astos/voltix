@@ -153,6 +153,29 @@ class PublicCatalogTests(unittest.TestCase):
 
         asyncio.run(run())
 
+    def test_public_image_request_uses_dedicated_image_endpoint(self):
+        endpoint = "https://example.invalid/api:cVn4Vybh/products"
+        request = AsyncMock(return_value={"image_url": None})
+
+        async def run():
+            with (
+                patch.dict(
+                    "os.environ",
+                    {app.XANO_PUBLIC_PRODUCT_IMAGE_URL_ENV: endpoint},
+                ),
+                patch("voltix.voltix._server_side_xano_request", request),
+            ):
+                result = await app.State._public_product_image(
+                    _FakePublicState(), 7
+                )
+            self.assertEqual(result, "")
+            self.assertEqual(
+                request.call_args.args[0],
+                endpoint + "/7/image",
+            )
+
+        asyncio.run(run())
+
     def test_catalog_loads_public_data_and_signed_images_without_login(self):
         state = _FakePublicState()
         category = {"id": 2, "name": "Notebooks", "description": "", "status": "ATIVO"}
@@ -229,8 +252,8 @@ class PublicCatalogTests(unittest.TestCase):
 
         product_list = (root / "products_GET.xs").read_text(encoding="utf-8")
         self.assertIn('$db.produto.status == "ATIVO"', product_list)
-        self.assertIn('$db.categoria.status == "ATIVO"', product_list)
-        self.assertIn('$db.marca.status == "ATIVO"', product_list)
+        self.assertIn('$category_record.status == "ATIVO"', product_list)
+        self.assertIn('$brand_record.status == "ATIVO"', product_list)
         self.assertNotIn("imagem_principal", product_list)
 
         details = (root / "product" / "product_id_GET.xs").read_text(

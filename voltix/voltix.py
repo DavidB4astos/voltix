@@ -1440,11 +1440,12 @@ class State(rx.State):
         url_env: str,
         *,
         record_id: int | None = None,
+        path_suffix: str = "",
         query_params: dict[str, str] | None = None,
     ) -> XanoJson:
         url = _required_environment_url(url_env).rstrip("/")
         if record_id is not None:
-            url = f"{url}/{record_id}"
+            url = f"{url}/{record_id}{path_suffix}"
         if query_params:
             url = f"{url}?{urlencode(query_params)}"
         return await _server_side_xano_request(url, authorization=None)
@@ -1453,6 +1454,7 @@ class State(rx.State):
         payload = await self._public_catalog_request(
             XANO_PUBLIC_PRODUCT_IMAGE_URL_ENV,
             record_id=product_id,
+            path_suffix="/image",
         )
         if not isinstance(payload, dict):
             raise ValueError("Public image response must be an object.")
