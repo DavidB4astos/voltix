@@ -5,6 +5,13 @@ config = rx.Config(
     plugins=[
         rx.plugins.SitemapPlugin(),
         rx.plugins.TailwindV4Plugin(),
-        rx.plugins.RadixThemesPlugin(),
+        rx.plugins.RadixThemesPlugin(
+            theme=rx.theme(
+                accent_color="cyan",
+                gray_color="slate",
+                radius="large",
+                appearance="light",
+            ),
+        ),
     ]
 )

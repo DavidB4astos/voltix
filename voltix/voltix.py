@@ -3516,6 +3516,390 @@ class State(rx.State):
         self.integration_payload = json.dumps(payload, sort_keys=True)
 
 
+# ---------------------------------------------------------------------------
+# Identidade visual Voltix (Change design-interface-voltix)
+# Somente apresentacao: tokens e componentes compartilhados.
+# ---------------------------------------------------------------------------
+
+COLOR_NAVY = "#071525"
+COLOR_NAVY_SOFT = "#0F2A46"
+COLOR_BLUE = "#0866D9"
+COLOR_CYAN = "#00B8D9"
+COLOR_CYAN_DARK = "#0086A3"
+COLOR_SURFACE = "#F5F7FB"
+COLOR_CARD = "#FFFFFF"
+COLOR_TEXT = "#243B53"
+COLOR_TEXT_MUTED = "#486581"
+COLOR_BORDER = "#D9E2EC"
+COLOR_SUCCESS = "#2F855A"
+COLOR_WARNING = "#B7791F"
+COLOR_ERROR = "#C53030"
+
+RADIUS = "12px"
+CARD_SHADOW = "0 1px 2px rgba(7, 21, 37, 0.06), 0 4px 12px rgba(7, 21, 37, 0.06)"
+FOCUS_STYLE = {
+    "outline": f"2px solid {COLOR_CYAN}",
+    "outline_offset": "2px",
+}
+
+_TONE_COLORS = {
+    "muted": COLOR_TEXT_MUTED,
+    "success": COLOR_SUCCESS,
+    "warning": COLOR_WARNING,
+    "error": COLOR_ERROR,
+}
+
+
+def section_heading(text, *, size: str = "6") -> rx.Component:
+    """Titulo de secao com a tipografia da identidade Voltix."""
+    return rx.heading(text, size=size, color=COLOR_NAVY)
+
+
+def brand_logo(size: str = "6", on_dark: bool = False) -> rx.Component:
+    """Marca Voltix reutilizada no cabecalho das paginas."""
+    return rx.hstack(
+        rx.box(
+            width="0.6rem",
+            height="1.5rem",
+            background=COLOR_CYAN,
+            border_radius="4px",
+        ),
+        rx.heading(
+            "Voltix",
+            size=size,
+            color=COLOR_CARD if on_dark else COLOR_NAVY,
+            letter_spacing="-0.02em",
+        ),
+        spacing="2",
+        align="center",
+    )
+
+
+_NAV_ICONS = {
+    "/cliente": "user",
+    "/carrinho": "shopping-cart",
+}
+
+_INTERNAL_LINKS = {"/interno"}
+
+
+def site_header(
+    links: list[tuple[str, str]],
+    *,
+    active: str = "",
+    badge: str = "Loja",
+    logo_href: str = "/catalogo",
+) -> rx.Component:
+    """Cabecalho em banda navy com logo, badge de area e navegacao por pills."""
+
+    def nav_link(
+        label: str,
+        href: str,
+        *,
+        emphasized: bool = False,
+    ) -> rx.Component:
+        is_active = active == href
+        icon = _NAV_ICONS.get(href)
+        if is_active:
+            color = COLOR_NAVY
+            background = COLOR_CYAN
+            border = "1px solid transparent"
+            hover = {
+                "background": COLOR_CYAN_DARK,
+                "color": COLOR_CARD,
+                "border": "1px solid transparent",
+            }
+        elif emphasized:
+            color = COLOR_CYAN
+            background = "rgba(0, 184, 217, 0.10)"
+            border = f"1px solid {COLOR_CYAN}"
+            hover = {
+                "background": "rgba(0, 184, 217, 0.22)",
+                "color": COLOR_CARD,
+                "border": f"1px solid {COLOR_CYAN}",
+            }
+        else:
+            color = "rgba(255,255,255,0.92)"
+            background = "rgba(255,255,255,0.05)"
+            border = "1px solid rgba(255,255,255,0.14)"
+            hover = {
+                "background": "rgba(255,255,255,0.16)",
+                "color": COLOR_CARD,
+                "border": "1px solid rgba(255,255,255,0.28)",
+            }
+        return rx.link(
+            rx.hstack(
+                *([rx.icon(icon, size=16)] if icon else []),
+                rx.text(label),
+                spacing="2",
+                align="center",
+            ),
+            href=href,
+            color=color,
+            background=background,
+            border=border,
+            padding_x="5",
+            padding_y="2",
+            border_radius="9999px",
+            font_weight="600" if is_active or emphasized else "500",
+            font_size="0.95rem",
+            white_space="nowrap",
+            text_decoration="none",
+            transition="background 0.15s ease, color 0.15s ease, border 0.15s ease",
+            _hover=hover,
+            _focus_visible=FOCUS_STYLE,
+        )
+
+    commercial = [(label, href) for label, href in links if href not in _INTERNAL_LINKS]
+    internal = [(label, href) for label, href in links if href in _INTERNAL_LINKS]
+
+    nav_items = [nav_link(label, href) for label, href in commercial]
+    if internal:
+        nav_items.append(
+            rx.box(
+                width="1px",
+                height="1.6rem",
+                background="rgba(255,255,255,0.20)",
+                margin_x="2",
+            )
+        )
+        nav_items.extend(
+            nav_link(label, href, emphasized=True) for label, href in internal
+        )
+
+    return rx.box(
+        rx.container(
+            rx.flex(
+                rx.hstack(
+                    rx.link(
+                        brand_logo(on_dark=True),
+                        href=logo_href,
+                        text_decoration="none",
+                        _focus_visible=FOCUS_STYLE,
+                    ),
+                    rx.badge(
+                        badge,
+                        background="rgba(0, 184, 217, 0.18)",
+                        color=COLOR_CYAN,
+                        border=f"1px solid {COLOR_CYAN}",
+                        radius="full",
+                        size="2",
+                    ),
+                    spacing="3",
+                    align="center",
+                ),
+                rx.flex(
+                    *nav_items,
+                    spacing="3",
+                    align="center",
+                    wrap="wrap",
+                    justify={"initial": "start", "md": "end"},
+                    width={"initial": "100%", "md": "auto"},
+                ),
+                direction={"initial": "column", "md": "row"},
+                align={"initial": "start", "md": "center"},
+                justify="between",
+                gap="3",
+                width="100%",
+            ),
+            max_width="72rem",
+            width="100%",
+            padding_x="4",
+            padding_y="3",
+        ),
+        background=COLOR_NAVY,
+        border_bottom=f"3px solid {COLOR_CYAN}",
+        width="100%",
+    )
+
+
+def site_footer() -> rx.Component:
+    """Rodape compartilhado das paginas em banda navy."""
+    return rx.box(
+        rx.container(
+            rx.flex(
+                rx.vstack(
+                    brand_logo(on_dark=True),
+                    rx.text(
+                        "Tecnologia premium para o seu setup.",
+                        color="rgba(255,255,255,0.85)",
+                        font_size="0.9rem",
+                    ),
+                    spacing="2",
+                    align="start",
+                ),
+                rx.vstack(
+                    rx.text(
+                        "Projeto acadêmico",
+                        color=COLOR_CYAN,
+                        font_weight="600",
+                        font_size="0.85rem",
+                    ),
+                    rx.text(
+                        "Preços e pagamentos simulados.",
+                        color="rgba(255,255,255,0.65)",
+                        font_size="0.85rem",
+                    ),
+                    spacing="1",
+                    align="start",
+                ),
+                direction={"initial": "column", "md": "row"},
+                justify="between",
+                align={"initial": "start", "md": "center"},
+                gap="4",
+                width="100%",
+            ),
+            max_width="72rem",
+            width="100%",
+            padding_x="4",
+            padding_y="5",
+        ),
+        background=COLOR_NAVY,
+        border_top=f"3px solid {COLOR_CYAN}",
+        width="100%",
+    )
+
+
+def surface_card(*children, **props) -> rx.Component:
+    """Superficie/card padrao para agrupar conteudo."""
+    props.setdefault("background", COLOR_CARD)
+    props.setdefault("border", f"1px solid {COLOR_BORDER}")
+    props.setdefault("border_radius", RADIUS)
+    props.setdefault("box_shadow", CARD_SHADOW)
+    props.setdefault("padding", "4")
+    props.setdefault("width", "100%")
+    return rx.box(*children, **props)
+
+
+def feedback_text(message, tone: str = "muted") -> rx.Component:
+    """Mensagem de feedback (erro, sucesso, aviso ou neutra)."""
+    return rx.text(
+        message,
+        color=_TONE_COLORS.get(tone, COLOR_TEXT_MUTED),
+        font_size="0.9rem",
+    )
+
+
+def status_panel(
+    icon: str,
+    title,
+    *,
+    description=None,
+    tone: str = "muted",
+    action: rx.Component | None = None,
+) -> rx.Component:
+    """Painel compacto e centralizado para estados de erro, vazio ou aviso."""
+    color = _TONE_COLORS.get(tone, COLOR_TEXT_MUTED)
+    children = [
+        rx.flex(
+            rx.icon(icon, size=24, color=color),
+            width="3rem",
+            height="3rem",
+            background="rgba(7, 21, 37, 0.05)",
+            border_radius="9999px",
+            align="center",
+            justify="center",
+            flex_shrink="0",
+        ),
+        rx.text(
+            title,
+            weight="bold",
+            color=COLOR_NAVY,
+            text_align="center",
+        ),
+    ]
+    if description is not None:
+        children.append(
+            rx.text(
+                description,
+                color=COLOR_TEXT_MUTED,
+                font_size="0.9rem",
+                text_align="center",
+            )
+        )
+    if action is not None:
+        children.append(rx.box(action, margin_top="1"))
+    return surface_card(
+        rx.vstack(*children, spacing="3", align="center", width="100%"),
+        max_width="32rem",
+        margin_x="auto",
+        padding="6",
+    )
+
+
+def empty_state(message) -> rx.Component:
+    """Estado vazio distinguivel do conteudo normal."""
+    return status_panel("inbox", message, tone="muted")
+
+
+def loading_text(message) -> rx.Component:
+    """Estado de carregamento com indicador visual."""
+    return rx.hstack(
+        rx.spinner(size="2", color=COLOR_CYAN),
+        rx.text(message, color=COLOR_TEXT_MUTED),
+        spacing="2",
+        align="center",
+    )
+
+
+def form_field(label: str, control) -> rx.Component:
+    """Campo padronizado com rotulo para os formularios Voltix."""
+    return rx.vstack(
+        rx.text(
+            label,
+            font_size="0.85rem",
+            font_weight="600",
+            color=COLOR_TEXT,
+        ),
+        control,
+        align="stretch",
+        spacing="1",
+        width="100%",
+    )
+
+
+def page_shell(
+    *children,
+    max_width: str = "64rem",
+    header: rx.Component | None = None,
+    show_footer: bool = True,
+) -> rx.Component:
+    """Shell de pagina: fundo claro, largura responsiva, header e footer."""
+    parts = []
+    if header is not None:
+        parts.append(header)
+    parts.append(
+        rx.container(
+            rx.vstack(
+                *children,
+                spacing="5",
+                align="stretch",
+                width="100%",
+                flex_grow="1",
+            ),
+            max_width=max_width,
+            width="100%",
+            padding_x="4",
+            padding_y="4",
+            flex_grow="1",
+        )
+    )
+    if show_footer:
+        parts.append(site_footer())
+    return rx.box(
+        rx.flex(
+            *parts,
+            direction="column",
+            align="center",
+            min_height="100vh",
+            width="100%",
+        ),
+        background=COLOR_SURFACE,
+        color=COLOR_TEXT,
+        width="100%",
+    )
+
+
 def index() -> rx.Component:
     def catalog_section(
         title: str,
@@ -3533,10 +3917,10 @@ def index() -> rx.Component:
         edit_event: rx.EventHandler,
         status_event: rx.EventHandler,
     ) -> rx.Component:
-        return rx.box(
+        return surface_card(
             rx.vstack(
                 rx.hstack(
-                    rx.heading(title, size="5"),
+                    section_heading(title, size="5"),
                     rx.button(
                         "Atualizar lista",
                         on_click=refresh_event,
@@ -3594,18 +3978,18 @@ def index() -> rx.Component:
                     on_submit=save_event,
                     width="100%",
                 ),
-                rx.text(message, color="gray"),
+                feedback_text(message),
                 rx.cond(
                     loading,
-                    rx.text("Carregando..."),
+                    loading_text("Carregando..."),
                     rx.fragment(),
                 ),
                 rx.foreach(
                     entries,
                     lambda entry: rx.hstack(
-                        rx.text(entry.name, weight="bold"),
-                        rx.text(entry.description, color="gray"),
-                        rx.badge(entry.status),
+                        rx.text(entry.name, weight="bold", color=COLOR_NAVY),
+                        rx.text(entry.description, color=COLOR_TEXT_MUTED),
+                        rx.badge(entry.status, color_scheme="cyan"),
                         rx.button(
                             "Editar",
                             on_click=edit_event(entry.id),
@@ -3623,17 +4007,14 @@ def index() -> rx.Component:
                         justify="between",
                         width="100%",
                         padding="2",
-                        border_bottom="1px solid var(--gray-5)",
+                        border_bottom=f"1px solid {COLOR_BORDER}",
+                        wrap="wrap",
                     ),
                 ),
                 align="stretch",
                 spacing="3",
                 width="100%",
             ),
-            border="1px solid var(--gray-5)",
-            border_radius="8px",
-            padding="4",
-            width="100%",
         )
 
     def product_form() -> rx.Component:
@@ -3669,7 +4050,7 @@ def index() -> rx.Component:
         )
         return rx.form(
             rx.vstack(
-                rx.heading(
+                section_heading(
                     rx.cond(
                         State.product_editing_id != None,
                         "Editar produto",
@@ -3820,6 +4201,11 @@ def index() -> rx.Component:
             ),
             on_submit=State.save_product,
             width="100%",
+            background=COLOR_CARD,
+            border=f"1px solid {COLOR_BORDER}",
+            border_radius=RADIUS,
+            box_shadow=CARD_SHADOW,
+            padding="4",
         )
 
     def variation_form() -> rx.Component:
@@ -3827,7 +4213,7 @@ def index() -> rx.Component:
             State.variation_product_id != None,
             rx.form(
                 rx.vstack(
-                    rx.heading(
+                    section_heading(
                         rx.cond(
                             State.variation_editing_id != None,
                             "Editar variação",
@@ -3893,6 +4279,11 @@ def index() -> rx.Component:
                 ),
                 on_submit=State.save_variation,
                 width="100%",
+                background=COLOR_CARD,
+                border=f"1px solid {COLOR_BORDER}",
+                border_radius=RADIUS,
+                box_shadow=CARD_SHADOW,
+                padding="4",
             ),
             rx.fragment(),
         )
@@ -3900,10 +4291,10 @@ def index() -> rx.Component:
     product_management = rx.cond(
         State.user_role == "ADMINISTRADOR",
         rx.vstack(
-            rx.heading("Gestão de produtos", size="6"),
+            section_heading("Gestão de produtos"),
             product_form(),
             rx.hstack(
-                rx.heading("Produtos cadastrados", size="5"),
+                section_heading("Produtos cadastrados", size="5"),
                 rx.button(
                     "Atualizar lista",
                     on_click=State.load_products,
@@ -3912,18 +4303,18 @@ def index() -> rx.Component:
                 justify="between",
                 width="100%",
             ),
-            rx.text(State.products_message, color="gray"),
+            feedback_text(State.products_message),
             rx.cond(
                 State.products_loading,
-                rx.text("Carregando produtos..."),
+                loading_text("Carregando produtos..."),
                 rx.fragment(),
             ),
             rx.foreach(
                 State.products,
-                lambda product: rx.box(
+                lambda product: surface_card(
                     rx.vstack(
                         rx.hstack(
-                            rx.heading(
+                            section_heading(
                                 rx.cond(
                                     product.name != "",
                                     product.name,
@@ -3931,12 +4322,12 @@ def index() -> rx.Component:
                                 ),
                                 size="4",
                             ),
-                            rx.badge(product.status),
+                            rx.badge(product.status, color_scheme="cyan"),
                             justify="between",
                             width="100%",
                         ),
-                        rx.text(product.description, color="gray"),
-                        rx.text(product.technical_specifications, color="gray"),
+                        rx.text(product.description, color=COLOR_TEXT_MUTED),
+                        rx.text(product.technical_specifications, color=COLOR_TEXT_MUTED),
                         rx.text(
                             "Categoria: "
                             + product.category_name
@@ -3981,7 +4372,7 @@ def index() -> rx.Component:
                             ),
                             spacing="2",
                         ),
-                        rx.heading("Variações", size="3"),
+                        section_heading("Variações", size="3"),
                         rx.foreach(
                             product.variations,
                             lambda variation: rx.vstack(
@@ -3994,7 +4385,7 @@ def index() -> rx.Component:
                                         ),
                                         weight="bold",
                                     ),
-                                    rx.badge(variation.status),
+                                    rx.badge(variation.status, color_scheme="cyan"),
                                     justify="between",
                                     width="100%",
                                 ),
@@ -4036,17 +4427,13 @@ def index() -> rx.Component:
                                 align="stretch",
                                 width="100%",
                                 padding="2",
-                                border_bottom="1px solid var(--gray-4)",
+                                border_bottom=f"1px solid {COLOR_BORDER}",
                             ),
                         ),
                         align="stretch",
                         spacing="2",
                         width="100%",
                     ),
-                    border="1px solid var(--gray-5)",
-                    border_radius="8px",
-                    padding="4",
-                    width="100%",
                 ),
             ),
             variation_form(),
@@ -4060,42 +4447,48 @@ def index() -> rx.Component:
     catalog_management = rx.cond(
         State.user_role == "ADMINISTRADOR",
         rx.vstack(
-            rx.heading("Gestão do catálogo", size="6"),
-            catalog_section(
-                "Categorias",
-                State.categories,
-                State.categories_loading,
-                State.categories_message,
-                State.load_categories,
-                State.category_form_name,
-                State.category_form_description,
-                State.category_editing_id,
-                State.set_category_form_name,
-                State.set_category_form_description,
-                State.save_category,
-                State.cancel_category_edit,
-                State.edit_category,
-                State.toggle_category_status,
+            section_heading("Gestão do catálogo"),
+            rx.grid(
+                catalog_section(
+                    "Categorias",
+                    State.categories,
+                    State.categories_loading,
+                    State.categories_message,
+                    State.load_categories,
+                    State.category_form_name,
+                    State.category_form_description,
+                    State.category_editing_id,
+                    State.set_category_form_name,
+                    State.set_category_form_description,
+                    State.save_category,
+                    State.cancel_category_edit,
+                    State.edit_category,
+                    State.toggle_category_status,
+                ),
+                catalog_section(
+                    "Marcas",
+                    State.brands,
+                    State.brands_loading,
+                    State.brands_message,
+                    State.load_brands,
+                    State.brand_form_name,
+                    State.brand_form_description,
+                    State.brand_editing_id,
+                    State.set_brand_form_name,
+                    State.set_brand_form_description,
+                    State.save_brand,
+                    State.cancel_brand_edit,
+                    State.edit_brand,
+State.toggle_brand_status,
+                ),
+                columns={"initial": "1", "md": "2"},
+                spacing="4",
+                align="start",
+                width="100%",
             ),
-            catalog_section(
-                "Marcas",
-                State.brands,
-                State.brands_loading,
-                State.brands_message,
-                State.load_brands,
-                State.brand_form_name,
-                State.brand_form_description,
-                State.brand_editing_id,
-                State.set_brand_form_name,
-                State.set_brand_form_description,
-                State.save_brand,
-                State.cancel_brand_edit,
-                State.edit_brand,
-                State.toggle_brand_status,
-            ),
+            width="100%",
             spacing="4",
             align="stretch",
-            width="100%",
         ),
         rx.fragment(),
     )
@@ -4103,92 +4496,579 @@ def index() -> rx.Component:
     protected_area = rx.cond(
         (State.is_authenticated) & (State.session_status == "success"),
         rx.vstack(
-            rx.heading("Voltix", size="8"),
-            rx.text("\u00c1rea interna", size="5"),
-            rx.text("Acesso autorizado.", color="green"),
-            rx.text(State.user_name),
-            rx.text(State.user_email),
-            rx.text(State.user_role),
-            rx.text(State.user_status),
-            rx.button(
-                "Sair",
-                on_click=State.logout,
+            rx.hstack(
+                rx.hstack(
+                    rx.link(
+                        brand_logo(),
+                        href="/catalogo",
+                        text_decoration="none",
+                    ),
+                    rx.badge("Acesso interno", color_scheme="cyan"),
+                    spacing="3",
+                    align="center",
+                    wrap="wrap",
+                ),
+                rx.button("Sair", on_click=State.logout),
+                justify="between",
+                width="100%",
+                wrap="wrap",
+            ),
+            section_heading("Área interna"),
+            feedback_text("Acesso autorizado.", tone="success"),
+            surface_card(
+                rx.vstack(
+                    rx.text("Usuário: " + State.user_name, weight="bold"),
+                    rx.text(State.user_email),
+                    rx.text("Perfil: " + State.user_role),
+                    rx.text("Status: " + State.user_status),
+                    align="stretch",
+                    spacing="2",
+                ),
             ),
             catalog_management,
             product_management,
-            spacing="3",
-            align="center",
+            spacing="4",
+            align="stretch",
             width="100%",
         ),
         rx.fragment(),
     )
 
-    return rx.container(
+    return page_shell(
         rx.vstack(
-            rx.heading("Voltix", size="8"),
-            rx.text("Acesso interno", size="5"),
-            rx.link("Acessar conta de Cliente", href="/cliente"),
-            rx.text(
-                "Entre com as credenciais do seu usuário interno.",
-                color="gray",
-            ),
-            rx.form(
+            surface_card(
                 rx.vstack(
-                    rx.input(
-                        name="email",
-                        type="email",
-                        placeholder="E-mail",
-                        required=True,
+                    rx.box(
+                        width="3rem",
+                        height="4px",
+                        background=COLOR_CYAN,
+                        border_radius="9999px",
+                    ),
+                    section_heading("Acesso interno", size="5"),
+                    rx.text(
+                        "Entre com as credenciais do seu usuário interno.",
+                        color=COLOR_TEXT_MUTED,
+                    ),
+                    rx.form(
+                        rx.vstack(
+                            form_field(
+                                "E-mail",
+                                rx.input(
+                                    name="email",
+                                    type="email",
+                                    placeholder="voce@empresa.com",
+                                    required=True,
+                                    width="100%",
+                                ),
+                            ),
+                            form_field(
+                                "Senha",
+                                rx.input(
+                                    name="password",
+                                    type="password",
+                                    placeholder="Sua senha",
+                                    required=True,
+                                    width="100%",
+                                ),
+                            ),
+                            rx.button(
+                                rx.cond(State.login_loading, "Entrando...", "Entrar"),
+                                type="submit",
+                                disabled=State.login_loading,
+                                width="100%",
+                            ),
+                            width="100%",
+                            spacing="4",
+                        ),
+                        on_submit=State.submit_login,
                         width="100%",
                     ),
-                    rx.input(
-                        name="password",
-                        type="password",
-                        placeholder="Senha",
-                        required=True,
-                        width="100%",
+                    rx.cond(
+                        State.login_status != "idle",
+                        feedback_text(State.login_message),
+                        rx.fragment(),
                     ),
-                    rx.button(
-                        rx.cond(State.login_loading, "Entrando...", "Entrar"),
-                        type="submit",
-                        disabled=State.login_loading,
-                        width="100%",
+                    rx.cond(
+                        (State.login_status == "success")
+                        & (State.session_status != "success"),
+                        rx.button(
+                            "Acessar área interna",
+                            on_click=State.enter_internal_area,
+                            width="100%",
+                        ),
+                        rx.fragment(),
                     ),
-                    width="100%",
+                    align="stretch",
                     spacing="4",
                 ),
-                on_submit=State.submit_login,
-                width="100%",
-            ),
-            rx.cond(
-                State.login_status != "idle",
-                rx.text(State.login_message),
-                rx.fragment(),
-            ),
-            rx.cond(
-                (State.login_status == "success")
-                & (State.session_status != "success"),
-                rx.button(
-                    "Acessar área interna",
-                    on_click=State.enter_internal_area,
-                ),
-                rx.fragment(),
+                max_width="28rem",
+                margin_x="auto",
             ),
             protected_area,
             align="center",
-            justify="center",
-            spacing="5",
-            width="100%",
-            max_width="28rem",
-            min_height="100vh",
         ),
-        padding="4",
+        header=site_header(
+            [
+                ("Catálogo público", "/catalogo"),
+                ("Área do Cliente", "/cliente"),
+                ("Carrinho", "/carrinho"),
+            ],
+            badge="Área interna",
+        ),
+        max_width="56rem",
+    )
+
+
+def home_page() -> rx.Component:
+    """Home publica premium: hero, beneficios, categorias e vitrine."""
+
+    def hero_section() -> rx.Component:
+        return rx.box(
+            rx.grid(
+                rx.vstack(
+                    rx.hstack(
+                        rx.icon("sparkles", size=15, color=COLOR_BLUE),
+                        rx.text(
+                            "LOJA DE TECNOLOGIA PREMIUM",
+                            color=COLOR_BLUE,
+                            font_weight="700",
+                            font_size="0.8rem",
+                            letter_spacing="0.14em",
+                        ),
+                        spacing="2",
+                        align="center",
+                        background="rgba(8, 102, 217, 0.10)",
+                        padding_x="3",
+                        padding_y="1",
+                        border_radius="9999px",
+                    ),
+                    rx.heading(
+                        "Tecnologia premium para elevar o seu setup.",
+                        size="8",
+                        color=COLOR_NAVY,
+                        line_height="1.1",
+                    ),
+                    rx.text(
+                        "Monte sua estação com as melhores marcas, suporte "
+                        "especializado e entrega rápida para o seu dia a dia.",
+                        color=COLOR_TEXT_MUTED,
+                        font_size="1.05rem",
+                        max_width="34rem",
+                    ),
+                    rx.hstack(
+                        rx.link(
+                            rx.hstack(
+                                rx.text("Explorar produtos"),
+                                rx.icon("arrow-right", size=18),
+                                spacing="2",
+                                align="center",
+                            ),
+                            href="/catalogo",
+                            display="inline-flex",
+                            align_items="center",
+                            padding_x="8",
+                            padding_y="3",
+                            background=COLOR_BLUE,
+                            color=COLOR_CARD,
+                            border_radius="9999px",
+                            font_weight="700",
+                            font_size="1.05rem",
+                            text_decoration="none",
+                            box_shadow="0 10px 24px rgba(8, 102, 217, 0.32)",
+                            _hover={
+                                "background": COLOR_CYAN_DARK,
+                                "transform": "translateY(-2px)",
+                                "box_shadow": "0 14px 28px rgba(8, 102, 217, 0.38)",
+                            },
+                            _focus_visible=FOCUS_STYLE,
+                        ),
+                        spacing="4",
+                        align="center",
+                        wrap="wrap",
+                    ),
+                    align="start",
+                    spacing="5",
+                    width="100%",
+                    justify="center",
+                    min_height="280px",
+                ),
+                rx.cond(
+                    (State.public_products.length() > 0)
+                    & (State.public_products[0].image_url != ""),
+                    rx.image(
+                        src=State.public_products[0].image_url,
+                        alt=State.public_products[0].name,
+                        width="100%",
+                        height="100%",
+                        min_height="280px",
+                        max_height="380px",
+                        object_fit="cover",
+                        border_radius=RADIUS,
+                        box_shadow=CARD_SHADOW,
+                    ),
+                    rx.box(
+                        rx.vstack(
+                            rx.flex(
+                                rx.icon("cpu", size=30, color=COLOR_CARD),
+                                width="4rem",
+                                height="4rem",
+                                background="rgba(255,255,255,0.12)",
+                                border="1px solid rgba(255,255,255,0.25)",
+                                border_radius="9999px",
+                                align="center",
+                                justify="center",
+                            ),
+                            rx.heading(
+                                "Voltix",
+                                size="8",
+                                color=COLOR_CARD,
+                                letter_spacing="-0.02em",
+                            ),
+                            rx.box(
+                                width="3rem",
+                                height="4px",
+                                background=COLOR_CYAN,
+                                border_radius="9999px",
+                            ),
+                            rx.text(
+                                "Tecnologia para o seu setup",
+                                color="rgba(255,255,255,0.85)",
+                                font_size="0.95rem",
+                            ),
+                            spacing="4",
+                            align="center",
+                            justify="center",
+                            padding="6",
+                        ),
+                        background="radial-gradient(circle at 20% 15%, rgba(0,184,217,0.35) 0%, transparent 45%), radial-gradient(circle at 85% 85%, rgba(8,102,217,0.45) 0%, transparent 50%), linear-gradient(135deg, "
+                        + COLOR_NAVY
+                        + " 0%, "
+                        + COLOR_NAVY_SOFT
+                        + " 45%, "
+                        + COLOR_BLUE
+                        + " 100%)",
+                        width="100%",
+                        min_height="280px",
+                        height="100%",
+                        max_height="380px",
+                        border_radius=RADIUS,
+                        align="center",
+                        justify="center",
+                        box_shadow=CARD_SHADOW,
+                    ),
+                ),
+                columns={"initial": "1", "lg": "2"},
+                spacing="7",
+                align="center",
+                width="100%",
+            ),
+        )
+
+    def benefits_strip() -> rx.Component:
+        items = [
+            ("truck", "Envio rápido", "Despacho em até 24h úteis."),
+            ("shield-check", "Garantia estendida", "Proteção do equipamento."),
+            ("headphones", "Suporte dedicado", "Atendimento no pós-venda."),
+        ]
+        return surface_card(
+            rx.grid(
+                *[
+                    rx.hstack(
+                        rx.flex(
+                            rx.icon(icon, size=20, color=COLOR_BLUE),
+                            width="2.6rem",
+                            height="2.6rem",
+                            background="rgba(8, 102, 217, 0.10)",
+                            border_radius="9999px",
+                            align="center",
+                            justify="center",
+                            flex_shrink="0",
+                        ),
+                        rx.vstack(
+                            rx.text(title, weight="bold", color=COLOR_NAVY),
+                            rx.text(
+                                description,
+                                color=COLOR_TEXT_MUTED,
+                                font_size="0.85rem",
+                            ),
+                            spacing="0",
+                            align="start",
+                        ),
+                        spacing="3",
+                        align="center",
+                        width="100%",
+                    )
+                    for icon, title, description in items
+                ],
+                columns={"initial": "1", "sm": "2", "md": "3"},
+                spacing="4",
+                align="center",
+                width="100%",
+            ),
+            padding="4",
+        )
+
+    def categories_section() -> rx.Component:
+        return rx.vstack(
+            rx.hstack(
+                section_heading("Categorias"),
+                rx.link(
+                    rx.hstack(
+                        rx.text("Ver catálogo completo"),
+                        rx.icon("arrow-right", size=16),
+                        spacing="1",
+                        align="center",
+                    ),
+                    href="/catalogo",
+                    color=COLOR_BLUE,
+                    font_weight="600",
+                    text_decoration="none",
+                    _hover={"color": COLOR_CYAN_DARK},
+                ),
+                justify="between",
+                width="100%",
+                wrap="wrap",
+                align="center",
+            ),
+            rx.cond(
+                State.public_categories.length() == 0,
+                empty_state("Nenhuma categoria disponível no momento."),
+                rx.grid(
+                    rx.foreach(
+                        State.public_categories,
+                        lambda category: rx.link(
+                            rx.box(
+                                rx.flex(
+                                    rx.icon(
+                                        "layers",
+                                        size=22,
+                                        color=COLOR_CARD,
+                                    ),
+                                    background="linear-gradient(135deg, "
+                                    + COLOR_NAVY
+                                    + " 0%, "
+                                    + COLOR_BLUE
+                                    + " 100%)",
+                                    width="100%",
+                                    height="104px",
+                                    border_radius=RADIUS,
+                                    align="center",
+                                    justify="center",
+                                ),
+                                rx.vstack(
+                                    rx.text(
+                                        category.name,
+                                        weight="bold",
+                                        color=COLOR_NAVY,
+                                    ),
+                                    rx.cond(
+                                        category.description != "",
+                                        rx.text(
+                                            category.description,
+                                            color=COLOR_TEXT_MUTED,
+                                            font_size="0.85rem",
+                                        ),
+                                        rx.fragment(),
+                                    ),
+                                    spacing="1",
+                                    align="start",
+                                    width="100%",
+                                ),
+                                background=COLOR_CARD,
+                                border=f"1px solid {COLOR_BORDER}",
+                                border_radius=RADIUS,
+                                box_shadow=CARD_SHADOW,
+                                padding="3",
+                                width="100%",
+                                height="100%",
+                                _hover={
+                                    "transform": "translateY(-3px)",
+                                    "box_shadow": "0 10px 24px rgba(7, 21, 37, 0.12)",
+                                },
+                            ),
+                            href="/catalogo",
+                            text_decoration="none",
+                            width="100%",
+                            _focus_visible=FOCUS_STYLE,
+                        ),
+                    ),
+                    columns={"initial": "1", "sm": "2", "md": "3", "lg": "4"},
+                    spacing="4",
+                    align="stretch",
+                    width="100%",
+                ),
+            ),
+            align="stretch",
+            spacing="4",
+            width="100%",
+        )
+
+    def products_section() -> rx.Component:
+        def tile(product: PublicProductEntry) -> rx.Component:
+            return rx.link(
+                rx.box(
+                    rx.cond(
+                        product.image_url != "",
+                        rx.image(
+                            src=product.image_url,
+                            alt=product.name,
+                            width="100%",
+                            height="180px",
+                            object_fit="cover",
+                            border_radius=RADIUS,
+                        ),
+                        rx.flex(
+                            rx.icon("package", size=28, color=COLOR_CARD),
+                            background="linear-gradient(135deg, "
+                            + COLOR_NAVY
+                            + " 0%, "
+                            + COLOR_BLUE
+                            + " 100%)",
+                            width="100%",
+                            height="180px",
+                            border_radius=RADIUS,
+                            align="center",
+                            justify="center",
+                        ),
+                    ),
+                    rx.vstack(
+                        rx.cond(
+                            product.brand_name != "",
+                            rx.text(
+                                product.brand_name,
+                                color=COLOR_BLUE,
+                                font_weight="700",
+                                font_size="0.75rem",
+                                letter_spacing="0.06em",
+                            ),
+                            rx.fragment(),
+                        ),
+                        rx.text(
+                            product.name,
+                            weight="bold",
+                            color=COLOR_NAVY,
+                            line_height="1.25",
+                        ),
+                        rx.cond(
+                            product.category_name != "",
+                            rx.text(
+                                product.category_name,
+                                color=COLOR_TEXT_MUTED,
+                                font_size="0.85rem",
+                            ),
+                            rx.fragment(),
+                        ),
+                        rx.hstack(
+                            rx.text("Ver no catálogo"),
+                            rx.icon("arrow-right", size=15),
+                            spacing="1",
+                            align="center",
+                            color=COLOR_BLUE,
+                            font_weight="600",
+                            font_size="0.9rem",
+                        ),
+                        align="start",
+                        spacing="2",
+                        width="100%",
+                    ),
+                    background=COLOR_CARD,
+                    border=f"1px solid {COLOR_BORDER}",
+                    border_radius=RADIUS,
+                    box_shadow=CARD_SHADOW,
+                    padding="3",
+                    width="100%",
+                    height="100%",
+                    _hover={
+                        "transform": "translateY(-3px)",
+                        "box_shadow": "0 10px 24px rgba(7, 21, 37, 0.12)",
+                    },
+                ),
+                href="/catalogo",
+                text_decoration="none",
+                width="100%",
+                _focus_visible=FOCUS_STYLE,
+            )
+
+        return rx.vstack(
+            rx.hstack(
+                section_heading("Destaques da loja"),
+                rx.link(
+                    rx.hstack(
+                        rx.text("Ver catálogo completo"),
+                        rx.icon("arrow-right", size=16),
+                        spacing="1",
+                        align="center",
+                    ),
+                    href="/catalogo",
+                    color=COLOR_BLUE,
+                    font_weight="600",
+                    text_decoration="none",
+                    _hover={"color": COLOR_CYAN_DARK},
+                ),
+                justify="between",
+                width="100%",
+                wrap="wrap",
+                align="center",
+            ),
+            rx.cond(
+                State.public_catalog_loading,
+                loading_text("Carregando produtos..."),
+                rx.cond(
+                    State.public_catalog_message != "",
+                    status_panel(
+                        "triangle-alert",
+                        "Não foi possível carregar os destaques",
+                        description=State.public_catalog_message,
+                        tone="error",
+                        action=rx.button(
+                            "Tentar novamente",
+                            on_click=State.load_public_catalog,
+                            disabled=State.public_catalog_loading,
+                        ),
+                    ),
+                    rx.cond(
+                        State.public_products.length() == 0,
+                        empty_state(
+                            "Nenhum produto disponível para exibição."
+                        ),
+                        rx.grid(
+                            rx.foreach(State.public_products, tile),
+                            columns={"initial": "1", "sm": "2", "lg": "3"},
+                            spacing="4",
+                            align="stretch",
+                            width="100%",
+                        ),
+                    ),
+                ),
+            ),
+            align="stretch",
+            spacing="4",
+            width="100%",
+        )
+
+    return page_shell(
+        hero_section(),
+        benefits_strip(),
+        categories_section(),
+        products_section(),
+        header=site_header(
+            [
+                ("Catálogo público", "/catalogo"),
+                ("Minha conta", "/cliente"),
+                ("Carrinho", "/carrinho"),
+                ("Acesso interno", "/interno"),
+            ],
+            active="/",
+            badge="Loja",
+            logo_href="/",
+        ),
+        max_width="72rem",
     )
 
 
 def public_catalog_page() -> rx.Component:
     def product_card(product: PublicProductEntry) -> rx.Component:
-        return rx.box(
+        return surface_card(
             rx.vstack(
                 rx.cond(
                     product.image_url != "",
@@ -4198,10 +5078,11 @@ def public_catalog_page() -> rx.Component:
                         width="100%",
                         height="220px",
                         object_fit="cover",
+                        border_radius=RADIUS,
                     ),
                     rx.fragment(),
                 ),
-                rx.heading(
+                section_heading(
                     rx.cond(
                         product.name != "",
                         product.name,
@@ -4219,7 +5100,7 @@ def public_catalog_page() -> rx.Component:
                     rx.text("Marca: " + product.brand_name),
                     rx.fragment(),
                 ),
-                rx.text(product.description, color="gray"),
+                rx.text(product.description, color=COLOR_TEXT_MUTED),
                 rx.button(
                     "Ver detalhes",
                     on_click=State.load_public_product_details(product.id),
@@ -4229,19 +5110,15 @@ def public_catalog_page() -> rx.Component:
                 spacing="3",
                 width="100%",
             ),
-            border="1px solid var(--gray-5)",
-            border_radius="8px",
-            padding="4",
-            width="100%",
         )
 
     def selected_product_details() -> rx.Component:
         return rx.cond(
             State.public_selected_product != None,
-            rx.box(
+            surface_card(
                 rx.vstack(
                     rx.hstack(
-                        rx.heading(
+                        section_heading(
                             State.public_selected_product.name,
                             size="5",
                         ),
@@ -4293,10 +5170,10 @@ def public_catalog_page() -> rx.Component:
                         ),
                         rx.fragment(),
                     ),
-                    rx.heading("Variações disponíveis", size="4"),
+                    section_heading("Variações disponíveis", size="4"),
                     rx.cond(
                         State.public_selected_product.variations.length() == 0,
-                        rx.text("Não há variações ativas disponíveis."),
+                        empty_state("Não há variações ativas disponíveis."),
                         rx.foreach(
                             State.public_selected_product.variations,
                             lambda variation: rx.box(
@@ -4308,6 +5185,7 @@ def public_catalog_page() -> rx.Component:
                                             variation.sku,
                                         ),
                                         weight="bold",
+                                        color=COLOR_NAVY,
                                     ),
                                     rx.text("SKU: " + variation.sku),
                                     rx.text("Preço: R$ " + variation.price.to_string()),
@@ -4330,14 +5208,15 @@ def public_catalog_page() -> rx.Component:
                                     align="stretch",
                                     spacing="2",
                                 ),
-                                border="1px solid var(--gray-4)",
-                                border_radius="8px",
+                                border=f"1px solid {COLOR_BORDER}",
+                                border_radius=RADIUS,
                                 padding="3",
                                 width="100%",
+                                background=COLOR_SURFACE,
                             ),
                         ),
                     ),
-                    rx.text(State.cart_message, color="red"),
+                    feedback_text(State.cart_message, tone="error"),
                     rx.cond(
                         State.cart_message != "",
                         rx.cond(
@@ -4351,101 +5230,139 @@ def public_catalog_page() -> rx.Component:
                     spacing="3",
                     width="100%",
                 ),
-                border="1px solid var(--gray-6)",
-                border_radius="8px",
-                padding="4",
-                width="100%",
             ),
             rx.fragment(),
         )
 
-    return rx.container(
+    return page_shell(
         rx.vstack(
-            rx.hstack(
-                rx.heading("Voltix", size="8"),
-                rx.link("Área do Cliente", href="/cliente"),
-                rx.link("Carrinho", href="/carrinho"),
-                rx.link("Acesso interno", href="/"),
-                justify="between",
-                width="100%",
+            section_heading("Catálogo de produtos"),
+            rx.text(
+                "Explore os produtos disponíveis e filtre por categoria.",
+                color=COLOR_TEXT_MUTED,
             ),
-            rx.heading("Catálogo de produtos", size="6"),
-            rx.select.root(
-                rx.select.trigger(placeholder="Todas as categorias"),
-                rx.select.content(
-                    rx.foreach(
-                        State.public_categories,
-                        lambda category: rx.select.item(
-                            category.name,
-                            value=category.id.to_string(),
+            spacing="2",
+            align="start",
+            width="100%",
+        ),
+        surface_card(
+            rx.flex(
+                rx.box(
+                    rx.select.root(
+                        rx.select.trigger(placeholder="Todas as categorias"),
+                        rx.select.content(
+                            rx.foreach(
+                                State.public_categories,
+                                lambda category: rx.select.item(
+                                    category.name,
+                                    value=category.id.to_string(),
+                                ),
+                            )
                         ),
-                    )
+                        value=State.public_category_id,
+                        on_change=State.filter_public_catalog,
+                        width="100%",
+                    ),
+                    flex="1",
+                    width="100%",
+                    min_width="0",
                 ),
-                value=State.public_category_id,
-                on_change=State.filter_public_catalog,
-                width="100%",
-                max_width="24rem",
-            ),
-            rx.button(
-                "Limpar filtro",
-                on_click=State.filter_public_catalog(""),
-                disabled=State.public_category_id == "",
-            ),
-            rx.text(State.public_catalog_message, color="red"),
-            rx.cond(
-                State.public_catalog_loading,
-                rx.text("Carregando catálogo..."),
-                rx.fragment(),
-            ),
-            rx.cond(
-                State.public_catalog_message != "",
                 rx.button(
+                    "Limpar filtro",
+                    on_click=State.filter_public_catalog(""),
+                    disabled=State.public_category_id == "",
+                    width={"initial": "100%", "sm": "auto"},
+                ),
+                direction={"initial": "column", "sm": "row"},
+                gap="3",
+                align={"initial": "stretch", "sm": "center"},
+                width="100%",
+                wrap="wrap",
+            ),
+            padding="3",
+        ),
+        rx.cond(
+            State.public_catalog_loading,
+            loading_text("Carregando catálogo..."),
+            rx.fragment(),
+        ),
+        rx.cond(
+            State.public_catalog_message != "",
+            status_panel(
+                "triangle-alert",
+                "Não foi possível carregar o catálogo",
+                description=State.public_catalog_message,
+                tone="error",
+                action=rx.button(
                     "Tentar novamente",
                     on_click=State.load_public_catalog,
                     disabled=State.public_catalog_loading,
                 ),
-                rx.fragment(),
             ),
-            rx.cond(
-                (State.public_catalog_loading == False)
-                & (State.public_catalog_message == "")
-                & (State.public_products.length() == 0),
-                rx.text("Nenhum produto disponível para exibição."),
-                rx.fragment(),
+            rx.fragment(),
+        ),
+        rx.cond(
+            (State.public_catalog_loading == False)
+            & (State.public_catalog_message == "")
+            & (State.public_products.length() == 0),
+            empty_state("Nenhum produto disponível para exibição."),
+            rx.fragment(),
+        ),
+        rx.cond(
+            (State.public_catalog_message == "")
+            & (State.public_products.length() > 0),
+            rx.grid(
+                rx.foreach(State.public_products, product_card),
+                columns={"initial": "1", "md": "2", "lg": "3"},
+                spacing="4",
+                align="stretch",
+                width="100%",
             ),
-            rx.foreach(State.public_products, product_card),
-            rx.cond(
-                State.public_product_loading,
-                rx.text("Carregando detalhes..."),
-                rx.fragment(),
-            ),
-            rx.text(State.public_product_message, color="red"),
-            rx.cond(
-                State.public_product_message != "",
-                rx.button(
+            rx.fragment(),
+        ),
+        rx.cond(
+            State.public_product_loading,
+            loading_text("Carregando detalhes..."),
+            rx.fragment(),
+        ),
+        rx.cond(
+            State.public_product_message != "",
+            status_panel(
+                "triangle-alert",
+                "Não foi possível carregar os detalhes do produto",
+                description=State.public_product_message,
+                tone="error",
+                action=rx.button(
                     "Tentar novamente",
                     on_click=State.load_public_product_details(
                         State.public_product_detail_id
                     ),
                     disabled=State.public_product_loading,
                 ),
-                rx.fragment(),
             ),
-            selected_product_details(),
-            align="stretch",
-            spacing="4",
-            width="100%",
+            rx.fragment(),
         ),
-        padding="4",
+        selected_product_details(),
+        header=site_header(
+            [
+                ("Catálogo público", "/catalogo"),
+                ("Área do Cliente", "/cliente"),
+                ("Carrinho", "/carrinho"),
+                ("Acesso interno", "/interno"),
+            ],
+            active="/catalogo",
+            badge="Loja",
+        ),
+        max_width="64rem",
     )
 
 
 def customer_account_page() -> rx.Component:
     def address_card(address: CustomerAddressEntry) -> rx.Component:
-        return rx.box(
+        return surface_card(
             rx.vstack(
                 rx.hstack(
-                    rx.heading(
+                    section_heading(
                         rx.cond(
                             address.label != "",
                             address.label,
@@ -4455,12 +5372,13 @@ def customer_account_page() -> rx.Component:
                     ),
                     rx.cond(
                         address.is_primary,
-                        rx.badge("Principal"),
+                        rx.badge("Principal", color_scheme="cyan"),
                         rx.fragment(),
                     ),
-                    rx.badge(address.status),
+                    rx.badge(address.status, color_scheme="cyan"),
                     justify="between",
                     width="100%",
+                    wrap="wrap",
                 ),
                 rx.cond(
                     address.street != "",
@@ -4537,53 +5455,77 @@ def customer_account_page() -> rx.Component:
                 align="stretch",
                 spacing="3",
             ),
-            border="1px solid var(--gray-5)",
-            border_radius="8px",
-            padding="4",
-            width="100%",
         )
 
-    public_forms = rx.vstack(
-        rx.text(
-            State.customer_session_message,
-            color="red",
-        ),
-        rx.box(
+    public_forms = rx.grid(
+        surface_card(
             rx.vstack(
-                rx.heading("Criar conta de Cliente", size="5"),
+                feedback_text(State.customer_session_message, tone="error"),
+                rx.box(
+                    width="3rem",
+                    height="4px",
+                    background=COLOR_BLUE,
+                    border_radius="9999px",
+                ),
+                rx.vstack(
+                    section_heading("Criar conta de Cliente", size="5"),
+                    rx.text(
+                        "Cadastre-se para comprar e acompanhar seus pedidos.",
+                        color=COLOR_TEXT_MUTED,
+                        font_size="0.9rem",
+                    ),
+                    spacing="1",
+                    align="start",
+                    width="100%",
+                ),
                 rx.form(
                     rx.vstack(
-                        rx.input(
-                            name="nome_completo",
-                            placeholder="Nome completo",
-                            required=True,
-                            width="100%",
+                        form_field(
+                            "Nome completo",
+                            rx.input(
+                                name="nome_completo",
+                                placeholder="Ex.: Maria Silva",
+                                required=True,
+                                width="100%",
+                            ),
                         ),
-                        rx.input(
-                            name="cpf",
-                            placeholder="CPF",
-                            required=True,
-                            width="100%",
+                        form_field(
+                            "CPF",
+                            rx.input(
+                                name="cpf",
+                                placeholder="000.000.000-00",
+                                required=True,
+                                width="100%",
+                            ),
                         ),
-                        rx.input(
-                            name="email",
-                            type="email",
-                            placeholder="E-mail",
-                            required=True,
-                            width="100%",
+                        form_field(
+                            "E-mail",
+                            rx.input(
+                                name="email",
+                                type="email",
+                                placeholder="voce@email.com",
+                                required=True,
+                                width="100%",
+                            ),
                         ),
-                        rx.input(
-                            name="telefone",
-                            type="tel",
-                            placeholder="Telefone (opcional)",
-                            width="100%",
+                        form_field(
+                            "Telefone",
+                            rx.input(
+                                name="telefone",
+                                type="tel",
+                                placeholder="(11) 99999-9999",
+                                width="100%",
+                            ),
                         ),
-                        rx.input(
-                            name="password",
-                            type="password",
-                            placeholder="Senha",
-                            required=True,
-                            width="100%",
+                        form_field(
+                            "Senha",
+                            rx.input(
+                                name="password",
+                                type="password",
+                                placeholder="Crie uma senha",
+                                required=True,
+                                width="100%",
+                            ),
                         ),
                         rx.button(
                             "Cadastrar",
@@ -4597,34 +5539,52 @@ def customer_account_page() -> rx.Component:
                     on_submit=State.submit_customer_registration,
                     width="100%",
                 ),
-                rx.text(State.customer_registration_message),
+                feedback_text(State.customer_registration_message),
                 align="stretch",
                 spacing="3",
                 width="100%",
             ),
-            border="1px solid var(--gray-5)",
-            border_radius="8px",
-            padding="4",
-            width="100%",
         ),
-        rx.box(
+        surface_card(
             rx.vstack(
-                rx.heading("Entrar como Cliente", size="5"),
+                rx.box(
+                    width="3rem",
+                    height="4px",
+                    background=COLOR_CYAN,
+                    border_radius="9999px",
+                ),
+                rx.vstack(
+                    section_heading("Entrar como Cliente", size="5"),
+                    rx.text(
+                        "Acesse sua conta para continuar suas compras.",
+                        color=COLOR_TEXT_MUTED,
+                        font_size="0.9rem",
+                    ),
+                    spacing="1",
+                    align="start",
+                    width="100%",
+                ),
                 rx.form(
                     rx.vstack(
-                        rx.input(
-                            name="email",
-                            type="email",
-                            placeholder="E-mail",
-                            required=True,
-                            width="100%",
+                        form_field(
+                            "E-mail",
+                            rx.input(
+                                name="email",
+                                type="email",
+                                placeholder="voce@email.com",
+                                required=True,
+                                width="100%",
+                            ),
                         ),
-                        rx.input(
-                            name="password",
-                            type="password",
-                            placeholder="Senha",
-                            required=True,
-                            width="100%",
+                        form_field(
+                            "Senha",
+                            rx.input(
+                                name="password",
+                                type="password",
+                                placeholder="Sua senha",
+                                required=True,
+                                width="100%",
+                            ),
                         ),
                         rx.button(
                             rx.cond(
@@ -4642,65 +5602,99 @@ def customer_account_page() -> rx.Component:
                     on_submit=State.submit_customer_login,
                     width="100%",
                 ),
-                rx.text(State.customer_login_message),
+                feedback_text(State.customer_login_message),
                 align="stretch",
                 spacing="3",
                 width="100%",
             ),
-            border="1px solid var(--gray-5)",
-            border_radius="8px",
-            padding="4",
-            width="100%",
         ),
+        columns={"initial": "1", "lg": "2"},
+        spacing="5",
+        align="stretch",
         width="100%",
-        spacing="4",
     )
 
     authenticated_customer = rx.vstack(
         rx.hstack(
-            rx.heading("Minha conta", size="6"),
-            rx.link("Carrinho", href="/carrinho"),
-            rx.link("Meus pedidos", href="/pedidos"),
-            rx.button("Sair", on_click=State.logout_customer),
+            section_heading("Minha conta"),
+            rx.hstack(
+                rx.link(
+                    "Carrinho",
+                    href="/carrinho",
+                    color=COLOR_TEXT_MUTED,
+                    _hover={"color": COLOR_CYAN_DARK},
+                ),
+                rx.link(
+                    "Meus pedidos",
+                    href="/pedidos",
+                    color=COLOR_TEXT_MUTED,
+                    _hover={"color": COLOR_CYAN_DARK},
+                ),
+                rx.button("Sair", on_click=State.logout_customer),
+                spacing="4",
+                wrap="wrap",
+            ),
             justify="between",
             width="100%",
+            wrap="wrap",
         ),
-        rx.text("Cliente: " + State.customer_name, weight="bold"),
-        rx.text("CPF: " + State.customer_cpf),
-        rx.form(
+        surface_card(
             rx.vstack(
-                rx.input(
-                    name="nome_completo",
-                    default_value=State.customer_name,
-                    placeholder="Nome completo",
-                    required=True,
-                    width="100%",
+                rx.text(
+                    "Cliente: " + State.customer_name,
+                    weight="bold",
+                    color=COLOR_NAVY,
                 ),
-                rx.input(
-                    name="email",
-                    type="email",
-                    default_value=State.customer_email,
-                    placeholder="E-mail",
-                    required=True,
+                rx.text("CPF: " + State.customer_cpf, color=COLOR_TEXT_MUTED),
+                rx.form(
+                    rx.vstack(
+                        form_field(
+                            "Nome completo",
+                            rx.input(
+                                name="nome_completo",
+                                default_value=State.customer_name,
+                                placeholder="Nome completo",
+                                required=True,
+                                width="100%",
+                            ),
+                        ),
+                        form_field(
+                            "E-mail",
+                            rx.input(
+                                name="email",
+                                type="email",
+                                default_value=State.customer_email,
+                                placeholder="E-mail",
+                                required=True,
+                                width="100%",
+                            ),
+                        ),
+                        form_field(
+                            "Telefone",
+                            rx.input(
+                                name="telefone",
+                                type="tel",
+                                default_value=State.customer_phone,
+                                placeholder="Telefone",
+                                width="100%",
+                            ),
+                        ),
+                        rx.button("Salvar perfil", type="submit"),
+                        width="100%",
+                        align="stretch",
+                        spacing="3",
+                    ),
+                    on_submit=State.update_customer_profile,
                     width="100%",
+                    max_width="24rem",
                 ),
-                rx.input(
-                    name="telefone",
-                    type="tel",
-                    default_value=State.customer_phone,
-                    placeholder="Telefone",
-                    width="100%",
-                ),
-                rx.button("Salvar perfil", type="submit"),
-                width="100%",
+                feedback_text(State.customer_profile_message),
                 align="stretch",
                 spacing="3",
+                width="100%",
             ),
-            on_submit=State.update_customer_profile,
-            width="100%",
         ),
-        rx.text(State.customer_profile_message),
-        rx.heading("Meus endereços", size="5"),
+        section_heading("Meus endereços", size="5"),
         rx.hstack(
             rx.button(
                 "Novo endereço",
@@ -4711,143 +5705,151 @@ def customer_account_page() -> rx.Component:
                 on_click=State.load_customer_addresses,
                 disabled=State.customer_addresses_loading,
             ),
+            wrap="wrap",
         ),
-        rx.text(State.customer_addresses_message, color="red"),
+        feedback_text(State.customer_addresses_message, tone="error"),
         rx.cond(
             State.customer_addresses_loading,
-            rx.text("Carregando endereços..."),
+            loading_text("Carregando endereços..."),
             rx.fragment(),
         ),
         rx.cond(
             State.customer_address_editing_id != None,
-            rx.heading("Editar endereço", size="4"),
-            rx.heading("Novo endereço", size="4"),
+            section_heading("Editar endereço", size="4"),
+            section_heading("Novo endereço", size="4"),
         ),
-        rx.form(
-            rx.vstack(
-                rx.input(
-                    name="cep",
-                    value=State.customer_address_form_cep,
-                    on_change=State.set_customer_address_form_cep,
-                    placeholder="CEP",
+        surface_card(
+            rx.form(
+                rx.vstack(
+                    rx.grid(
+                    rx.input(
+                        name="cep",
+                        value=State.customer_address_form_cep,
+                        on_change=State.set_customer_address_form_cep,
+                        placeholder="CEP",
+                        width="100%",
+                    ),
+                    rx.input(
+                        name="logradouro",
+                        value=State.customer_address_form_street,
+                        on_change=State.set_customer_address_form_street,
+                        placeholder="Logradouro",
+                        width="100%",
+                    ),
+                    rx.input(
+                        name="numero",
+                        value=State.customer_address_form_number,
+                        on_change=State.set_customer_address_form_number,
+                        placeholder="Número",
+                        width="100%",
+                    ),
+                    rx.input(
+                        name="complemento",
+                        value=State.customer_address_form_complement,
+                        on_change=State.set_customer_address_form_complement,
+                        placeholder="Complemento",
+                        width="100%",
+                    ),
+                    rx.input(
+                        name="bairro",
+                        value=State.customer_address_form_neighborhood,
+                        on_change=State.set_customer_address_form_neighborhood,
+                        placeholder="Bairro",
+                        width="100%",
+                    ),
+                    rx.input(
+                        name="cidade",
+                        value=State.customer_address_form_city,
+                        on_change=State.set_customer_address_form_city,
+                        placeholder="Cidade",
+                        width="100%",
+                    ),
+                    rx.input(
+                        name="estado",
+                        value=State.customer_address_form_state,
+                        on_change=State.set_customer_address_form_state,
+                        placeholder="Estado",
+                        width="100%",
+                    ),
+                    rx.input(
+                        name="identificacao",
+                        value=State.customer_address_form_label,
+                        on_change=State.set_customer_address_form_label,
+                        placeholder="Identificação (ex.: Casa)",
+                        width="100%",
+                    ),
+                    columns={"initial": "1", "sm": "2"},
+                    spacing="3",
+                    align="start",
                     width="100%",
                 ),
-                rx.input(
-                    name="logradouro",
-                    value=State.customer_address_form_street,
-                    on_change=State.set_customer_address_form_street,
-                    placeholder="Logradouro",
-                    width="100%",
-                ),
-                rx.input(
-                    name="numero",
-                    value=State.customer_address_form_number,
-                    on_change=State.set_customer_address_form_number,
-                    placeholder="Número",
-                    width="100%",
-                ),
-                rx.input(
-                    name="complemento",
-                    value=State.customer_address_form_complement,
-                    on_change=State.set_customer_address_form_complement,
-                    placeholder="Complemento",
-                    width="100%",
-                ),
-                rx.input(
-                    name="bairro",
-                    value=State.customer_address_form_neighborhood,
-                    on_change=State.set_customer_address_form_neighborhood,
-                    placeholder="Bairro",
-                    width="100%",
-                ),
-                rx.input(
-                    name="cidade",
-                    value=State.customer_address_form_city,
-                    on_change=State.set_customer_address_form_city,
-                    placeholder="Cidade",
-                    width="100%",
-                ),
-                rx.input(
-                    name="estado",
-                    value=State.customer_address_form_state,
-                    on_change=State.set_customer_address_form_state,
-                    placeholder="Estado",
-                    width="100%",
-                ),
-                rx.input(
-                    name="identificacao",
-                    value=State.customer_address_form_label,
-                    on_change=State.set_customer_address_form_label,
-                    placeholder="Identificação (ex.: Casa)",
-                    width="100%",
-                ),
-                rx.hstack(
-                    rx.button(
+                    rx.hstack(
+                        rx.button(
+                            rx.cond(
+                                State.customer_address_editing_id != None,
+                                "Salvar endereço",
+                                "Cadastrar endereço",
+                            ),
+                            type="submit",
+                        ),
                         rx.cond(
                             State.customer_address_editing_id != None,
-                            "Salvar endereço",
-                            "Cadastrar endereço",
+                            rx.button(
+                                "Cancelar edição",
+                                type="button",
+                                on_click=State.start_new_customer_address,
+                            ),
+                            rx.fragment(),
                         ),
-                        type="submit",
+                        wrap="wrap",
                     ),
-                    rx.cond(
-                        State.customer_address_editing_id != None,
-                        rx.button(
-                            "Cancelar edição",
-                            type="button",
-                            on_click=State.start_new_customer_address,
-                        ),
-                        rx.fragment(),
-                    ),
+                    width="100%",
+                    align="stretch",
+                    spacing="3",
                 ),
+                on_submit=State.save_customer_address,
                 width="100%",
-                align="stretch",
-                spacing="3",
             ),
-            on_submit=State.save_customer_address,
-            width="100%",
         ),
         rx.cond(
             State.customer_addresses.length() == 0,
-            rx.text("Nenhum endereço cadastrado."),
-            rx.foreach(State.customer_addresses, address_card),
-        ),
-        align="stretch",
-        spacing="4",
-        width="100%",
-    )
-
-    return rx.container(
-        rx.vstack(
-            rx.hstack(
-                rx.heading("Voltix", size="8"),
-                rx.link("Catálogo público", href="/catalogo"),
-                rx.link("Carrinho", href="/carrinho"),
-                rx.link("Acesso interno", href="/"),
-                justify="between",
+            empty_state("Nenhum endereço cadastrado."),
+            rx.grid(
+                rx.foreach(State.customer_addresses, address_card),
+columns={"initial": "1", "md": "2"},
+                spacing="4",
+                align="start",
                 width="100%",
             ),
-            rx.cond(
-                State.customer_authenticated,
-                authenticated_customer,
-                public_forms,
-            ),
-            align="stretch",
-            spacing="5",
-            width="100%",
-            max_width="48rem",
-            margin="0 auto",
-            min_height="100vh",
         ),
-        padding="4",
+        rx.fragment(),
+    )
+
+    return page_shell(
+        rx.cond(
+            State.customer_authenticated,
+            authenticated_customer,
+            public_forms,
+        ),
+        header=site_header(
+            [
+                ("Catálogo público", "/catalogo"),
+                ("Área do Cliente", "/cliente"),
+                ("Carrinho", "/carrinho"),
+                ("Acesso interno", "/interno"),
+            ],
+            active="/cliente",
+            badge="Área do cliente",
+        ),
+        max_width="56rem",
     )
 
 
 def customer_cart_page() -> rx.Component:
     def cart_item_card(item: CartItemEntry) -> rx.Component:
-        return rx.box(
+        return surface_card(
             rx.vstack(
-                rx.heading(
+                section_heading(
                     rx.cond(item.product_name != "", item.product_name, item.sku),
                     size="4",
                 ),
@@ -4859,7 +5861,7 @@ def customer_cart_page() -> rx.Component:
                 rx.text("SKU: " + item.sku),
                 rx.cond(
                     item.available,
-                    rx.badge("Disponível"),
+                    rx.badge("Disponível", color_scheme="cyan"),
                     rx.badge("Indisponível", color_scheme="red"),
                 ),
                 rx.text("Preço atual: R$ " + item.price),
@@ -4893,31 +5895,43 @@ def customer_cart_page() -> rx.Component:
                 spacing="2",
                 width="100%",
             ),
-            border="1px solid var(--gray-5)",
-            border_radius="8px",
-            padding="4",
-            width="100%",
         )
 
     authenticated_cart = rx.vstack(
-        rx.text("Cliente: " + State.customer_name, weight="bold"),
-        rx.button(
-            "Atualizar carrinho",
-            on_click=State.load_cart,
-            disabled=State.cart_loading,
+        rx.hstack(
+            rx.text(
+                "Cliente: " + State.customer_name,
+                weight="bold",
+                color=COLOR_NAVY,
+            ),
+            rx.button(
+                "Atualizar carrinho",
+                on_click=State.load_cart,
+                disabled=State.cart_loading,
+            ),
+            justify="between",
+            width="100%",
+            wrap="wrap",
         ),
-        rx.text(State.cart_message),
+        feedback_text(State.cart_message),
         rx.cond(
             State.cart_loading,
-            rx.text("Carregando carrinho..."),
+            loading_text("Carregando carrinho..."),
             rx.fragment(),
         ),
         rx.cond(
             State.cart_items.length() == 0,
-            rx.text("Seu carrinho está vazio."),
+            empty_state("Seu carrinho está vazio."),
             rx.foreach(State.cart_items, cart_item_card),
         ),
-        rx.heading("Total: R$ " + State.cart_total, size="5"),
+        surface_card(
+            rx.hstack(
+                section_heading("Total:", size="5"),
+                rx.heading("R$ " + State.cart_total, size="5", color=COLOR_NAVY),
+                justify="between",
+                width="100%",
+            ),
+        ),
         rx.cond(
             State.cart_items.length() > 0,
             rx.link("Continuar para checkout", href="/checkout"),
@@ -4928,42 +5942,40 @@ def customer_cart_page() -> rx.Component:
         width="100%",
     )
 
-    return rx.container(
-        rx.vstack(
-            rx.hstack(
-                rx.heading("Voltix", size="8"),
-                rx.link("Catálogo público", href="/catalogo"),
-                rx.link("Minha conta", href="/cliente"),
-                justify="between",
-                width="100%",
-            ),
-            rx.heading("Seu carrinho", size="6"),
-            rx.cond(
-                State.customer_authenticated,
-                authenticated_cart,
-                rx.vstack(
-                    rx.text("Entre como Cliente para acessar seu carrinho."),
-                    rx.link("Acessar conta de Cliente", href="/cliente"),
-                    align="stretch",
-                    spacing="3",
+    return page_shell(
+        section_heading("Seu carrinho"),
+        rx.cond(
+            State.customer_authenticated,
+            authenticated_cart,
+            rx.vstack(
+                rx.text(
+                    "Entre como Cliente para acessar seu carrinho.",
+                    color=COLOR_TEXT_MUTED,
                 ),
+                rx.link("Acessar conta de Cliente", href="/cliente"),
+                align="stretch",
+                spacing="3",
             ),
-            align="stretch",
-            spacing="5",
-            width="100%",
-            max_width="48rem",
-            margin="0 auto",
-            min_height="100vh",
         ),
-        padding="4",
+        header=site_header(
+            [
+                ("Catálogo público", "/catalogo"),
+                ("Carrinho", "/carrinho"),
+                ("Minha conta", "/cliente"),
+                ("Acesso interno", "/interno"),
+            ],
+            active="/carrinho",
+            badge="Carrinho",
+        ),
+        max_width="48rem",
     )
 
 
 def customer_checkout_page() -> rx.Component:
     def review_item(item: CheckoutItemEntry) -> rx.Component:
-        return rx.box(
+        return surface_card(
             rx.vstack(
-                rx.heading(
+                section_heading(
                     rx.cond(item.product_name != "", item.product_name, item.sku),
                     size="4",
                 ),
@@ -4974,22 +5986,19 @@ def customer_checkout_page() -> rx.Component:
                 rx.text("Subtotal: R$ " + item.subtotal),
                 rx.cond(
                     item.available,
-                    rx.badge("Disponível"),
+                    rx.badge("Disponível", color_scheme="cyan"),
                     rx.badge("Indisponível", color_scheme="red"),
                 ),
                 align="stretch",
                 spacing="2",
             ),
-            border="1px solid var(--gray-5)",
-            border_radius="8px",
-            padding="4",
-            width="100%",
         )
 
     delivery_address = rx.cond(
         State.checkout_review_ready,
-        rx.vstack(
-            rx.heading("Endereço de entrega", size="4"),
+        surface_card(
+            rx.vstack(
+                section_heading("Endereço de entrega", size="4"),
             rx.text(State.checkout_address_label),
             rx.text(
                 State.checkout_address_street
@@ -5008,18 +6017,23 @@ def customer_checkout_page() -> rx.Component:
             spacing="2",
             width="100%",
         ),
+        ),
         rx.fragment(),
     )
 
     checkout_review_section = rx.cond(
         State.checkout_review_ready,
-        rx.vstack(
-            rx.heading("Revise seu pedido", size="5"),
-            rx.foreach(State.checkout_review_items, review_item),
-            delivery_address,
-            rx.text("Subtotal: R$ " + State.checkout_subtotal),
-            rx.text("Frete: R$ " + State.checkout_freight),
-            rx.heading("Total: R$ " + State.checkout_total, size="5"),
+        surface_card(
+            rx.vstack(
+                section_heading("Revise seu pedido", size="5"),
+                rx.foreach(State.checkout_review_items, review_item),
+                delivery_address,
+                rx.text(
+                    "Subtotal: R$ " + State.checkout_subtotal,
+                    color=COLOR_TEXT_MUTED,
+                ),
+                rx.text("Frete: R$ " + State.checkout_freight, color=COLOR_TEXT_MUTED),
+                section_heading("Total: R$ " + State.checkout_total, size="5"),
             rx.cond(
                 State.checkout_review_items.length() > 0,
                 rx.form(
@@ -5057,15 +6071,20 @@ def customer_checkout_page() -> rx.Component:
                 rx.fragment(),
             ),
             align="stretch",
-            spacing="3",
-            width="100%",
+                spacing="3",
+                width="100%",
+            ),
         ),
         rx.fragment(),
     )
 
     authenticated_checkout = rx.vstack(
-        rx.text("Cliente: " + State.customer_name, weight="bold"),
-        rx.text(State.checkout_message, color="red"),
+        rx.text(
+            "Cliente: " + State.customer_name,
+            weight="bold",
+            color=COLOR_NAVY,
+        ),
+        feedback_text(State.checkout_message, tone="error"),
         rx.cond(
             State.customer_addresses.length() == 0,
             rx.vstack(
@@ -5112,7 +6131,7 @@ def customer_checkout_page() -> rx.Component:
         ),
         rx.cond(
             State.checkout_loading,
-            rx.text("Validando itens e valores..."),
+            loading_text("Validando itens e valores..."),
             rx.fragment(),
         ),
         checkout_review_section,
@@ -5121,45 +6140,46 @@ def customer_checkout_page() -> rx.Component:
         width="100%",
     )
 
-    return rx.container(
-        rx.vstack(
-            rx.hstack(
-                rx.heading("Voltix", size="8"),
-                rx.link("Carrinho", href="/carrinho"),
-                rx.link("Minha conta", href="/cliente"),
-                justify="between",
-                width="100%",
-            ),
-            rx.heading("Checkout", size="6"),
-            rx.cond(
-                State.customer_authenticated,
-                authenticated_checkout,
-                rx.vstack(
-                    rx.text("Entre como Cliente para finalizar o pedido."),
-                    rx.link("Acessar conta de Cliente", href="/cliente"),
-                    align="stretch",
-                    spacing="3",
+    return page_shell(
+        section_heading("Checkout"),
+        rx.cond(
+            State.customer_authenticated,
+            authenticated_checkout,
+            rx.vstack(
+                rx.text(
+                    "Entre como Cliente para finalizar o pedido.",
+                    color=COLOR_TEXT_MUTED,
                 ),
+                rx.link("Acessar conta de Cliente", href="/cliente"),
+                align="stretch",
+                spacing="3",
             ),
-            align="stretch",
-            spacing="5",
-            width="100%",
-            max_width="48rem",
-            margin="0 auto",
-            min_height="100vh",
         ),
-        padding="4",
+        header=site_header(
+            [
+                ("Catálogo público", "/catalogo"),
+                ("Carrinho", "/carrinho"),
+                ("Minha conta", "/cliente"),
+                ("Acesso interno", "/interno"),
+            ],
+            active="/checkout",
+            badge="Checkout",
+        ),
+        max_width="48rem",
     )
 
 
 def customer_orders_page() -> rx.Component:
     def order_card(order: OrderSummary) -> rx.Component:
-        return rx.box(
+        return surface_card(
             rx.vstack(
-                rx.heading("Pedido " + order.code, size="4"),
-                rx.text("Data: " + order.order_date),
-                rx.badge(order.status),
-                rx.text("Itens: " + order.order_items.length().to_string()),
+                section_heading("Pedido " + order.code, size="4"),
+                rx.text("Data: " + order.order_date, color=COLOR_TEXT_MUTED),
+                rx.badge(order.status, color_scheme="cyan"),
+                rx.text(
+                    "Itens: " + order.order_items.length().to_string(),
+                    color=COLOR_TEXT_MUTED,
+                ),
                 rx.text("Total: R$ " + order.total),
                 rx.button(
                     "Ver resumo",
@@ -5170,10 +6190,6 @@ def customer_orders_page() -> rx.Component:
                 spacing="2",
                 width="100%",
             ),
-            border="1px solid var(--gray-5)",
-            border_radius="8px",
-            padding="4",
-            width="100%",
         )
 
     def order_item(item: OrderItemSummary) -> rx.Component:
@@ -5186,6 +6202,7 @@ def customer_orders_page() -> rx.Component:
                         item.sku,
                     ),
                     weight="bold",
+                    color=COLOR_NAVY,
                 ),
                 rx.text("SKU: " + item.sku),
                 rx.text("Quantidade: " + item.quantity.to_string()),
@@ -5194,22 +6211,28 @@ def customer_orders_page() -> rx.Component:
                 align="stretch",
                 spacing="2",
             ),
-            border="1px solid var(--gray-4)",
-            border_radius="8px",
+            border=f"1px solid {COLOR_BORDER}",
+            border_radius=RADIUS,
             padding="3",
             width="100%",
+            background=COLOR_SURFACE,
         )
 
     order_details = rx.cond(
         State.selected_order_present,
-        rx.box(
+        surface_card(
             rx.vstack(
-                rx.heading(
-                    "Pedido " + State.selected_order_code,
-                    size="5",
+                rx.hstack(
+                    section_heading(
+                        "Pedido " + State.selected_order_code,
+                        size="5",
+                    ),
+                    rx.badge(State.selected_order_status, color_scheme="cyan"),
+                    justify="between",
+                    width="100%",
+                    wrap="wrap",
                 ),
-                rx.badge(State.selected_order_status),
-                rx.heading("Entrega", size="4"),
+                section_heading("Entrega", size="4"),
                 rx.text(State.selected_order_delivery_label),
                 rx.text(
                     State.selected_order_delivery_street
@@ -5224,19 +6247,28 @@ def customer_orders_page() -> rx.Component:
                     + State.selected_order_delivery_state
                 ),
                 rx.text("CEP: " + State.selected_order_delivery_cep),
-                rx.heading("Itens", size="4"),
+                section_heading("Itens", size="4"),
                 rx.foreach(State.selected_order_items, order_item),
-                rx.text("Subtotal: R$ " + State.selected_order_subtotal),
-                rx.text("Frete: R$ " + State.selected_order_freight),
-                rx.heading("Total: R$ " + State.selected_order_total, size="5"),
+                rx.text(
+                    "Subtotal: R$ " + State.selected_order_subtotal,
+                    color=COLOR_TEXT_MUTED,
+                ),
+                rx.text(
+                    "Frete: R$ " + State.selected_order_freight,
+                    color=COLOR_TEXT_MUTED,
+                ),
+                section_heading("Total: R$ " + State.selected_order_total, size="5"),
                 rx.text(
                     "Pagamento: "
                     + State.selected_order_payment_method
                     + " — "
-                    + State.selected_order_payment_status
+                    + State.selected_order_payment_status,
+                    color=COLOR_TEXT_MUTED,
                 ),
                 rx.text(
-                    "Aprovação simulada: nenhum valor será cobrado."
+                    "Aprovação simulada: nenhum valor será cobrado.",
+                    color=COLOR_TEXT_MUTED,
+                    font_size="0.85rem",
                 ),
                 rx.cond(
                     (State.selected_order_status == "AGUARDANDO_PAGAMENTO")
@@ -5250,76 +6282,86 @@ def customer_orders_page() -> rx.Component:
                 ),
                 rx.cond(
                     State.payment_simulating,
-                    rx.text("Simulando pagamento..."),
+                    loading_text("Simulando pagamento..."),
                     rx.fragment(),
                 ),
-                rx.text(State.payment_message),
+                feedback_text(State.payment_message),
                 align="stretch",
                 spacing="3",
                 width="100%",
             ),
-            border="1px solid var(--gray-6)",
-            border_radius="8px",
-            padding="4",
-            width="100%",
         ),
         rx.fragment(),
     )
 
-    return rx.container(
-        rx.vstack(
-            rx.hstack(
-                rx.heading("Voltix", size="8"),
-                rx.link("Carrinho", href="/carrinho"),
-                rx.link("Minha conta", href="/cliente"),
-                justify="between",
+    return page_shell(
+        section_heading("Meus pedidos"),
+        rx.cond(
+            State.customer_authenticated,
+            rx.vstack(
+                feedback_text(State.orders_message, tone="error"),
+                rx.button(
+                    "Atualizar histórico",
+                    on_click=State.load_customer_orders,
+                    disabled=State.orders_loading,
+                ),
+                rx.cond(
+                    State.orders_loading,
+                    loading_text("Carregando pedidos..."),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    State.orders.length() == 0,
+                    empty_state("Você ainda não possui pedidos."),
+                    rx.foreach(State.orders, order_card),
+                ),
+                order_details,
+                align="stretch",
+                spacing="4",
                 width="100%",
             ),
-            rx.heading("Meus pedidos", size="6"),
-            rx.cond(
-                State.customer_authenticated,
-                rx.vstack(
-                    rx.text(State.orders_message, color="red"),
-                    rx.button(
-                        "Atualizar histórico",
-                        on_click=State.load_customer_orders,
-                        disabled=State.orders_loading,
-                    ),
-                    rx.cond(
-                        State.orders_loading,
-                        rx.text("Carregando pedidos..."),
-                        rx.fragment(),
-                    ),
-                    rx.cond(
-                        State.orders.length() == 0,
-                        rx.text("Você ainda não possui pedidos."),
-                        rx.foreach(State.orders, order_card),
-                    ),
-                    order_details,
-                    align="stretch",
-                    spacing="4",
-                    width="100%",
+            rx.vstack(
+                rx.text(
+                    "Entre como Cliente para consultar seus pedidos.",
+                    color=COLOR_TEXT_MUTED,
                 ),
-                rx.vstack(
-                    rx.text("Entre como Cliente para consultar seus pedidos."),
-                    rx.link("Acessar conta de Cliente", href="/cliente"),
-                    align="stretch",
-                    spacing="3",
-                ),
+                rx.link("Acessar conta de Cliente", href="/cliente"),
+                align="stretch",
+                spacing="3",
             ),
-            align="stretch",
-            spacing="5",
-            width="100%",
-            max_width="48rem",
-            margin="0 auto",
-            min_height="100vh",
         ),
-        padding="4",
+        header=site_header(
+            [
+                ("Catálogo público", "/catalogo"),
+                ("Carrinho", "/carrinho"),
+                ("Minha conta", "/cliente"),
+                ("Acesso interno", "/interno"),
+            ],
+            active="/pedidos",
+            badge="Meus pedidos",
+        ),
+        max_width="48rem",
     )
 
 
-app = rx.App()
-app.add_page(index)
+app = rx.App(
+    style={
+        "font_family": "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif",
+        "background_color": COLOR_SURFACE,
+        "color": COLOR_TEXT,
+    },
+)
+app.add_page(
+    index,
+    route="/interno",
+    title="Acesso interno | Voltix",
+)
+app.add_page(
+    home_page,
+    route="/",
+    title="Voltix - tecnologia premium",
+    on_load=State.load_public_catalog,
+)
 app.add_page(
     public_catalog_page,
     route="/catalogo",
