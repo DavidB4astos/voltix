@@ -47,6 +47,6 @@
 
 ## 9. Entrega (somente após aprovação e verificação visual)
 
-- [ ] 9.1 Fazer commit das alterações de código, testes e documento de evidências com mensagem descritiva.
-- [ ] 9.2 Fazer push para o remoto `main`.
-- [ ] 9.3 Arquivar a change `resiliencia-catalogo-publico` e sincronizar as specs consolidadas.
+- [x] 9.1 Fazer commit das alterações de código, testes e documento de evidências com mensagem descritiva.
+- [x] 9.2 Fazer push para o remoto `main`.
+- [x] 9.3 Arquivar a change `resiliencia-catalogo-publico` e sincronizar as specs consolidadas.
