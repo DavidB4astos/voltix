@@ -1,6 +1,6 @@
 # AP2 — Documentação de Engenharia de Requisitos — Voltix
 
-> Capa e índice da entrega da AP2. Documento de apoio aos seis artefatos numerados deste diretório.
+> Capa e índice da entrega da AP2. Documento de apoio aos seis artefatos numerados deste diretório, mais um anexo de verificação.
 > **Entrega:** 21/10/2026.
 
 ## Identificação acadêmica
@@ -28,6 +28,7 @@
 | 04 | [04-priorizacao-moscow.md](04-priorizacao-moscow.md) | Matriz de priorização MoSCoW (valor, esforço e risco) e itens fora de escopo. |
 | 05 | [05-product-vision-board.md](05-product-vision-board.md) | Product Vision Board (Visão, Grupo-alvo, Necessidades, Produto, Objetivos). |
 | 06 | [06-srs.md](06-srs.md) | SRS com requisitos funcionais, requisitos não funcionais e casos de uso. |
+| 07 | [07-evidencias-catalogo-429.md](07-evidencias-catalogo-429.md) | Anexo de verificação: evidências (antes/depois) da correção do erro HTTP 429 no catálogo público. |
 
 ## Nota metodológica
 

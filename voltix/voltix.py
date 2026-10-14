@@ -2,10 +2,12 @@
 
 import asyncio
 import json
+import logging
 import math
 import mimetypes
 import os
 import re
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass, replace
@@ -43,6 +45,20 @@ XANO_CHECKOUT_REVIEW_URL_ENV = "XANO_CHECKOUT_REVIEW_URL"
 XANO_CHECKOUT_CONFIRM_URL_ENV = "XANO_CHECKOUT_CONFIRM_URL"
 XANO_ORDERS_URL_ENV = "XANO_ORDERS_URL"
 XANO_PAYMENT_SIMULATION_URL_ENV = "XANO_PAYMENT_SIMULATION_URL"
+
+PUBLIC_CATALOG_CACHE_TTL_SECONDS = 30.0
+XANO_RATE_LIMIT_MAX_ATTEMPTS = 3
+XANO_RATE_LIMIT_DEFAULT_WAIT_SECONDS = 20.0
+XANO_RATE_LIMIT_MAX_WAIT_SECONDS = 30.0
+
+PUBLIC_CATALOG_LOGGER = logging.getLogger("voltix.public_catalog")
+
+_PUBLIC_ENDPOINT_LABELS = {
+    XANO_PUBLIC_CATEGORIES_URL_ENV: "public_catalog.categories",
+    XANO_PUBLIC_PRODUCTS_URL_ENV: "public_catalog.products",
+    XANO_PUBLIC_PRODUCT_DETAILS_URL_ENV: "public_catalog.product_details",
+    XANO_PUBLIC_PRODUCT_IMAGE_URL_ENV: "public_catalog.product_image",
+}
 
 XanoJson = dict[str, object] | list[dict[str, object]]
 
@@ -759,16 +775,32 @@ def _request_xano_json(
     if authorization:
         headers["Authorization"] = authorization
 
-    request = urllib.request.Request(
-        url,
-        data=body,
-        headers=headers,
-        method=method,
-    )
-    with urllib.request.urlopen(request, timeout=10) as response:
-        if response.status < 200 or response.status >= 300:
-            raise ValueError(f"Xano returned unexpected HTTP status {response.status}.")
-        response_payload = json.loads(response.read().decode("utf-8"))
+    attempt = 0
+    while True:
+        attempt += 1
+        request = urllib.request.Request(
+            url,
+            data=body,
+            headers=headers,
+            method=method,
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=10) as response:
+                if response.status < 200 or response.status >= 300:
+                    raise ValueError(
+                        f"Xano returned unexpected HTTP status {response.status}."
+                    )
+                response_payload = json.loads(response.read().decode("utf-8"))
+            break
+        except urllib.error.HTTPError as error:
+            if (
+                method == "GET"
+                and error.code == 429
+                and attempt < XANO_RATE_LIMIT_MAX_ATTEMPTS
+            ):
+                time.sleep(_rate_limit_wait_seconds(error))
+                continue
+            raise
 
     if isinstance(response_payload, dict):
         return response_payload
@@ -793,6 +825,102 @@ async def _server_side_xano_request(
         payload=payload,
         authorization=authorization,
     )
+
+
+def _rate_limit_wait_seconds(error: urllib.error.HTTPError) -> float:
+    header = error.headers.get("Retry-After") if error.headers else None
+    if header is not None:
+        try:
+            seconds = float(str(header).strip())
+        except (TypeError, ValueError):
+            seconds = None
+        if seconds is not None and seconds >= 0:
+            return min(seconds, XANO_RATE_LIMIT_MAX_WAIT_SECONDS)
+    return XANO_RATE_LIMIT_DEFAULT_WAIT_SECONDS
+
+
+def _public_endpoint_label(url_env: str) -> str:
+    return _PUBLIC_ENDPOINT_LABELS.get(url_env, "public_catalog.desconhecido")
+
+
+def _public_endpoint_status(error: BaseException) -> int | None:
+    if isinstance(error, urllib.error.HTTPError):
+        return error.code
+    return None
+
+
+@dataclass
+class _PublicCatalogCacheEntry:
+    categories: list[CatalogEntry]
+    products: list[PublicProductEntry]
+    expires_at: float
+
+
+_public_catalog_cache: dict[str, _PublicCatalogCacheEntry] = {}
+_public_catalog_inflight: dict[
+    str, "asyncio.Future[tuple[list[CatalogEntry], list[PublicProductEntry], str]]"
+] = {}
+
+
+def _reset_public_catalog_cache() -> None:
+    _public_catalog_cache.clear()
+    _public_catalog_inflight.clear()
+
+
+def _public_catalog_cache_get(key: str) -> _PublicCatalogCacheEntry | None:
+    entry = _public_catalog_cache.get(key)
+    if entry is None:
+        return None
+    if entry.expires_at <= time.monotonic():
+        _public_catalog_cache.pop(key, None)
+        return None
+    return entry
+
+
+def _public_catalog_cache_put(
+    key: str,
+    categories: list[CatalogEntry],
+    products: list[PublicProductEntry],
+) -> None:
+    _public_catalog_cache[key] = _PublicCatalogCacheEntry(
+        categories=list(categories),
+        products=list(products),
+        expires_at=time.monotonic() + PUBLIC_CATALOG_CACHE_TTL_SECONDS,
+    )
+
+
+async def _load_public_catalog_with_cache(
+    state: "State",
+    category_id: str,
+) -> tuple[list[CatalogEntry], list[PublicProductEntry], str]:
+    key = category_id
+    cached = _public_catalog_cache_get(key)
+    if cached is not None:
+        return list(cached.categories), list(cached.products), category_id
+
+    pending = _public_catalog_inflight.get(key)
+    if pending is not None:
+        return await pending
+
+    future: "asyncio.Future[tuple[list[CatalogEntry], list[PublicProductEntry], str]]" = (
+        asyncio.get_running_loop().create_future()
+    )
+    _public_catalog_inflight[key] = future
+    try:
+        categories, products, category_id = await state._load_public_catalog_data(
+            category_id
+        )
+        result = (categories, products, category_id)
+        _public_catalog_cache_put(key, categories, products)
+        future.set_result(result)
+        return result
+    except BaseException as error:
+        if not future.done():
+            future.set_exception(error)
+            future.exception()
+        raise
+    finally:
+        _public_catalog_inflight.pop(key, None)
 
 
 def _catalog_entry(payload: object) -> CatalogEntry:
@@ -1448,7 +1576,21 @@ class State(rx.State):
             url = f"{url}/{record_id}{path_suffix}"
         if query_params:
             url = f"{url}?{urlencode(query_params)}"
-        return await _server_side_xano_request(url, authorization=None)
+        try:
+            return await _server_side_xano_request(url, authorization=None)
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as error:
+            PUBLIC_CATALOG_LOGGER.warning(
+                "Falha no endpoint lógico '%s' do catálogo público (status=%s).",
+                _public_endpoint_label(url_env),
+                _public_endpoint_status(error),
+            )
+            raise
 
     async def _public_product_image(self, product_id: int) -> str:
         payload = await self._public_catalog_request(
@@ -1486,22 +1628,33 @@ class State(rx.State):
             for product, image_url in zip(products, image_urls, strict=True)
         ]
 
+    async def _load_public_catalog_data(
+        self,
+        category_id: str,
+    ) -> tuple[list[CatalogEntry], list[PublicProductEntry], str]:
+        categories_payload = await self._public_catalog_request(
+            XANO_PUBLIC_CATEGORIES_URL_ENV
+        )
+        categories = _public_catalog_categories(categories_payload)
+        if category_id and not any(
+            str(category.id) == category_id for category in categories
+        ):
+            category_id = ""
+        products = await self._fetch_public_products(category_id)
+        return categories, products, category_id
+
     @rx.event
     async def load_public_catalog(self):
         self.public_catalog_loading = True
         self.public_catalog_message = ""
         try:
-            categories = await self._public_catalog_request(
-                XANO_PUBLIC_CATEGORIES_URL_ENV
+            categories, products, category_id = await _load_public_catalog_with_cache(
+                self,
+                self.public_category_id.strip(),
             )
-            self.public_categories = _public_catalog_categories(categories)
-            category_id = self.public_category_id.strip()
-            if category_id and not any(
-                str(category.id) == category_id for category in self.public_categories
-            ):
-                self.public_category_id = ""
-                category_id = ""
-            self.public_products = await self._fetch_public_products(category_id)
+            self.public_category_id = category_id
+            self.public_categories = categories
+            self.public_products = products
         except (
             urllib.error.HTTPError,
             urllib.error.URLError,

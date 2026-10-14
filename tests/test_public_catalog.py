@@ -1,8 +1,10 @@
 import asyncio
+import io
+import time
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
-from urllib.error import URLError
+from unittest.mock import AsyncMock, MagicMock, patch
+from urllib.error import HTTPError, URLError
 
 import voltix.voltix as app
 
@@ -11,6 +13,7 @@ class _FakePublicState:
     _public_catalog_request = app.State._public_catalog_request
     _fetch_public_products = app.State._fetch_public_products
     _public_product_image = app.State._public_product_image
+    _load_public_catalog_data = app.State._load_public_catalog_data
     load_public_catalog = app.State.load_public_catalog.fn
     load_public_product_details = app.State.load_public_product_details.fn
 
@@ -26,6 +29,21 @@ class _FakePublicState:
 
 
 class PublicCatalogTests(unittest.TestCase):
+    def setUp(self):
+        app._reset_public_catalog_cache()
+
+    def _rate_limit_error(self, retry_after=None):
+        headers = {} if retry_after is None else {"Retry-After": retry_after}
+        error = HTTPError(
+            "https://example.invalid/x",
+            429,
+            "Too Many Requests",
+            headers,
+            io.BytesIO(b""),
+        )
+        self.addCleanup(error.close)
+        return error
+
     @staticmethod
     def product_payload(**overrides):
         return {
@@ -282,6 +300,175 @@ class PublicCatalogTests(unittest.TestCase):
         self.assertIn("Adicionar ao carrinho", catalog_page)
         self.assertIn("State.add_to_cart(variation.id)", catalog_page)
         self.assertNotIn("checkout", catalog_page.lower())
+
+
+    def test_repeated_navigation_within_ttl_reuses_cached_data(self):
+        state = _FakePublicState()
+        category = {"id": 2, "name": "Notebooks", "description": "", "status": "ATIVO"}
+        product = self.product_payload()
+        state._public_catalog_request = AsyncMock(
+            side_effect=[
+                [category],
+                [product],
+                {"image_url": "https://files.example.invalid/signed-image"},
+            ]
+        )
+
+        async def run():
+            await app.State.load_public_catalog.fn(state)
+            await app.State.load_public_catalog.fn(state)
+
+        asyncio.run(run())
+        self.assertEqual(state._public_catalog_request.await_count, 3)
+        self.assertEqual(
+            state.public_products[0].image_url,
+            "https://files.example.invalid/signed-image",
+        )
+
+    def test_catalog_cache_expires_and_refetches(self):
+        state = _FakePublicState()
+        category = {"id": 2, "name": "Notebooks", "description": "", "status": "ATIVO"}
+        product = self.product_payload()
+        state._public_catalog_request = AsyncMock(
+            side_effect=[
+                [category],
+                [product],
+                {"image_url": None},
+                [category],
+                [product],
+                {"image_url": None},
+            ]
+        )
+
+        async def run():
+            await app.State.load_public_catalog.fn(state)
+            app._public_catalog_cache[""].expires_at = time.monotonic() - 1.0
+            await app.State.load_public_catalog.fn(state)
+
+        asyncio.run(run())
+        self.assertEqual(state._public_catalog_request.await_count, 6)
+
+    def test_reuse_respects_selected_category(self):
+        state = _FakePublicState()
+        category = {"id": 2, "name": "Notebooks", "description": "", "status": "ATIVO"}
+        state._public_catalog_request = AsyncMock(
+            side_effect=[
+                [category],
+                [self.product_payload(id=7)],
+                {"image_url": None},
+            ]
+        )
+
+        async def run():
+            await app.State.load_public_catalog.fn(state)
+            state.public_category_id = "2"
+            state._public_catalog_request = AsyncMock(
+                side_effect=[
+                    [category],
+                    [self.product_payload(id=8)],
+                    {"image_url": None},
+                ]
+            )
+            await app.State.load_public_catalog.fn(state)
+
+        asyncio.run(run())
+        self.assertEqual(state._public_catalog_request.await_count, 3)
+        self.assertEqual(state.public_products[0].id, 8)
+
+    def test_concurrent_loads_issue_a_single_set_of_requests(self):
+        first = _FakePublicState()
+        second = _FakePublicState()
+        category = {"id": 2, "name": "Notebooks", "description": "", "status": "ATIVO"}
+        product = self.product_payload()
+        responses = [[category], [product], {"image_url": None}]
+        first._public_catalog_request = AsyncMock(side_effect=responses)
+        second._public_catalog_request = AsyncMock(side_effect=responses)
+
+        async def run():
+            await asyncio.gather(
+                app.State.load_public_catalog.fn(first),
+                app.State.load_public_catalog.fn(second),
+            )
+
+        asyncio.run(run())
+        total = (
+            first._public_catalog_request.await_count
+            + second._public_catalog_request.await_count
+        )
+        self.assertEqual(total, 3)
+        self.assertEqual(first.public_products[0].id, second.public_products[0].id)
+
+    def test_rate_limit_retry_succeeds_after_transient_429(self):
+        error = self._rate_limit_error("20")
+        response = MagicMock()
+        response.status = 200
+        response.read.return_value = b'{"ok": true}'
+        response.__enter__.return_value = response
+        response.__exit__.return_value = False
+
+        with (
+            patch("urllib.request.urlopen", side_effect=[error, response]),
+            patch("time.sleep") as sleep,
+        ):
+            result = app._request_xano_json("https://example.invalid/x")
+
+        self.assertEqual(result, {"ok": True})
+        sleep.assert_called_once_with(20.0)
+
+    def test_persistent_429_is_observable_and_does_not_simulate_success(self):
+        error = self._rate_limit_error("20")
+
+        with (
+            patch("urllib.request.urlopen", side_effect=[error, error, error]),
+            patch("time.sleep"),
+            self.assertRaises(HTTPError) as raised,
+        ):
+            app._request_xano_json("https://example.invalid/x")
+
+        self.assertEqual(raised.exception.code, 429)
+
+    def test_rate_limit_wait_seconds_defaults_and_caps(self):
+        without_header = self._rate_limit_error()
+        self.assertEqual(
+            app._rate_limit_wait_seconds(without_header),
+            app.XANO_RATE_LIMIT_DEFAULT_WAIT_SECONDS,
+        )
+        capped = self._rate_limit_error("999")
+        self.assertEqual(
+            app._rate_limit_wait_seconds(capped),
+            app.XANO_RATE_LIMIT_MAX_WAIT_SECONDS,
+        )
+
+    def test_catalog_failure_is_logged_without_sensitive_data(self):
+        state = _FakePublicState()
+        secret_url = (
+            "https://secret.invalid/api:abc/products?token=SEKRET&key=TOP"
+        )
+
+        async def run():
+            with self.assertLogs("voltix.public_catalog", level="WARNING") as logs:
+                with (
+                    patch.dict(
+                        "os.environ",
+                        {app.XANO_PUBLIC_PRODUCTS_URL_ENV: secret_url},
+                    ),
+                    patch(
+                        "voltix.voltix._server_side_xano_request",
+                        AsyncMock(side_effect=URLError("backend unavailable")),
+                    ),
+                ):
+                    with self.assertRaises(URLError):
+                        await app.State._public_catalog_request(
+                            state, app.XANO_PUBLIC_PRODUCTS_URL_ENV
+                        )
+            return "\n".join(logs.output)
+
+        output = asyncio.run(run())
+        self.assertIn("public_catalog.products", output)
+        self.assertNotIn("SEKRET", output)
+        self.assertNotIn("TOP", output)
+        self.assertNotIn("token=", output)
+        self.assertNotIn("secret.invalid", output)
 
 
 if __name__ == "__main__":
