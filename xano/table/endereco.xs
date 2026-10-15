@@ -33,4 +33,5 @@ table endereco {
   ]
 
   tags = ["voltix:customer-addresses"]
+  guid = "i3nbTAJsbFSHRVfaBjBSWwn-0aQ"
 }

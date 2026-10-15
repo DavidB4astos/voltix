@@ -104,4 +104,5 @@ query "cart/items/{item_id}" verb=PATCH {
     quantidade: $input.quantidade
   }
   tags = ["voltix:shopping-cart"]
+  guid = "LIRYWTc6qj5il9E8eQGquIlFBaE"
 }

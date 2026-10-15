@@ -28,4 +28,5 @@ table pagamento {
   ]
 
   tags = ["voltix:checkout-orders"]
+  guid = "O77clflILgtFnKSSjgJEZ14sJ1w"
 }

@@ -53,4 +53,5 @@ query "login" verb=POST {
     }
   }
   tags = ["voltix:customer"]
+  guid = "IBJBU9ZsQsfoYAdoTU_hxy5b4uw"
 }

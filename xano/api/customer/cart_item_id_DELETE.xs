@@ -60,4 +60,5 @@ query "cart/items/{item_id}" verb=DELETE {
     removido: true
   }
   tags = ["voltix:shopping-cart"]
+  guid = "gEo70aoEDFD_5RdA-zfHcVmkrMs"
 }

@@ -117,4 +117,5 @@ query "cart/items" verb=POST {
     quantidade: $item.quantidade
   }
   tags = ["voltix:shopping-cart"]
+  guid = "lMHPdjjcnSzCTo0s837EB76cwSw"
 }

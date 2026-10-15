@@ -97,4 +97,5 @@ query "orders/{order_id}" verb=GET {
     }
   }
   tags = ["voltix:checkout-orders"]
+  guid = "80HvBYAWlqrqfIZyzq82IvxNsMg"
 }

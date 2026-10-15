@@ -204,4 +204,5 @@ query "addresses/{address_id}" verb=PATCH {
 
   response = $updated_address
   tags = ["voltix:customer-addresses"]
+  guid = "lqqxO6Yt0nyZAU1hIzZdIm6UoCM"
 }

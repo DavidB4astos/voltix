@@ -36,4 +36,5 @@ query "addresses/{address_id}" verb=DELETE {
 
   response = {deleted: true}
   tags = ["voltix:customer-addresses"]
+  guid = "ac_AT107bYQYph0RvtSZr13bYDw"
 }

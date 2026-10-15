@@ -28,4 +28,5 @@ table item_pedido {
   ]
 
   tags = ["voltix:checkout-orders"]
+  guid = "wM0nj7z_RtQpoZ0vq3zzhlEA5C8"
 }

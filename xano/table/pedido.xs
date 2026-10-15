@@ -42,4 +42,5 @@ table pedido {
   ]
 
   tags = ["voltix:checkout-orders"]
+  guid = "SiM3F-jgq61XzniVFjk4-tSvOrY"
 }

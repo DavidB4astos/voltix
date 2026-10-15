@@ -21,4 +21,5 @@ table carrinho {
   ]
 
   tags = ["voltix:shopping-cart"]
+  guid = "qjn8jrj2SUgZBkhP5gU6L173BpA"
 }

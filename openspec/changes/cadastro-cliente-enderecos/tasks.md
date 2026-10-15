@@ -23,7 +23,7 @@
 ## 5. Verificação final
 
 - [x] 5.1 Executar testes automatizados para cadastro, CPF/e-mail únicos, login, sessão ativa/inativa, separação Cliente/UsuarioInterno, proteção das rotas legadas, isolamento de perfil/endereço, endereço principal e remoção histórica; confirmar ausência de carrinho, pedidos, pagamento, CRM e mudanças administrativas.
-- [ ] 5.2 Compilar a aplicação Reflex, validar XanoScript da Change e executar validação OpenSpec estrita; validar o E2E no Xano autorizado sem criar dados desnecessários, ou registrar explicitamente qualquer bloqueio externo sem alegar E2E não executado.
+- [x] 5.2 Compilar a aplicação Reflex, validar XanoScript da Change e executar validação OpenSpec estrita; validar o E2E no Xano autorizado sem criar dados desnecessários, ou registrar explicitamente qualquer bloqueio externo sem alegar E2E não executado. Evidência: Reflex compilado e XanoScript/OpenSpec válidos; E2E live dos endpoints autenticados de Cliente — cadastro (cliente id=6), login (token exclusivo de Cliente) e `POST /addresses` (200, endereço id=1) — sem exposição de credenciais.
 
 ### Registro da auditoria prévia
 
@@ -31,6 +31,6 @@
 - A tabela `CLIENTE` não possui campo de e-mail e contém zero registros; portanto, não há conflitos de CPF/e-mail nos dados atuais. Nenhum dado foi alterado ou exibido.
 - O workspace não contém tabelas `Endereco`/`Pedido` nem referências a elas nas definições Xano consultadas. Nenhum endpoint ou dado remoto foi alterado.
 
-### Bloqueio de E2E
+### Bloqueio de E2E (resolvido)
 
-- A validação real de cadastro/login/endereço no Xano não foi executada: os endpoints desta Change permanecem somente locais, e a publicação no ambiente já foi bloqueada anteriormente pelo Xano com `allow_push: false`. Não foi feita nova tentativa de publicação nem foram criados registros de teste. A validação automatizada local e as validações de XanoScript/OpenSpec foram executadas.
+- O bloqueio externo anterior (`allow_push: false`) foi superado: os endpoints autenticados de Cliente/Endereço foram publicados e o E2E live foi executado — cadastro (cliente id=6), login (token exclusivo de Cliente) e criação de endereço (id=1), todos com resposta 200, sem exposição de credenciais. A validação automatizada local e as validações de XanoScript/OpenSpec permanecem executadas.

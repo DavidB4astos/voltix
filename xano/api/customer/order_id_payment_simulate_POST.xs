@@ -144,4 +144,5 @@ query "orders/{order_id}/payment/simulate" verb=POST {
     }
   }
   tags = ["voltix:order-payment"]
+  guid = "jaT0wmt61lf4HyQOkW-v75OSpPA"
 }

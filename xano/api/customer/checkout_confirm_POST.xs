@@ -67,13 +67,22 @@ query "checkout/confirm" verb=POST {
         variacao_status: $db.variacao_produto.status
         preco: $db.variacao_produto.preco
         estoque: $db.variacao_produto.quantidade_disponivel
-        subtotal: $db.variacao_produto.preco * $db.item_carrinho.quantidade
-        disponivel: $db.produto.status == "ATIVO" && $db.variacao_produto.status == "ATIVO" && $db.variacao_produto.quantidade_disponivel >= $db.item_carrinho.quantidade
       }
       where = $db.item_carrinho.carrinho_id == $cart.id
-      sort = {id: "asc"}
-      output = ["id", "variacao_produto_id", "quantidade"]
-    } as $cart_items
+          sort = {id: "asc"}
+          output = [
+            "id",
+            "variacao_produto_id",
+            "quantidade",
+            "produto_nome",
+            "produto_status",
+            "variacao_nome",
+            "sku",
+            "variacao_status",
+            "preco",
+            "estoque"
+          ]
+        } as $cart_items
 
     precondition (($cart_items|count) > 0) {
       error_type = "badrequest"
@@ -98,6 +107,22 @@ query "checkout/confirm" verb=POST {
 
     foreach ($cart_items) {
       each as $item {
+        var $item_available {
+          value = false
+        }
+
+        conditional {
+          if ($item.produto_status == "ATIVO" && $item.variacao_status == "ATIVO" && $item.estoque >= $item.quantidade) {
+            var.update $item_available {
+              value = true
+            }
+          }
+        }
+
+        var $line_subtotal {
+          value = $item.preco * $item.quantidade
+        }
+
         var.update $review_items {
           value = $review_items|push:{
             item_id: $item.id
@@ -107,11 +132,11 @@ query "checkout/confirm" verb=POST {
             sku: $item.sku
             quantidade: $item.quantidade
             preco_unitario: $item.preco
-            subtotal: $item.subtotal
+            subtotal: $line_subtotal
             produto_status: $item.produto_status
             variacao_status: $item.variacao_status
             estoque_disponivel: $item.estoque
-            disponivel: $item.disponivel
+            disponivel: $item_available
           }
         }
 
@@ -128,11 +153,11 @@ query "checkout/confirm" verb=POST {
         }
 
         var.update $subtotal {
-          value = $subtotal + $item.subtotal
+          value = $subtotal + $line_subtotal
         }
 
         conditional {
-          if ($item.disponivel == false) {
+          if ($item_available == false) {
             var.update $all_available {
               value = false
             }
@@ -204,12 +229,21 @@ query "checkout/confirm" verb=POST {
             variacao_status: $db.variacao_produto.status
             preco: $db.variacao_produto.preco
             estoque: $db.variacao_produto.quantidade_disponivel
-            subtotal: $db.variacao_produto.preco * $db.item_carrinho.quantidade
-            disponivel: $db.produto.status == "ATIVO" && $db.variacao_produto.status == "ATIVO" && $db.variacao_produto.quantidade_disponivel >= $db.item_carrinho.quantidade
           }
           where = $db.item_carrinho.carrinho_id == $current_cart.id
           sort = {id: "asc"}
-          output = ["id", "variacao_produto_id", "quantidade"]
+          output = [
+            "id",
+            "variacao_produto_id",
+            "quantidade",
+            "produto_nome",
+            "produto_status",
+            "variacao_nome",
+            "sku",
+            "variacao_status",
+            "preco",
+            "estoque"
+          ]
         } as $current_cart_items
 
         precondition (($current_cart_items|count) > 0) {
@@ -235,6 +269,22 @@ query "checkout/confirm" verb=POST {
 
         foreach ($current_cart_items) {
           each as $item {
+            var $item_available {
+              value = false
+            }
+
+            conditional {
+              if ($item.produto_status == "ATIVO" && $item.variacao_status == "ATIVO" && $item.estoque >= $item.quantidade) {
+                var.update $item_available {
+                  value = true
+                }
+              }
+            }
+
+            var $line_subtotal {
+              value = $item.preco * $item.quantidade
+            }
+
             var.update $review_items {
               value = $review_items|push:{
                 item_id: $item.id
@@ -244,11 +294,11 @@ query "checkout/confirm" verb=POST {
                 sku: $item.sku
                 quantidade: $item.quantidade
                 preco_unitario: $item.preco
-                subtotal: $item.subtotal
+                subtotal: $line_subtotal
                 produto_status: $item.produto_status
                 variacao_status: $item.variacao_status
                 estoque_disponivel: $item.estoque
-                disponivel: $item.disponivel
+                disponivel: $item_available
               }
             }
 
@@ -265,11 +315,11 @@ query "checkout/confirm" verb=POST {
             }
 
             var.update $subtotal {
-              value = $subtotal + $item.subtotal
+              value = $subtotal + $line_subtotal
             }
 
             conditional {
-              if ($item.disponivel == false) {
+              if ($item_available == false) {
                 var.update $all_available {
                   value = false
                 }
@@ -297,7 +347,7 @@ query "checkout/confirm" verb=POST {
                   data = {
                     cliente_id: $auth.id
                     endereco_id: $current_address.id
-                    codigo: "VTX-" + $order_uuid
+                    codigo: "VTX-" ~ $order_uuid
                     data_pedido: now
                     status: "AGUARDANDO_PAGAMENTO"
                     subtotal: $subtotal
@@ -396,4 +446,5 @@ query "checkout/confirm" verb=POST {
     }
   }
   tags = ["voltix:checkout-orders"]
+  guid = "uEUSmfCkMCShw81GO45gsTBOaQw"
 }

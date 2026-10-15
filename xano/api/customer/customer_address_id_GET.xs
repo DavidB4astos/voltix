@@ -31,4 +31,5 @@ query "addresses/{address_id}" verb=GET {
 
   response = $address
   tags = ["voltix:customer-addresses"]
+  guid = "w_eNLaRzsDnYlFX3ekp_hZ4YATk"
 }

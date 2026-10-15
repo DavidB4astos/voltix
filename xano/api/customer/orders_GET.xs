@@ -87,4 +87,5 @@ query "orders" verb=GET {
 
   response = $order_summaries
   tags = ["voltix:checkout-orders"]
+  guid = "TuuzNNajfS5W4pEMzkAwjC5aSPU"
 }

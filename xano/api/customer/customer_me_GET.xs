@@ -27,4 +27,5 @@ query "me" verb=GET {
     status: $customer.status
   }
   tags = ["voltix:customer"]
+  guid = "UdTrs6_sLYZ9KUrq14BKkgzrfJk"
 }

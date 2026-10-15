@@ -82,4 +82,5 @@ query "addresses" verb=POST {
     status: $address.status
   }
   tags = ["voltix:customer-addresses"]
+  guid = "S5zN9pqQwQku_UhpprdWfRxG6Mw"
 }

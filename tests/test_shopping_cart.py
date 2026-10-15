@@ -305,9 +305,9 @@ class ShoppingCartTests(unittest.TestCase):
 
         read = endpoints[0].read_text(encoding="utf-8")
         self.assertIn("$db.carrinho.cliente_id == $auth.id", read)
-        self.assertIn("$db.variacao_produto.preco * $db.item_carrinho.quantidade", read)
+        self.assertIn("$cart_item.preco * $cart_item.quantidade", read)
         self.assertIn("$db.variacao_produto.quantidade_disponivel", read)
-        self.assertIn("$cart_total + $cart_item.subtotal", read)
+        self.assertIn("$cart_total + $line_subtotal", read)
         self.assertIn("produto_status", read)
         self.assertIn("variacao_status", read)
 
