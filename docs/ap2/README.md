@@ -1,6 +1,6 @@
 # AP2 — Documentação de Engenharia de Requisitos — Voltix
 
-> Capa e índice da entrega da AP2. Documento de apoio aos seis artefatos numerados deste diretório, mais um anexo de verificação.
+> Capa e índice da entrega da AP2. Documento de apoio aos seis artefatos numerados deste diretório, mais dois anexos de verificação (07 e 08).
 > **Entrega:** 21/10/2026.
 
 ## Identificação acadêmica
@@ -29,6 +29,7 @@
 | 05 | [05-product-vision-board.md](05-product-vision-board.md) | Product Vision Board (Visão, Grupo-alvo, Necessidades, Produto, Objetivos). |
 | 06 | [06-srs.md](06-srs.md) | SRS com requisitos funcionais, requisitos não funcionais e casos de uso. |
 | 07 | [07-evidencias-catalogo-429.md](07-evidencias-catalogo-429.md) | Anexo de verificação: evidências (antes/depois) da correção do erro HTTP 429 no catálogo público. |
+| 08 | [08-evidencias-fluxos-publicos-interno.md](08-evidencias-fluxos-publicos-interno.md) | Anexo de verificação: verificação ao vivo dos fluxos de Home, Catálogo, Acesso interno e Integração, e cobertura de configuração do Xano. |
 
 ## Nota metodológica
 
