@@ -144,4 +144,5 @@ query "products/{product_id}" verb=PATCH {
 
   response = $updated_product
   tags = ["voltix:product-management"]
+  guid = "YJOD1IemBD5iLEfVD1EIPRpi5Vc"
 }

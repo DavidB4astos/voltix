@@ -145,4 +145,5 @@ query "variations/{variation_id}" verb=PATCH {
 
   response = $updated_variation
   tags = ["voltix:product-management"]
+  guid = "MQCNgUmw-9fx-AScrC5HGOTBO2Y"
 }

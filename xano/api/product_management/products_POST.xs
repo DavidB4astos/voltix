@@ -120,4 +120,5 @@ query "products" verb=POST {
 
   response = $product
   tags = ["voltix:product-management"]
+  guid = "jr9c6gUFHDZF1Cundb79ySKB5jw"
 }

@@ -72,4 +72,5 @@ query "variations" verb=POST {
 
   response = $variation
   tags = ["voltix:product-management"]
+  guid = "ozcH6n7rnhlhGinm9hXee5BEEu8"
 }

@@ -30,5 +30,7 @@
 
 ## Estado de validação do ambiente
 
-- 5.2 e 5.3 permanecem pendentes: o E2E real não foi executado porque o workspace Xano v1 está com `allow_push: false`, bloqueando externamente a publicação dos endpoints desta Change. Nenhum resultado de E2E é declarado.
+- Publicação desbloqueada: o bloqueio anterior (`allow_push: false`) deixou de impedir a publicação; os endpoints desta Change foram publicados no workspace Xano e os guids retornados foram sincronizados nos 5 arquivos de endpoint versionados. As estruturas de dados e os destinos configurados já existem no ambiente.
+- 5.2 permanece pendente: a listagem de Produtos com Categoria/Marca/variações foi verificada ao vivo, mas a edição de Produto persistiu no Xano e a interface exibiu mensagem genérica de falha (a investigar). Criação de Produto com variação inicial, upload de imagem opcional, status de Produto/variações e persistência após reload ainda não foram validados. Nenhum resultado de E2E é declarado como concluído.
+- 5.3 permanece pendente: a autorização negativa no backend (FUNCIONARIO, sessão ausente/inválida, usuário inativo) e a rejeição de entradas inválidas (SKU, preço, quantidade e produto sem variação) ainda não foram validadas ponta a ponta.
 - As validações automatizadas locais de implementação são evidência técnica, mas não substituem as verificações ponta a ponta exigidas por essas tarefas.

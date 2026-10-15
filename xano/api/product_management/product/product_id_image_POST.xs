@@ -52,4 +52,5 @@ query "products/{product_id}/image" verb=POST {
 
   response = $updated_product
   tags = ["voltix:product-management"]
+  guid = "f2I6HMI-P9sA_BGo42ClIPeRxAQ"
 }
