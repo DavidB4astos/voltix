@@ -84,10 +84,12 @@ test("visual: catálogo + carrinho + checkout + pedidos + admin (login)", async 
     // Tentar preencher login se campos existirem
     const emailInput = page.locator('input[name="email"], input[type="email"]').first();
     if (await emailInput.count() > 0 && await emailInput.isVisible()) {
-      await emailInput.fill("e2e.cart.20261015103451@example.com");
+      if (process.env.E2E_TEST_EMAIL) {
+        await emailInput.fill(process.env.E2E_TEST_EMAIL);
+      }
       const pass = page.locator('input[name="password"], input[type="password"]').first();
-      if (await pass.count() > 0) {
-        await pass.fill("SenhaE2E!123");
+      if (await pass.count() > 0 && process.env.E2E_TEST_PASSWORD) {
+        await pass.fill(process.env.E2E_TEST_PASSWORD);
         await page.getByRole("button", { name: /entrar/i }).first().click();
         await page.waitForTimeout(800);
       }
