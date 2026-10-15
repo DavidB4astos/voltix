@@ -3926,13 +3926,77 @@ def surface_card(*children, **props) -> rx.Component:
     return rx.box(*children, **props)
 
 
+_TONE_ICONS = {
+    "error": "circle-alert",
+    "success": "circle-check",
+    "warning": "triangle-alert",
+    "info": "info",
+    "muted": "info",
+}
+
+_STATUS_SCHEMES = {
+    "ATIVO": "cyan",
+    "PAGAMENTO_CONFIRMADO": "green",
+    "APROVADO": "green",
+    "INATIVO": "gray",
+    "AGUARDANDO_PAGAMENTO": "amber",
+    "PENDENTE": "amber",
+}
+
+
 def feedback_text(message, tone: str = "muted") -> rx.Component:
-    """Mensagem de feedback (erro, sucesso, aviso ou neutra)."""
-    return rx.text(
-        message,
-        color=_TONE_COLORS.get(tone, COLOR_TEXT_MUTED),
-        font_size="0.9rem",
+    """Mensagem de feedback (erro, sucesso, aviso ou neutra) com icone semantico."""
+    color = _TONE_COLORS.get(tone, COLOR_TEXT_MUTED)
+    icon = _TONE_ICONS.get(tone, "info")
+    content = rx.hstack(
+        rx.icon(icon, size=16, color=color),
+        rx.text(message, color=color, font_size="0.9rem"),
+        spacing="2",
+        align="center",
+        width="100%",
     )
+    if isinstance(message, str):
+        return content if message else rx.fragment()
+    return rx.cond(message != "", content, rx.fragment())
+
+
+def status_badge(status) -> rx.Component:
+    """Badge de status com cor semantica consistente."""
+    if isinstance(status, str):
+        scheme = _STATUS_SCHEMES.get(status, "cyan")
+    else:
+        scheme = rx.match(status, *_STATUS_SCHEMES.items(), "cyan")
+    return rx.badge(
+        status,
+        color_scheme=scheme,
+        variant="soft",
+        radius="full",
+        size="2",
+    )
+
+
+def primary_button(label, **props) -> rx.Component:
+    """Botao de acao primaria padronizado."""
+    props.setdefault("color_scheme", "cyan")
+    props.setdefault("variant", "solid")
+    props.setdefault("size", "3")
+    return rx.button(label, **props)
+
+
+def secondary_button(label, **props) -> rx.Component:
+    """Botao de acao secundaria padronizado."""
+    props.setdefault("color_scheme", "gray")
+    props.setdefault("variant", "soft")
+    props.setdefault("size", "3")
+    return rx.button(label, **props)
+
+
+def danger_button(label, **props) -> rx.Component:
+    """Botao de acao destrutiva padronizado."""
+    props.setdefault("color_scheme", "red")
+    props.setdefault("variant", "soft")
+    props.setdefault("size", "3")
+    return rx.button(label, **props)
 
 
 def status_panel(
@@ -4076,7 +4140,7 @@ def index() -> rx.Component:
             rx.vstack(
                 rx.hstack(
                     section_heading(title, size="5"),
-                    rx.button(
+                    secondary_button(
                         "Atualizar lista",
                         on_click=refresh_event,
                         disabled=loading,
@@ -4106,7 +4170,7 @@ def index() -> rx.Component:
                             width="100%",
                         ),
                         rx.hstack(
-                            rx.button(
+                            primary_button(
                                 rx.cond(
                                     editing_id != None,
                                     "Salvar alterações",
@@ -4117,7 +4181,7 @@ def index() -> rx.Component:
                             ),
                             rx.cond(
                                 editing_id != None,
-                                rx.button(
+                                secondary_button(
                                     "Cancelar",
                                     type="button",
                                     on_click=cancel_event,
@@ -4144,13 +4208,13 @@ def index() -> rx.Component:
                     lambda entry: rx.hstack(
                         rx.text(entry.name, weight="bold", color=COLOR_NAVY),
                         rx.text(entry.description, color=COLOR_TEXT_MUTED),
-                        rx.badge(entry.status, color_scheme="cyan"),
-                        rx.button(
+                        status_badge(entry.status),
+                        secondary_button(
                             "Editar",
                             on_click=edit_event(entry.id),
                             disabled=loading,
                         ),
-                        rx.button(
+                        secondary_button(
                             rx.cond(
                                 entry.status == "ATIVO",
                                 "Inativar",
@@ -4314,7 +4378,7 @@ def index() -> rx.Component:
                             disabled=State.products_loading,
                             width="100%",
                         ),
-                        rx.button(
+                        secondary_button(
                             "Enviar imagem principal",
                             type="button",
                             on_click=State.upload_product_image(
@@ -4329,7 +4393,7 @@ def index() -> rx.Component:
                     rx.fragment(),
                 ),
                 rx.hstack(
-                    rx.button(
+                    primary_button(
                         rx.cond(
                             State.product_editing_id != None,
                             "Salvar produto",
@@ -4340,7 +4404,7 @@ def index() -> rx.Component:
                     ),
                     rx.cond(
                         State.product_editing_id != None,
-                        rx.button(
+                        secondary_button(
                             "Cancelar edição",
                             type="button",
                             on_click=State.cancel_product_edit,
@@ -4416,12 +4480,12 @@ def index() -> rx.Component:
                         width="100%",
                     ),
                     rx.hstack(
-                        rx.button(
+                        primary_button(
                             "Salvar variação",
                             type="submit",
                             disabled=State.products_loading,
                         ),
-                        rx.button(
+                        secondary_button(
                             "Cancelar",
                             type="button",
                             on_click=State.cancel_variation,
@@ -4450,7 +4514,7 @@ def index() -> rx.Component:
             product_form(),
             rx.hstack(
                 section_heading("Produtos cadastrados", size="5"),
-                rx.button(
+                secondary_button(
                     "Atualizar lista",
                     on_click=State.load_products,
                     disabled=State.products_loading,
@@ -4477,7 +4541,7 @@ def index() -> rx.Component:
                                 ),
                                 size="4",
                             ),
-                            rx.badge(product.status, color_scheme="cyan"),
+                            status_badge(product.status),
                             justify="between",
                             width="100%",
                         ),
@@ -4506,12 +4570,12 @@ def index() -> rx.Component:
                             color="gray",
                         ),
                         rx.hstack(
-                            rx.button(
+                            secondary_button(
                                 "Editar produto",
                                 on_click=State.edit_product(product.id),
                                 disabled=State.products_loading,
                             ),
-                            rx.button(
+                            secondary_button(
                                 rx.cond(
                                     product.status == "ATIVO",
                                     "Inativar produto",
@@ -4520,7 +4584,7 @@ def index() -> rx.Component:
                                 on_click=State.toggle_product_status(product.id),
                                 disabled=State.products_loading,
                             ),
-                            rx.button(
+                            primary_button(
                                 "Adicionar variação",
                                 on_click=State.begin_variation(product.id),
                                 disabled=State.products_loading,
@@ -4540,7 +4604,7 @@ def index() -> rx.Component:
                                         ),
                                         weight="bold",
                                     ),
-                                    rx.badge(variation.status, color_scheme="cyan"),
+                                    status_badge(variation.status),
                                     justify="between",
                                     width="100%",
                                 ),
@@ -4553,7 +4617,7 @@ def index() -> rx.Component:
                                     + variation.available_quantity.to_string()
                                 ),
                                 rx.hstack(
-                                    rx.button(
+                                    secondary_button(
                                         "Editar variação",
                                         on_click=State.edit_variation(
                                             product.id,
@@ -4561,7 +4625,7 @@ def index() -> rx.Component:
                                         ),
                                         disabled=State.products_loading,
                                     ),
-                                    rx.button(
+                                    secondary_button(
                                         rx.cond(
                                             variation.status == "ATIVO",
                                             "Inativar variação",
@@ -4663,7 +4727,7 @@ State.toggle_brand_status,
                     align="center",
                     wrap="wrap",
                 ),
-                rx.button("Sair", on_click=State.logout),
+                secondary_button("Sair", on_click=State.logout),
                 justify="between",
                 width="100%",
                 wrap="wrap",
@@ -4726,7 +4790,7 @@ State.toggle_brand_status,
                                     width="100%",
                                 ),
                             ),
-                            rx.button(
+                            primary_button(
                                 rx.cond(State.login_loading, "Entrando...", "Entrar"),
                                 type="submit",
                                 disabled=State.login_loading,
@@ -4746,7 +4810,7 @@ State.toggle_brand_status,
                     rx.cond(
                         (State.login_status == "success")
                         & (State.session_status != "success"),
-                        rx.button(
+                        primary_button(
                             "Acessar área interna",
                             on_click=State.enter_internal_area,
                             width="100%",
@@ -5175,7 +5239,7 @@ def home_page() -> rx.Component:
                         "Não foi possível carregar os destaques",
                         description=State.public_catalog_message,
                         tone="error",
-                        action=rx.button(
+                        action=primary_button(
                             "Tentar novamente",
                             on_click=State.load_public_catalog,
                             disabled=State.public_catalog_loading,
@@ -5255,16 +5319,20 @@ def public_catalog_page() -> rx.Component:
                     rx.text("Marca: " + product.brand_name),
                     rx.fragment(),
                 ),
-                rx.text(product.description, color=COLOR_TEXT_MUTED),
-                rx.button(
+                rx.text(product.description, color=COLOR_TEXT_MUTED, flex_grow="1"),
+                rx.spacer(),
+                secondary_button(
                     "Ver detalhes",
                     on_click=State.load_public_product_details(product.id),
                     disabled=State.public_product_loading,
+                    width="100%",
                 ),
                 align="stretch",
                 spacing="3",
                 width="100%",
+                height="100%",
             ),
+            height="100%",
         )
 
     def selected_product_details() -> rx.Component:
@@ -5277,7 +5345,7 @@ def public_catalog_page() -> rx.Component:
                             State.public_selected_product.name,
                             size="5",
                         ),
-                        rx.button(
+                        secondary_button(
                             "Fechar detalhes",
                             on_click=State.close_public_product_details,
                         ),
@@ -5352,7 +5420,7 @@ def public_catalog_page() -> rx.Component:
                                             "Indisponível para compra (estoque zero)",
                                         )
                                     ),
-                                    rx.button(
+                                    primary_button(
                                         "Adicionar ao carrinho",
                                         on_click=State.add_to_cart(variation.id),
                                         disabled=(
@@ -5422,7 +5490,7 @@ def public_catalog_page() -> rx.Component:
                     width="100%",
                     min_width="0",
                 ),
-                rx.button(
+                secondary_button(
                     "Limpar filtro",
                     on_click=State.filter_public_catalog(""),
                     disabled=State.public_category_id == "",
@@ -5448,7 +5516,7 @@ def public_catalog_page() -> rx.Component:
                 "Não foi possível carregar o catálogo",
                 description=State.public_catalog_message,
                 tone="error",
-                action=rx.button(
+                action=primary_button(
                     "Tentar novamente",
                     on_click=State.load_public_catalog,
                     disabled=State.public_catalog_loading,
@@ -5487,7 +5555,7 @@ def public_catalog_page() -> rx.Component:
                 "Não foi possível carregar os detalhes do produto",
                 description=State.public_product_message,
                 tone="error",
-                action=rx.button(
+                action=primary_button(
                     "Tentar novamente",
                     on_click=State.load_public_product_details(
                         State.public_product_detail_id
@@ -5530,7 +5598,7 @@ def customer_account_page() -> rx.Component:
                         rx.badge("Principal", color_scheme="cyan"),
                         rx.fragment(),
                     ),
-                    rx.badge(address.status, color_scheme="cyan"),
+                            status_badge(address.status),
                     justify="between",
                     width="100%",
                     wrap="wrap",
@@ -5571,13 +5639,13 @@ def customer_account_page() -> rx.Component:
                     rx.fragment(),
                 ),
                 rx.hstack(
-                    rx.button(
+                    secondary_button(
                         "Editar",
                         on_click=State.edit_customer_address(address.id),
                     ),
                     rx.cond(
                         (address.status == "ATIVO") & (address.is_primary == False),
-                        rx.button(
+                        secondary_button(
                             "Tornar principal",
                             on_click=State.set_customer_address_primary(address.id),
                         ),
@@ -5585,14 +5653,14 @@ def customer_account_page() -> rx.Component:
                     ),
                     rx.cond(
                         address.status == "ATIVO",
-                        rx.button(
+                        secondary_button(
                             "Inativar",
                             on_click=State.set_customer_address_status(
                                 address.id,
                                 "INATIVO",
                             ),
                         ),
-                        rx.button(
+                        secondary_button(
                             "Reativar",
                             on_click=State.set_customer_address_status(
                                 address.id,
@@ -5600,10 +5668,9 @@ def customer_account_page() -> rx.Component:
                             ),
                         ),
                     ),
-                    rx.button(
+                    danger_button(
                         "Remover",
                         on_click=State.delete_customer_address(address.id),
-                        color_scheme="red",
                     ),
                     wrap="wrap",
                 ),
@@ -5682,7 +5749,7 @@ def customer_account_page() -> rx.Component:
                                 width="100%",
                             ),
                         ),
-                        rx.button(
+                        primary_button(
                             "Cadastrar",
                             type="submit",
                             disabled=State.customer_registration_status == "loading",
@@ -5741,7 +5808,7 @@ def customer_account_page() -> rx.Component:
                                 width="100%",
                             ),
                         ),
-                        rx.button(
+                        primary_button(
                             rx.cond(
                                 State.customer_login_status == "loading",
                                 "Entrando...",
@@ -5785,7 +5852,7 @@ def customer_account_page() -> rx.Component:
                     color=COLOR_TEXT_MUTED,
                     _hover={"color": COLOR_CYAN_DARK},
                 ),
-                rx.button("Sair", on_click=State.logout_customer),
+                secondary_button("Sair", on_click=State.logout_customer),
                 spacing="4",
                 wrap="wrap",
             ),
@@ -5834,7 +5901,7 @@ def customer_account_page() -> rx.Component:
                                 width="100%",
                             ),
                         ),
-                        rx.button("Salvar perfil", type="submit"),
+                        primary_button("Salvar perfil", type="submit"),
                         width="100%",
                         align="stretch",
                         spacing="3",
@@ -5851,11 +5918,11 @@ def customer_account_page() -> rx.Component:
         ),
         section_heading("Meus endereços", size="5"),
         rx.hstack(
-            rx.button(
+            primary_button(
                 "Novo endereço",
                 on_click=State.start_new_customer_address,
             ),
-            rx.button(
+            secondary_button(
                 "Atualizar endereços",
                 on_click=State.load_customer_addresses,
                 disabled=State.customer_addresses_loading,
@@ -5939,7 +6006,7 @@ def customer_account_page() -> rx.Component:
                     width="100%",
                 ),
                     rx.hstack(
-                        rx.button(
+                        primary_button(
                             rx.cond(
                                 State.customer_address_editing_id != None,
                                 "Salvar endereço",
@@ -5949,7 +6016,7 @@ def customer_account_page() -> rx.Component:
                         ),
                         rx.cond(
                             State.customer_address_editing_id != None,
-                            rx.button(
+                            secondary_button(
                                 "Cancelar edição",
                                 type="button",
                                 on_click=State.start_new_customer_address,
@@ -6031,7 +6098,7 @@ def customer_cart_page() -> rx.Component:
                             default_value=item.quantity.to_string(),
                             width="8rem",
                         ),
-                        rx.button(
+                        secondary_button(
                             "Atualizar quantidade",
                             type="submit",
                             disabled=State.cart_loading,
@@ -6040,11 +6107,10 @@ def customer_cart_page() -> rx.Component:
                     ),
                     on_submit=State.update_cart_item(item.id),
                 ),
-                rx.button(
+                danger_button(
                     "Remover item",
                     on_click=State.remove_cart_item(item.id),
                     disabled=State.cart_loading,
-                    color_scheme="red",
                 ),
                 align="stretch",
                 spacing="2",
@@ -6059,7 +6125,7 @@ def customer_cart_page() -> rx.Component:
                 weight="bold",
                 color=COLOR_NAVY,
             ),
-            rx.button(
+            secondary_button(
                 "Atualizar carrinho",
                 on_click=State.load_cart,
                 disabled=State.cart_loading,
@@ -6089,7 +6155,12 @@ def customer_cart_page() -> rx.Component:
         ),
         rx.cond(
             State.cart_items.length() > 0,
-            rx.link("Continuar para checkout", href="/checkout"),
+            rx.link(
+                primary_button("Continuar para checkout", width="100%"),
+                href="/checkout",
+                text_decoration="none",
+                width="100%",
+            ),
             rx.fragment(),
         ),
         align="stretch",
@@ -6209,7 +6280,7 @@ def customer_checkout_page() -> rx.Component:
                             "O pagamento ficará pendente. Nenhuma cobrança será "
                             "processada nesta etapa."
                         ),
-                        rx.button(
+                        primary_button(
                             "Confirmar pedido",
                             type="submit",
                             disabled=(
@@ -6275,7 +6346,7 @@ def customer_checkout_page() -> rx.Component:
             on_change=State.set_checkout_address,
             width="100%",
         ),
-        rx.button(
+        primary_button(
             "Revisar carrinho",
             on_click=State.load_checkout_review,
             disabled=(
@@ -6330,13 +6401,13 @@ def customer_orders_page() -> rx.Component:
             rx.vstack(
                 section_heading("Pedido " + order.code, size="4"),
                 rx.text("Data: " + order.order_date, color=COLOR_TEXT_MUTED),
-                rx.badge(order.status, color_scheme="cyan"),
+                                status_badge(order.status),
                 rx.text(
                     "Itens: " + order.order_items.length().to_string(),
                     color=COLOR_TEXT_MUTED,
                 ),
                 rx.text("Total: R$ " + order.total),
-                rx.button(
+                secondary_button(
                     "Ver resumo",
                     on_click=State.load_customer_order(order.id),
                     disabled=State.order_loading,
@@ -6382,7 +6453,7 @@ def customer_orders_page() -> rx.Component:
                         "Pedido " + State.selected_order_code,
                         size="5",
                     ),
-                    rx.badge(State.selected_order_status, color_scheme="cyan"),
+                            status_badge(State.selected_order_status),
                     justify="between",
                     width="100%",
                     wrap="wrap",
@@ -6428,7 +6499,7 @@ def customer_orders_page() -> rx.Component:
                 rx.cond(
                     (State.selected_order_status == "AGUARDANDO_PAGAMENTO")
                     & (State.selected_order_payment_status == "PENDENTE"),
-                    rx.button(
+                    primary_button(
                         "Simular pagamento",
                         on_click=State.simulate_order_payment,
                         disabled=State.payment_simulating,
@@ -6455,7 +6526,7 @@ def customer_orders_page() -> rx.Component:
             State.customer_authenticated,
             rx.vstack(
                 feedback_text(State.orders_message, tone="error"),
-                rx.button(
+                secondary_button(
                     "Atualizar histórico",
                     on_click=State.load_customer_orders,
                     disabled=State.orders_loading,
