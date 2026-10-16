@@ -94,3 +94,9 @@ Cancelamento/devoluÃ§Ã£o (C2), reserva de estoque, tabela de movimentaÃ§Ã£o, pai
 
 - `checkout_confirm_POST.xs` e `tests/test_checkout_orders.py`.
 - Nenhuma dependÃªncia de outras changes.
+## BLOQUEIO TÉCNICO (Xano Free)
+
+- **db.direct_query indisponível:** Confirmado por ERROR_CODE_ACCESS_DENIED no editor Xano. Documentação oficial exige planos **Launch/Scale** (não-Legacy).
+- **Sem alternativa comprovada:** Com db.get/db.query/db.patch/db.edit + db.transaction não é possível implementar SELECT ... FOR UPDATE + UPDATE guardado para garantir estoque nunca negativo sob concorrência. Check-then-write é inseguro neste contexto.
+- **Requisitos preservados:** atomicidade, rollback conjunto (Pedido, ItemPedido, Pagamento, baixa de estoque) e **estoque nunca negativo**. **Nenhuma implementação insegura está autorizada**.
+- **Status:** **C1 BLOQUEADA por limitação técnica**. Aguardando (a) upgrade do plano para Launch/Scale (habilitar db.direct_query), ou (b) decisão de repriorização/replanejamento.

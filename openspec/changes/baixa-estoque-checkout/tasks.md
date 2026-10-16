@@ -20,3 +20,9 @@
 - [ ] 4.1 Executar a suÃ­te aplicÃ¡vel completa, `python -m py_compile voltix/voltix.py`, `reflex compile`, validaÃ§Ã£o dos XanoScript alterados e `git diff --check`.
 - [ ] 4.2 Validar ao vivo o cenÃ¡rio da Ãºltima unidade: duas confirmaÃ§Ãµes concorrentes â‡’ uma vence e a outra recebe `confirmado=false`, sem estoque negativo; registrar a evidÃªncia ou a pendÃªncia quando depender de sessÃµes reais.
 - [ ] 4.3 Auditar o escopo final: sem cancelamento/devoluÃ§Ã£o, reserva, movimentaÃ§Ã£o de estoque, nova tabela, painel ou alteraÃ§Ã£o de frontend; confirmar que `gestao-produtos` permanece intacta com 13/15 tarefas e pendÃªncias 5.2/5.3 documentadas.
+## BLOQUEIO TÉCNICO (Xano Free)
+
+- Tarefa 1.1 não pôde ser concluída: **db.direct_query não está disponível** no Xano Free (ERROR_CODE_ACCESS_DENIED). Documentação oficial exige planos Launch/Scale.
+- **Sem alternativa nativa comprovada** para garantir estoque nunca negativo sob concorrência usando apenas db.get/db.query/db.patch/db.edit dentro de db.transaction.
+- **Nenhuma implementação insegura** está autorizada. Os requisitos de atomicidade, rollback conjunto (Pedido/ItemPedido/Pagamento/estoque) e "nunca negativo" devem ser preservados.
+- **Status:** **C1 BLOQUEADA** por limitação técnica. Implementação adiada até (a) upgrade para Launch/Scale (habilitar db.direct_query), ou (b) decisão de repriorização.
