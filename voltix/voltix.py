@@ -3744,6 +3744,7 @@ def site_header(
     active: str = "",
     badge: str = "Loja",
     logo_href: str = "/catalogo",
+    wide: bool = False,
 ) -> rx.Component:
     """Cabecalho em banda navy com logo, badge de area e navegacao por pills."""
 
@@ -3793,8 +3794,8 @@ def site_header(
             color=color,
             background=background,
             border=border,
-            padding_x="5",
-            padding_y="2",
+            padding_x="1.25rem",
+            padding_y="0.5rem",
             border_radius="9999px",
             font_weight="600" if is_active or emphasized else "500",
             font_size="0.95rem",
@@ -3815,7 +3816,7 @@ def site_header(
                 width="1px",
                 height="1.6rem",
                 background="rgba(255,255,255,0.20)",
-                margin_x="2",
+                margin_x="0.5rem",
             )
         )
         nav_items.extend(
@@ -3849,26 +3850,33 @@ def site_header(
                     align="center",
                     wrap="wrap",
                     justify={"initial": "start", "md": "end"},
-                    width={"initial": "100%", "md": "auto"},
+                    width=rx.breakpoints(initial="100%", md="auto"),
                 ),
                 direction={"initial": "column", "md": "row"},
                 align={"initial": "start", "md": "center"},
                 justify="between",
-                gap="3",
+                spacing="3",
                 width="100%",
             ),
             max_width="72rem",
+            size="4" if wide else "3",
             width="100%",
-            padding_x="4",
-            padding_y="3",
+            margin_x="auto" if wide else "0rem",
+            padding_x="1rem" if wide else "2rem",
+            padding_y="1.25rem",
         ),
-        background=COLOR_NAVY,
+        background="linear-gradient(135deg, "
+        + COLOR_NAVY
+        + " 0%, "
+        + COLOR_NAVY_SOFT
+        + " 100%)",
         border_bottom=f"3px solid {COLOR_CYAN}",
+        box_shadow="0 6px 20px rgba(7, 21, 37, 0.18)",
         width="100%",
     )
 
 
-def site_footer() -> rx.Component:
+def site_footer(*, wide: bool = False) -> rx.Component:
     """Rodape compartilhado das paginas em banda navy."""
     return rx.box(
         rx.container(
@@ -3901,15 +3909,21 @@ def site_footer() -> rx.Component:
                 direction={"initial": "column", "md": "row"},
                 justify="between",
                 align={"initial": "start", "md": "center"},
-                gap="4",
+                gap=rx.breakpoints(initial="1.25rem", md="2rem"),
                 width="100%",
             ),
             max_width="72rem",
+            size="4" if wide else "3",
             width="100%",
-            padding_x="4",
-            padding_y="5",
+            margin_x="auto" if wide else "0rem",
+            padding_x="1rem" if wide else "2rem",
+            padding_y="1.5rem",
         ),
-        background=COLOR_NAVY,
+        background="linear-gradient(135deg, "
+        + COLOR_NAVY
+        + " 0%, "
+        + COLOR_NAVY_SOFT
+        + " 100%)",
         border_top=f"3px solid {COLOR_CYAN}",
         width="100%",
     )
@@ -4082,6 +4096,7 @@ def page_shell(
     max_width: str = "64rem",
     header: rx.Component | None = None,
     show_footer: bool = True,
+    size: str = "3",
 ) -> rx.Component:
     """Shell de pagina: fundo claro, largura responsiva, header e footer."""
     parts = []
@@ -4097,6 +4112,7 @@ def page_shell(
                 flex_grow="1",
             ),
             max_width=max_width,
+            size=size,
             width="100%",
             padding_x="4",
             padding_y="4",
@@ -4104,7 +4120,7 @@ def page_shell(
         )
     )
     if show_footer:
-        parts.append(site_footer())
+        parts.append(site_footer(wide=size != "3"))
     return rx.box(
         rx.flex(
             *parts,
@@ -4841,6 +4857,8 @@ State.toggle_brand_status,
 def home_page() -> rx.Component:
     """Home publica premium: hero, beneficios, categorias e vitrine."""
 
+    home_radius = "18px"
+
     def hero_section() -> rx.Component:
         return rx.box(
             rx.grid(
@@ -4857,21 +4875,29 @@ def home_page() -> rx.Component:
                         spacing="2",
                         align="center",
                         background="rgba(8, 102, 217, 0.10)",
-                        padding_x="3",
-                        padding_y="1",
+                        padding_x="0.75rem",
+                        padding_y="0.25rem",
                         border_radius="9999px",
                     ),
                     rx.heading(
                         "Tecnologia premium para elevar o seu setup.",
                         size="8",
+                        font_size=rx.breakpoints(
+                            initial="2.4rem",
+                            sm="2.9rem",
+                            md="3.6rem",
+                        ),
                         color=COLOR_NAVY,
-                        line_height="1.1",
+                        line_height="1.03",
+                        letter_spacing="-0.03em",
+                        max_width="46rem",
                     ),
                     rx.text(
                         "Monte sua estação com as melhores marcas, suporte "
                         "especializado e entrega rápida para o seu dia a dia.",
                         color=COLOR_TEXT_MUTED,
-                        font_size="1.05rem",
+                        font_size=rx.breakpoints(initial="1.05rem", md="1.2rem"),
+                        line_height="1.65",
                         max_width="34rem",
                     ),
                     rx.hstack(
@@ -4885,8 +4911,8 @@ def home_page() -> rx.Component:
                             href="/catalogo",
                             display="inline-flex",
                             align_items="center",
-                            padding_x="8",
-                            padding_y="3",
+                            padding_x="2rem",
+                            padding_y="0.75rem",
                             background=COLOR_BLUE,
                             color=COLOR_CARD,
                             border_radius="9999px",
@@ -4906,10 +4932,10 @@ def home_page() -> rx.Component:
                         wrap="wrap",
                     ),
                     align="start",
-                    spacing="5",
+                    spacing="4",
                     width="100%",
                     justify="center",
-                    min_height="280px",
+                    min_height="220px",
                 ),
                 rx.cond(
                     (State.public_products.length() > 0)
@@ -4919,20 +4945,20 @@ def home_page() -> rx.Component:
                         alt=State.public_products[0].name,
                         width="100%",
                         height="100%",
-                        min_height="280px",
-                        max_height="380px",
+                        min_height="220px",
+                        max_height="300px",
                         object_fit="cover",
-                        border_radius=RADIUS,
+                        border_radius=home_radius,
                         box_shadow=CARD_SHADOW,
                     ),
                     rx.box(
                         rx.vstack(
                             rx.flex(
-                                rx.icon("cpu", size=30, color=COLOR_CARD),
-                                width="4rem",
-                                height="4rem",
-                                background="rgba(255,255,255,0.12)",
-                                border="1px solid rgba(255,255,255,0.25)",
+                                rx.icon("cpu", size=36, color=COLOR_CARD),
+                                width="4.5rem",
+                                height="4.5rem",
+                                background="rgba(255,255,255,0.14)",
+                                border="1px solid rgba(255,255,255,0.28)",
                                 border_radius="9999px",
                                 align="center",
                                 justify="center",
@@ -4944,20 +4970,20 @@ def home_page() -> rx.Component:
                                 letter_spacing="-0.02em",
                             ),
                             rx.box(
-                                width="3rem",
+                                width="3.5rem",
                                 height="4px",
                                 background=COLOR_CYAN,
                                 border_radius="9999px",
                             ),
                             rx.text(
                                 "Tecnologia para o seu setup",
-                                color="rgba(255,255,255,0.85)",
+                                color="rgba(255,255,255,0.88)",
                                 font_size="0.95rem",
                             ),
                             spacing="4",
                             align="center",
                             justify="center",
-                            padding="6",
+                            padding="1.5rem",
                         ),
                         background="radial-gradient(circle at 20% 15%, rgba(0,184,217,0.35) 0%, transparent 45%), radial-gradient(circle at 85% 85%, rgba(8,102,217,0.45) 0%, transparent 50%), linear-gradient(135deg, "
                         + COLOR_NAVY
@@ -4967,20 +4993,31 @@ def home_page() -> rx.Component:
                         + COLOR_BLUE
                         + " 100%)",
                         width="100%",
-                        min_height="280px",
+                        min_height="220px",
                         height="100%",
-                        max_height="380px",
-                        border_radius=RADIUS,
+                        max_height="300px",
+                        border_radius=home_radius,
                         align="center",
                         justify="center",
                         box_shadow=CARD_SHADOW,
                     ),
                 ),
                 columns={"initial": "1", "lg": "2"},
-                spacing="7",
+                spacing="5",
                 align="center",
                 width="100%",
             ),
+            background="radial-gradient(circle at 88% 8%, rgba(0,184,217,0.16) 0%, transparent 42%), radial-gradient(circle at 4% 96%, rgba(8,102,217,0.10) 0%, transparent 46%), linear-gradient(135deg, "
+            + COLOR_CARD
+            + " 0%, "
+            + COLOR_SURFACE
+            + " 100%)",
+            border=f"1px solid {COLOR_BORDER}",
+            border_radius=home_radius,
+            box_shadow="0 18px 44px rgba(7, 21, 37, 0.10)",
+            padding=rx.breakpoints(initial="1.25rem", md="2rem"),
+            width="100%",
+            overflow="hidden",
         )
 
     def benefits_strip() -> rx.Component:
@@ -4989,14 +5026,14 @@ def home_page() -> rx.Component:
             ("shield-check", "Garantia estendida", "Proteção do equipamento."),
             ("headphones", "Suporte dedicado", "Atendimento no pós-venda."),
         ]
-        return surface_card(
-            rx.grid(
-                *[
-                    rx.hstack(
+        return rx.grid(
+            *[
+                surface_card(
+                    rx.vstack(
                         rx.flex(
-                            rx.icon(icon, size=20, color=COLOR_BLUE),
-                            width="2.6rem",
-                            height="2.6rem",
+                            rx.icon(icon, size=26, color=COLOR_BLUE),
+                            width="3.6rem",
+                            height="3.6rem",
                             background="rgba(8, 102, 217, 0.10)",
                             border_radius="9999px",
                             align="center",
@@ -5004,33 +5041,41 @@ def home_page() -> rx.Component:
                             flex_shrink="0",
                         ),
                         rx.vstack(
-                            rx.text(title, weight="bold", color=COLOR_NAVY),
+                            rx.text(
+                                title,
+                                weight="bold",
+                                color=COLOR_NAVY,
+                                font_size="1.1rem",
+                            ),
                             rx.text(
                                 description,
                                 color=COLOR_TEXT_MUTED,
-                                font_size="0.85rem",
+                                font_size="0.92rem",
+                                line_height="1.5",
                             ),
-                            spacing="0",
+                            spacing="1",
                             align="start",
                         ),
                         spacing="3",
-                        align="center",
+                        align="start",
                         width="100%",
-                    )
-                    for icon, title, description in items
-                ],
-                columns={"initial": "1", "sm": "2", "md": "3"},
-                spacing="4",
-                align="center",
-                width="100%",
-            ),
-            padding="4",
+                    ),
+                    height="100%",
+                    padding="1.75rem",
+                    border_radius=home_radius,
+                )
+                for icon, title, description in items
+            ],
+            columns={"initial": "1", "sm": "2", "md": "3"},
+            spacing="4",
+            align="stretch",
+            width="100%",
         )
 
     def categories_section() -> rx.Component:
         return rx.vstack(
             rx.hstack(
-                section_heading("Categorias"),
+                section_heading("Categorias", size="7"),
                 rx.link(
                     rx.hstack(
                         rx.text("Ver catálogo completo"),
@@ -5060,25 +5105,46 @@ def home_page() -> rx.Component:
                                 rx.flex(
                                     rx.icon(
                                         "layers",
-                                        size=22,
+                                        size=36,
                                         color=COLOR_CARD,
                                     ),
-                                    background="linear-gradient(135deg, "
+                                    rx.flex(
+                                        rx.icon(
+                                            "arrow-right",
+                                            size=18,
+                                            color=COLOR_CARD,
+                                        ),
+                                        width="2.4rem",
+                                        height="2.4rem",
+                                        background="rgba(255,255,255,0.18)",
+                                        border="1px solid rgba(255,255,255,0.30)",
+                                        border_radius="9999px",
+                                        align="center",
+                                        justify="center",
+                                        flex_shrink="0",
+                                    ),
+                                    background="radial-gradient(circle at 82% 18%, rgba(0,184,217,0.45) 0%, transparent 55%), linear-gradient(135deg, "
                                     + COLOR_NAVY
                                     + " 0%, "
                                     + COLOR_BLUE
                                     + " 100%)",
                                     width="100%",
-                                    height="104px",
-                                    border_radius=RADIUS,
+                                    height="120px",
+                                    border_radius=home_radius,
                                     align="center",
-                                    justify="center",
+                                    justify="between",
+                                    padding_x="1.5rem",
                                 ),
                                 rx.vstack(
                                     rx.text(
                                         category.name,
                                         weight="bold",
                                         color=COLOR_NAVY,
+                                        font_size="1.1rem",
+                                        width="100%",
+                                        white_space="nowrap",
+                                        text_overflow="ellipsis",
+                                        overflow="hidden",
                                     ),
                                     rx.cond(
                                         category.description != "",
@@ -5086,23 +5152,31 @@ def home_page() -> rx.Component:
                                             category.description,
                                             color=COLOR_TEXT_MUTED,
                                             font_size="0.85rem",
+                                            line_height="1.4",
+                                            width="100%",
+                                            white_space="nowrap",
+                                            text_overflow="ellipsis",
+                                            overflow="hidden",
                                         ),
                                         rx.fragment(),
                                     ),
                                     spacing="1",
                                     align="start",
                                     width="100%",
+                                    padding_top="0.5rem",
                                 ),
                                 background=COLOR_CARD,
                                 border=f"1px solid {COLOR_BORDER}",
-                                border_radius=RADIUS,
+                                border_radius=home_radius,
                                 box_shadow=CARD_SHADOW,
-                                padding="3",
+                                padding="1rem",
                                 width="100%",
                                 height="100%",
+                                transition="transform 0.18s ease, box-shadow 0.18s ease, border 0.18s ease",
                                 _hover={
-                                    "transform": "translateY(-3px)",
-                                    "box_shadow": "0 10px 24px rgba(7, 21, 37, 0.12)",
+                                    "transform": "translateY(-4px)",
+                                    "box_shadow": "0 16px 32px rgba(7, 21, 37, 0.14)",
+                                    "border": f"1px solid {COLOR_CYAN}",
                                 },
                             ),
                             href="/catalogo",
@@ -5128,24 +5202,30 @@ def home_page() -> rx.Component:
                 rx.box(
                     rx.cond(
                         product.image_url != "",
-                        rx.image(
-                            src=product.image_url,
-                            alt=product.name,
+                        rx.box(
+                            rx.image(
+                                src=product.image_url,
+                                alt=product.name,
+                                width="100%",
+                                height="300px",
+                                object_fit="cover",
+                            ),
                             width="100%",
-                            height="180px",
-                            object_fit="cover",
-                            border_radius=RADIUS,
+                            height="300px",
+                            border_radius=home_radius,
+                            overflow="hidden",
+                            border=f"1px solid {COLOR_BORDER}",
                         ),
                         rx.flex(
-                            rx.icon("package", size=28, color=COLOR_CARD),
-                            background="linear-gradient(135deg, "
+                            rx.icon("package", size=40, color=COLOR_CARD),
+                            background="radial-gradient(circle at 78% 18%, rgba(0,184,217,0.40) 0%, transparent 58%), linear-gradient(135deg, "
                             + COLOR_NAVY
                             + " 0%, "
                             + COLOR_BLUE
                             + " 100%)",
                             width="100%",
-                            height="180px",
-                            border_radius=RADIUS,
+                            height="300px",
+                            border_radius=home_radius,
                             align="center",
                             justify="center",
                         ),
@@ -5153,12 +5233,12 @@ def home_page() -> rx.Component:
                     rx.vstack(
                         rx.cond(
                             product.brand_name != "",
-                            rx.text(
+                            rx.badge(
                                 product.brand_name,
-                                color=COLOR_BLUE,
-                                font_weight="700",
-                                font_size="0.75rem",
-                                letter_spacing="0.06em",
+                                color_scheme="cyan",
+                                variant="soft",
+                                radius="full",
+                                size="1",
                             ),
                             rx.fragment(),
                         ),
@@ -5166,7 +5246,8 @@ def home_page() -> rx.Component:
                             product.name,
                             weight="bold",
                             color=COLOR_NAVY,
-                            line_height="1.25",
+                            font_size="1.15rem",
+                            line_height="1.3",
                         ),
                         rx.cond(
                             product.category_name != "",
@@ -5177,40 +5258,54 @@ def home_page() -> rx.Component:
                             ),
                             rx.fragment(),
                         ),
+                        rx.box(
+                            height="1px",
+                            width="100%",
+                            background=COLOR_BORDER,
+                            margin_top="0.5rem",
+                        ),
                         rx.hstack(
-                            rx.text("Ver no catálogo"),
-                            rx.icon("arrow-right", size=15),
-                            spacing="1",
+                            rx.text(
+                                "Ver no catálogo",
+                                color=COLOR_BLUE,
+                                font_weight="700",
+                                font_size="0.9rem",
+                            ),
+                            rx.icon("arrow-right", size=15, color=COLOR_BLUE),
+                            justify="between",
                             align="center",
-                            color=COLOR_BLUE,
-                            font_weight="600",
-                            font_size="0.9rem",
+                            width="100%",
                         ),
                         align="start",
                         spacing="2",
                         width="100%",
+                        flex_grow="1",
                     ),
                     background=COLOR_CARD,
                     border=f"1px solid {COLOR_BORDER}",
-                    border_radius=RADIUS,
+                    border_radius=home_radius,
                     box_shadow=CARD_SHADOW,
-                    padding="3",
+                    padding="1rem",
                     width="100%",
                     height="100%",
+                    transition="transform 0.18s ease, box-shadow 0.18s ease, border 0.18s ease",
                     _hover={
-                        "transform": "translateY(-3px)",
-                        "box_shadow": "0 10px 24px rgba(7, 21, 37, 0.12)",
+                        "transform": "translateY(-4px)",
+                        "box_shadow": "0 16px 32px rgba(7, 21, 37, 0.14)",
+                        "border": f"1px solid {COLOR_CYAN}",
                     },
                 ),
                 href="/catalogo",
                 text_decoration="none",
                 width="100%",
+                height="100%",
+                display="block",
                 _focus_visible=FOCUS_STYLE,
             )
 
         return rx.vstack(
             rx.hstack(
-                section_heading("Destaques da loja"),
+                section_heading("Destaques da loja", size="7"),
                 rx.link(
                     rx.hstack(
                         rx.text("Ver catálogo completo"),
@@ -5265,23 +5360,103 @@ def home_page() -> rx.Component:
             width="100%",
         )
 
+    def category_bar() -> rx.Component:
+        return rx.cond(
+            State.public_categories.length() > 0,
+            rx.box(
+                rx.container(
+                    rx.hstack(
+                        rx.hstack(
+                            rx.icon("layout-grid", size=15, color=COLOR_BLUE),
+                            rx.text(
+                                "Categorias",
+                                color=COLOR_NAVY,
+                                font_weight="700",
+                                font_size="0.85rem",
+                            ),
+                            spacing="2",
+                            align="center",
+                            flex_shrink="0",
+                        ),
+                        rx.box(
+                            width="1px",
+                            height="1.4rem",
+                            background=COLOR_BORDER,
+                            margin_x="0.25rem",
+                            flex_shrink="0",
+                        ),
+                        rx.hstack(
+                            rx.foreach(
+                                State.public_categories,
+                                lambda category: rx.link(
+                                    category.name,
+                                    href="/catalogo",
+                                    color=COLOR_TEXT,
+                                    font_size="0.88rem",
+                                    font_weight="600",
+                                    padding_x="0.9rem",
+                                    padding_y="0.4rem",
+                                    border_radius="9999px",
+                                    white_space="nowrap",
+                                    text_decoration="none",
+                                    transition="background 0.15s ease, color 0.15s ease",
+                                    _hover={
+                                        "background": "rgba(8, 102, 217, 0.10)",
+                                        "color": COLOR_BLUE,
+                                    },
+                                    _focus_visible=FOCUS_STYLE,
+                                ),
+                            ),
+                            spacing="1",
+                            align="center",
+                            wrap="nowrap",
+                        ),
+                        spacing="3",
+                        align="center",
+                        width="100%",
+                        overflow_x="auto",
+                    ),
+            max_width="72rem",
+            size="4",
+            width="100%",
+            margin_x="auto",
+            padding_x="1rem",
+            padding_y="0.6rem",
+                ),
+                background=COLOR_CARD,
+                border_bottom=f"1px solid {COLOR_BORDER}",
+                width="100%",
+            ),
+            rx.fragment(),
+        )
+
     return page_shell(
-        hero_section(),
-        benefits_strip(),
-        categories_section(),
-        products_section(),
-        header=site_header(
-            [
-                ("Catálogo público", "/catalogo"),
-                ("Minha conta", "/cliente"),
-                ("Carrinho", "/carrinho"),
-                ("Acesso interno", "/interno"),
-            ],
-            active="/",
-            badge="Loja",
-            logo_href="/",
+        rx.vstack(
+            hero_section(),
+            benefits_strip(),
+            categories_section(),
+            products_section(),
+            spacing="8",
+            align="stretch",
+            width="100%",
+        ),
+        header=rx.fragment(
+            site_header(
+                [
+                    ("Catálogo público", "/catalogo"),
+                    ("Minha conta", "/cliente"),
+                    ("Carrinho", "/carrinho"),
+                    ("Acesso interno", "/interno"),
+                ],
+                active="/",
+                badge="Loja",
+                logo_href="/",
+                wide=True,
+            ),
+            category_bar(),
         ),
         max_width="72rem",
+        size="4",
     )
 
 
