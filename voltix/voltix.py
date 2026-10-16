@@ -5483,7 +5483,7 @@ def public_catalog_page() -> rx.Component:
                             )
                         ),
                         value=State.public_category_id,
-                        on_change=State.filter_public_catalog,
+                        on_change=lambda v: State.filter_public_catalog(v),
                         width="100%",
                     ),
                     flex="1",
@@ -5575,6 +5575,7 @@ def public_catalog_page() -> rx.Component:
             ],
             active="/catalogo",
             badge="Loja",
+            logo_href="/",
         ),
         max_width="64rem",
     )
