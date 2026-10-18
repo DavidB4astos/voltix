@@ -14,9 +14,9 @@ Fontes: `AGENTS.md`, `docs/project-overview.md`, `docs/domain-model.md`, `opensp
 
 ## Estado atual
 
-- **ATIVA:** `gestao-produtos` — **13/15 tarefas**, com pendências de validação **5.2/5.3** documentadas e versionadas (commit `cab8d3e`). Bloqueio: sessão `ADMINISTRADOR`/`FUNCIONARIO` real. Não concluir artificialmente e não alterar enquanto a C1 estiver BLOQUEADA por limita��o t�cnica (Xano Free).
-- **BLOQUEADA por limita��o t�cnica (Xano Free):** `baixa-estoque-checkout` (C1) — artefatos OpenSpec criados; implementação bloqueada até confirmar que `db.direct_query` participa da transação/rollback do checkout.
-- **ARQUIVADAS (15, concluídas, não recriar):** integracao-reflex-xano, acesso-interno, carrinho-compras, catalogo-publico, gestao-categorias-marcas, pagamento-pedido, design-interface-voltix, home-publica-voltix, resiliencia-catalogo-publico, cadastro-cliente-enderecos, checkout-pedidos, conectar-catalogo-publico-xano, documentacao-ap2, melhorar-ux-ui-ap2, validar-jornada-compra-e2e.
+- **ATIVA:** nenhuma. `gestao-produtos` foi **concluída (15/15 tarefas)**, **arquivada em 2026-10-18** (`openspec/changes/archive/2026-10-18-gestao-produtos/`) e **publicada em `origin/main`** (commits `3421dc8`, `3b91921`). **Limitação conhecida:** o upload de imagem principal (`POST /products/{id}/image`) não é operacional na instância Xano Free (HTTP 403, `ERROR_CODE_ACCESS_DENIED`) — permanece **não validado e não declarado funcional**, dependendo de plano pago ou armazenamento externo gratuito a tratar em mudança própria.
+- **BLOQUEADA por limitação técnica (Xano Free):** `baixa-estoque-checkout` (C1) — artefatos OpenSpec criados; implementação bloqueada até confirmar que `db.direct_query` participa da transação/rollback do checkout.
+- **ARQUIVADAS (16, concluídas, não recriar):** integracao-reflex-xano, acesso-interno, carrinho-compras, catalogo-publico, gestao-categorias-marcas, pagamento-pedido, design-interface-voltix, home-publica-voltix, resiliencia-catalogo-publico, cadastro-cliente-enderecos, checkout-pedidos, conectar-catalogo-publico-xano, documentacao-ap2, melhorar-ux-ui-ap2, validar-jornada-compra-e2e, gestao-produtos.
 
 ## Decisões aprovadas (E1–E7)
 
@@ -58,7 +58,7 @@ Padrão do repo: interno = `auth="user"` + `role`/`status`; cliente = `auth="CLI
 | Registrar/editar atendimento `ABERTO`/`EM_ATENDIMENTO` (C7) | ✖ | ✔ | ✔ |
 | Finalizar/cancelar atendimento | ✖ | pendência C7 | ✔ |
 | Dashboard de vendas, leitura (C10) | ✖ | pendência C10 | ✔ |
-| CRUD produtos/categorias/marcas + upload (já vigente) | ✖ | ✖ | ✔ |
+| CRUD produtos/categorias/marcas (já vigente); upload de imagem **indisponível no Xano Free** | ✖ | ✖ | ✔ |
 
 Pendências são detalhadas no `design` da respectiva change na hora da implementação; não reabrem E2.
 
@@ -72,7 +72,7 @@ Pendências são detalhadas no `design` da respectiva change na hora da implemen
 ## Ordem sequencial recomendada
 
 ```
-F0  gestao-produtos (ATIVA, 13/15)  ← bloqueio humano: credenciais internas
+F0  gestao-produtos (CONCLUÍDA 15/15, arquivada 2026-10-18)
  1  C1  baixa-estoque-checkout
  2  C2  cancelamento-pedido
  3  C3  gestao-pedidos-painel
@@ -95,11 +95,11 @@ F0  gestao-produtos (ATIVA, 13/15)  ← bloqueio humano: credenciais internas
 
 ## Changes planejadas
 
-Status: **C1 BLOQUEADA por limita��o t�cnica (Xano Free)**; as demais permanecem **PLANEJADA**.
+Status: **C1 BLOQUEADA por limitação técnica (Xano Free)**; as demais permanecem **PLANEJADA**.
 
 ### C1 baixa-estoque-checkout
 
-- **Status:** BLOQUEADA por limita��o t�cnica (Xano Free) (proposta OpenSpec criada; implementação bloqueada pela tarefa 1).
+- **Status:** BLOQUEADA por limitação técnica (Xano Free) (proposta OpenSpec criada; implementação bloqueada pela tarefa 1).
 
 - **Objetivo:** baixar `quantidade_disponivel` na confirmação do pedido.
 - **Requisitos:** domínio 5.1/5.2/8.15/8.17; overview 6.1.
