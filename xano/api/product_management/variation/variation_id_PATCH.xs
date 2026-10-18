@@ -4,7 +4,7 @@ query "variations/{variation_id}" verb=PATCH {
 
   input {
     int variation_id filters=min:1
-    int produto_id? filters=min:1
+    int produto_id?
     text nome_ou_descricao?
     text sku? filters=trim
     decimal preco?
@@ -43,6 +43,7 @@ query "variations/{variation_id}" verb=PATCH {
 
     precondition (
       $input.produto_id == null ||
+      $input.produto_id <= 0 ||
       $input.produto_id == $variation.produto_id
     ) {
       error_type = "badrequest"

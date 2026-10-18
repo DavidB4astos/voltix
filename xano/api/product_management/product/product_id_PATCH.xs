@@ -7,8 +7,8 @@ query "products/{product_id}" verb=PATCH {
     text nome? filters=trim
     text descricao?
     text especificacoes_tecnicas?
-    int categoria_id? filters=min:1
-    int marca_id? filters=min:1
+    int categoria_id?
+    int marca_id?
     enum status? {
       values = ["ATIVO", "INATIVO"]
     }
@@ -45,8 +45,8 @@ query "products/{product_id}" verb=PATCH {
       $input.nome != null ||
       $input.descricao != null ||
       $input.especificacoes_tecnicas != null ||
-      $input.categoria_id != null ||
-      $input.marca_id != null ||
+      ($input.categoria_id != null && $input.categoria_id > 0) ||
+      ($input.marca_id != null && $input.marca_id > 0) ||
       $input.status != null
     ) {
       error_type = "inputerror"
@@ -54,7 +54,7 @@ query "products/{product_id}" verb=PATCH {
     }
 
     conditional {
-      if ($input.categoria_id != null && $input.categoria_id != $product.categoria_id) {
+      if ($input.categoria_id != null && $input.categoria_id > 0 && $input.categoria_id != $product.categoria_id) {
         db.get categoria {
           field_name = "id"
           field_value = $input.categoria_id
@@ -69,7 +69,7 @@ query "products/{product_id}" verb=PATCH {
     }
 
     conditional {
-      if ($input.marca_id != null && $input.marca_id != $product.marca_id) {
+      if ($input.marca_id != null && $input.marca_id > 0 && $input.marca_id != $product.marca_id) {
         db.get marca {
           field_name = "id"
           field_value = $input.marca_id
@@ -112,7 +112,7 @@ query "products/{product_id}" verb=PATCH {
     }
 
     conditional {
-      if ($input.categoria_id != null) {
+      if ($input.categoria_id != null && $input.categoria_id > 0) {
         var.update $updates {
           value = $updates|set:"categoria_id":$input.categoria_id
         }
@@ -120,7 +120,7 @@ query "products/{product_id}" verb=PATCH {
     }
 
     conditional {
-      if ($input.marca_id != null) {
+      if ($input.marca_id != null && $input.marca_id > 0) {
         var.update $updates {
           value = $updates|set:"marca_id":$input.marca_id
         }
