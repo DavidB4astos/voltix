@@ -1,6 +1,8 @@
 """Voltix Reflex application."""
 
 import asyncio
+import csv
+import io
 import json
 import logging
 import math
@@ -10,11 +12,13 @@ import re
 import time
 import urllib.error
 import urllib.request
+import zipfile
 from dataclasses import dataclass, replace
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from urllib.parse import urlencode, urlparse
 from uuid import uuid4
+from xml.etree import ElementTree
 
 import reflex as rx
 from dotenv import load_dotenv
@@ -51,7 +55,39 @@ XANO_RATE_LIMIT_MAX_ATTEMPTS = 3
 XANO_RATE_LIMIT_DEFAULT_WAIT_SECONDS = 20.0
 XANO_RATE_LIMIT_MAX_WAIT_SECONDS = 30.0
 
+BULK_IMPORT_MAX_BYTES = 2 * 1024 * 1024
+BULK_IMPORT_MAX_ROWS = 200
+BULK_IMPORT_MAX_PRODUCTS = 50
+BULK_IMPORT_REQUEST_INTERVAL_SECONDS = 3.0
+BULK_IMPORT_HEADERS = (
+    "produto_nome",
+    "produto_descricao",
+    "produto_especificacoes_tecnicas",
+    "categoria_nome",
+    "marca_nome",
+    "variacao_nome",
+    "sku",
+    "preco",
+    "quantidade_disponivel",
+)
+BULK_IMPORT_REQUIRED_FIELDS = {
+    "produto_nome": "nome do produto",
+    "categoria_nome": "categoria",
+    "marca_nome": "marca",
+    "variacao_nome": "nome da variação",
+    "sku": "SKU",
+    "preco": "preço",
+    "quantidade_disponivel": "quantidade disponível",
+}
+BULK_IMPORT_VALID_STATUS = "VÁLIDA"
+BULK_IMPORT_ERROR_STATUS = "ERRO"
+BULK_IMPORT_DUPLICATE_STATUS = "DUPLICADA"
+BULK_IMPORT_CREATED_OUTCOME = "CRIADO"
+BULK_IMPORT_SKIPPED_OUTCOME = "PULADO"
+BULK_IMPORT_FAILED_OUTCOME = "FALHA"
+
 PUBLIC_CATALOG_LOGGER = logging.getLogger("voltix.public_catalog")
+BULK_IMPORT_LOGGER = logging.getLogger("voltix.bulk_import")
 
 _PUBLIC_ENDPOINT_LABELS = {
     XANO_PUBLIC_CATEGORIES_URL_ENV: "public_catalog.categories",
@@ -766,6 +802,7 @@ def _request_xano_json(
     method: str = "GET",
     payload: dict[str, object] | None = None,
     authorization: str | None = None,
+    retry_rate_limit: bool | None = None,
 ) -> XanoJson:
     headers = {"Accept": "application/json"}
     body = None
@@ -774,6 +811,9 @@ def _request_xano_json(
         body = json.dumps(payload).encode("utf-8")
     if authorization:
         headers["Authorization"] = authorization
+
+    if retry_rate_limit is None:
+        retry_rate_limit = method == "GET"
 
     attempt = 0
     while True:
@@ -794,11 +834,13 @@ def _request_xano_json(
             break
         except urllib.error.HTTPError as error:
             if (
-                method == "GET"
+                retry_rate_limit
                 and error.code == 429
                 and attempt < XANO_RATE_LIMIT_MAX_ATTEMPTS
             ):
-                time.sleep(_rate_limit_wait_seconds(error))
+                wait = _rate_limit_wait_seconds(error)
+                error.close()
+                time.sleep(wait)
                 continue
             raise
 
@@ -817,6 +859,7 @@ async def _server_side_xano_request(
     method: str = "GET",
     payload: dict[str, object] | None = None,
     authorization: str | None = None,
+    retry_rate_limit: bool | None = None,
 ) -> XanoJson:
     return await asyncio.to_thread(
         _request_xano_json,
@@ -824,6 +867,7 @@ async def _server_side_xano_request(
         method=method,
         payload=payload,
         authorization=authorization,
+        retry_rate_limit=retry_rate_limit,
     )
 
 
@@ -1287,6 +1331,538 @@ def _request_xano_health(url: str) -> dict[str, str]:
     return expected_payload
 
 
+@dataclass(frozen=True)
+class BulkImportRow:
+    line: int
+    product_name: str
+    product_description: str
+    product_specifications: str
+    category_name: str
+    brand_name: str
+    variation_name: str
+    sku: str
+    price: str
+    quantity: str
+    status: str
+    reason: str
+
+
+@dataclass(frozen=True)
+class BulkImportVariation:
+    name: str
+    sku: str
+    price: float
+    quantity: int
+
+
+@dataclass(frozen=True)
+class BulkImportGroup:
+    product_name: str
+    description: str
+    specifications: str
+    category_name: str
+    brand_name: str
+    variations: tuple[BulkImportVariation, ...]
+
+
+@dataclass(frozen=True)
+class BulkImportResult:
+    product_name: str
+    outcome: str
+    detail: str
+
+
+_XLSX_MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
+_XLSX_REL_NS = (
+    "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+)
+_XLSX_DATE_FORMAT_IDS = frozenset(
+    {14, 15, 16, 17, 18, 19, 20, 21, 22, 27, 30, 36, 45, 46, 47, 50, 57}
+)
+
+
+def _xlsx_tag(name: str) -> str:
+    return f"{{{_XLSX_MAIN_NS}}}{name}"
+
+
+def _bulk_import_decimal_text(value: str) -> str:
+    text = value.strip().replace(" ", "")
+    if not text:
+        raise ValueError("valor vazio")
+    if "," in text and "." in text:
+        if text.rfind(",") > text.rfind("."):
+            text = text.replace(".", "").replace(",", ".")
+        else:
+            text = text.replace(",", "")
+    elif "," in text:
+        text = text.replace(",", ".")
+    return text
+
+
+def _bulk_import_price(value: str) -> float:
+    try:
+        number = Decimal(_bulk_import_decimal_text(value))
+    except InvalidOperation as error:
+        raise ValueError("preço não numérico") from error
+    if not number.is_finite() or number <= 0:
+        raise ValueError("o preço deve ser maior que zero")
+    if number.as_tuple().exponent < -2:
+        raise ValueError("o preço deve ter no máximo duas casas decimais")
+    converted = float(number)
+    if not math.isfinite(converted):
+        raise ValueError("preço não numérico")
+    return converted
+
+
+def _bulk_import_quantity(value: str) -> int:
+    try:
+        number = Decimal(_bulk_import_decimal_text(value))
+    except InvalidOperation as error:
+        raise ValueError("quantidade não numérica") from error
+    if (
+        not number.is_finite()
+        or number < 0
+        or number != number.to_integral_value()
+    ):
+        raise ValueError("a quantidade deve ser um inteiro maior ou igual a zero")
+    return int(number)
+
+
+def _bulk_import_csv_delimiter(sample: str) -> str:
+    try:
+        return csv.Sniffer().sniff(sample, delimiters=";,").delimiter
+    except csv.Error:
+        lines = sample.splitlines()
+        first_line = lines[0] if lines else ""
+        if first_line.count(";") > first_line.count(","):
+            return ";"
+        return ","
+
+
+def _bulk_import_rows_from_csv(data: bytes) -> list[list[str]]:
+    try:
+        text = data.decode("utf-8-sig")
+    except UnicodeDecodeError as error:
+        raise ValueError("O arquivo CSV deve estar codificado em UTF-8.") from error
+    if not text.strip():
+        raise ValueError("O arquivo está vazio.")
+    reader = csv.reader(
+        io.StringIO(text),
+        delimiter=_bulk_import_csv_delimiter(text[:4096]),
+    )
+    return [list(row) for row in reader]
+
+
+def _bulk_import_xlsx_shared_strings(archive: zipfile.ZipFile) -> list[str]:
+    try:
+        root = ElementTree.fromstring(archive.read("xl/sharedStrings.xml"))
+    except (KeyError, ElementTree.ParseError):
+        return []
+    strings: list[str] = []
+    for item in root.findall(_xlsx_tag("si")):
+        strings.append(
+            "".join(node.text or "" for node in item.iter(_xlsx_tag("t")))
+        )
+    return strings
+
+
+def _bulk_import_xlsx_format_is_date(format_code: str) -> bool:
+    cleaned = re.sub(r'"[^"]*"|\[[^\]]*\]|\\.', "", format_code)
+    return bool(re.search(r"[yYmMdDhHsS]", cleaned)) and not re.search(
+        r"[0#]", cleaned
+    )
+
+
+def _bulk_import_xlsx_date_styles(archive: zipfile.ZipFile) -> set[int]:
+    try:
+        root = ElementTree.fromstring(archive.read("xl/styles.xml"))
+    except (KeyError, ElementTree.ParseError):
+        return set()
+    custom_formats: dict[int, str] = {}
+    formats = root.find(_xlsx_tag("numFmts"))
+    if formats is not None:
+        for num_format in formats.findall(_xlsx_tag("numFmt")):
+            try:
+                custom_formats[int(num_format.get("numFmtId"))] = (
+                    num_format.get("formatCode") or ""
+                )
+            except (TypeError, ValueError):
+                continue
+    date_styles: set[int] = set()
+    cell_formats = root.find(_xlsx_tag("cellXfs"))
+    if cell_formats is not None:
+        for index, cell_format in enumerate(
+            cell_formats.findall(_xlsx_tag("xf"))
+        ):
+            try:
+                num_format_id = int(cell_format.get("numFmtId"))
+            except (TypeError, ValueError):
+                continue
+            if num_format_id in _XLSX_DATE_FORMAT_IDS or _bulk_import_xlsx_format_is_date(
+                custom_formats.get(num_format_id, "")
+            ):
+                date_styles.add(index)
+    return date_styles
+
+
+def _bulk_import_xlsx_first_sheet_path(archive: zipfile.ZipFile) -> str:
+    try:
+        workbook = ElementTree.fromstring(archive.read("xl/workbook.xml"))
+        sheets = workbook.find(_xlsx_tag("sheets"))
+        if sheets is not None:
+            first_sheet = sheets.find(_xlsx_tag("sheet"))
+            if first_sheet is not None:
+                relation_id = first_sheet.get(f"{{{_XLSX_REL_NS}}}id")
+                if relation_id:
+                    relations = ElementTree.fromstring(
+                        archive.read("xl/_rels/workbook.xml.rels")
+                    )
+                    for relation in relations:
+                        if relation.get("Id") == relation_id:
+                            target = (relation.get("Target") or "").lstrip("/")
+                            if not target:
+                                break
+                            return target if target.startswith("xl/") else "xl/" + target
+    except (KeyError, ElementTree.ParseError):
+        pass
+    return "xl/worksheets/sheet1.xml"
+
+
+def _bulk_import_xlsx_column_index(reference: str | None) -> int:
+    match = re.match(r"([A-Za-z]+)", reference or "")
+    if not match:
+        raise ValueError("O arquivo XLSX possui uma célula com referência inválida.")
+    index = 0
+    for letter in match.group(1).upper():
+        index = index * 26 + (ord(letter) - ord("A") + 1)
+    return index - 1
+
+
+def _bulk_import_rows_from_xlsx(data: bytes) -> list[list[str]]:
+    try:
+        archive = zipfile.ZipFile(io.BytesIO(data))
+    except zipfile.BadZipFile as error:
+        raise ValueError("O arquivo XLSX é inválido.") from error
+    with archive:
+        shared_strings = _bulk_import_xlsx_shared_strings(archive)
+        date_styles = _bulk_import_xlsx_date_styles(archive)
+        try:
+            sheet = ElementTree.fromstring(
+                archive.read(_bulk_import_xlsx_first_sheet_path(archive))
+            )
+        except (KeyError, ElementTree.ParseError) as error:
+            raise ValueError(
+                "O arquivo XLSX não possui uma planilha legível."
+            ) from error
+        rows: list[list[str]] = []
+        for row in sheet.iter(_xlsx_tag("row")):
+            cells: dict[int, str] = {}
+            for cell in row.findall(_xlsx_tag("c")):
+                if cell.find(_xlsx_tag("f")) is not None:
+                    raise ValueError("O arquivo XLSX não pode conter fórmulas.")
+                cell_type = cell.get("t")
+                style = cell.get("s")
+                if cell_type in {"b", "e", "str", "d"}:
+                    raise ValueError(
+                        "O arquivo XLSX possui um tipo de célula não suportado."
+                    )
+                inline = cell.find(_xlsx_tag("is"))
+                if inline is not None:
+                    cells[_bulk_import_xlsx_column_index(cell.get("r"))] = "".join(
+                        node.text or "" for node in inline.iter(_xlsx_tag("t"))
+                    )
+                    continue
+                value_node = cell.find(_xlsx_tag("v"))
+                raw = value_node.text if value_node is not None else ""
+                if cell_type == "s":
+                    try:
+                        cells[_bulk_import_xlsx_column_index(cell.get("r"))] = (
+                            shared_strings[int(raw)]
+                        )
+                    except (TypeError, ValueError, IndexError) as error:
+                        raise ValueError(
+                            "O arquivo XLSX possui uma célula de texto inválida."
+                        ) from error
+                    continue
+                if style is not None:
+                    try:
+                        is_date = int(style) in date_styles
+                    except (TypeError, ValueError):
+                        is_date = False
+                    if is_date:
+                        raise ValueError("O arquivo XLSX não pode conter datas.")
+                cells[_bulk_import_xlsx_column_index(cell.get("r"))] = raw or ""
+            width = max(cells) + 1 if cells else 0
+            rows.append([cells.get(index, "") for index in range(width)])
+        if not rows:
+            raise ValueError("O arquivo XLSX está vazio.")
+        return rows
+
+
+def _bulk_import_normalize_row(row: list[str]) -> list[str]:
+    values = [str(value).strip() for value in row]
+    if len(values) < len(BULK_IMPORT_HEADERS):
+        values += [""] * (len(BULK_IMPORT_HEADERS) - len(values))
+    return values[: len(BULK_IMPORT_HEADERS)]
+
+
+def _bulk_import_parse(file_name: str, data: bytes) -> list[list[str]]:
+    extension = os.path.splitext(file_name)[1].lower()
+    if extension == ".xls":
+        raise ValueError("O formato .xls não é suportado; use .xlsx.")
+    if extension not in {".csv", ".xlsx"}:
+        raise ValueError("Formato não suportado. Envie um arquivo .csv ou .xlsx.")
+    if len(data) > BULK_IMPORT_MAX_BYTES:
+        raise ValueError("O arquivo excede o limite de 2 MB.")
+    if not data:
+        raise ValueError("O arquivo está vazio.")
+    rows = (
+        _bulk_import_rows_from_csv(data)
+        if extension == ".csv"
+        else _bulk_import_rows_from_xlsx(data)
+    )
+    if not rows:
+        raise ValueError("O arquivo está vazio.")
+    header = tuple(str(value).strip() for value in rows[0])
+    if header != BULK_IMPORT_HEADERS:
+        raise ValueError(
+            "Cabeçalhos inválidos. Use exatamente: "
+            + ", ".join(BULK_IMPORT_HEADERS)
+            + "."
+        )
+    data_rows = [
+        row for row in rows[1:] if any(str(value).strip() for value in row)
+    ]
+    if not data_rows:
+        raise ValueError("O arquivo não possui linhas de dados.")
+    if len(data_rows) > BULK_IMPORT_MAX_ROWS:
+        raise ValueError(
+            f"O arquivo excede o limite de {BULK_IMPORT_MAX_ROWS} linhas."
+        )
+    distinct_products = {
+        str(row[0]).strip() for row in data_rows if row and str(row[0]).strip()
+    }
+    if len(distinct_products) > BULK_IMPORT_MAX_PRODUCTS:
+        raise ValueError(
+            f"O arquivo excede o limite de {BULK_IMPORT_MAX_PRODUCTS} produtos."
+        )
+    return data_rows
+
+
+def _bulk_import_record_status(record: dict[str, object]) -> str:
+    if record["error"]:
+        return BULK_IMPORT_ERROR_STATUS
+    if record["duplicate"]:
+        return BULK_IMPORT_DUPLICATE_STATUS
+    return BULK_IMPORT_VALID_STATUS
+
+
+def _bulk_import_validate(
+    data_rows: list[list[str]],
+    categories: list[CatalogEntry],
+    brands: list[CatalogEntry],
+    products: list[ProductEntry],
+) -> tuple[list[BulkImportRow], list[BulkImportGroup]]:
+    category_by_name = {entry.name.strip(): entry for entry in categories}
+    brand_by_name = {entry.name.strip(): entry for entry in brands}
+    existing_names = {
+        product.name.strip() for product in products if product.name.strip()
+    }
+    existing_skus = {
+        variation.sku.strip()
+        for product in products
+        for variation in product.variations
+        if variation.sku.strip()
+    }
+
+    records: list[dict[str, object]] = []
+    for offset, raw in enumerate(data_rows):
+        values = _bulk_import_normalize_row(raw)
+        record: dict[str, object] = {
+            "line": offset + 2,
+            "produto_nome": values[0],
+            "produto_descricao": values[1],
+            "produto_especificacoes_tecnicas": values[2],
+            "categoria_nome": values[3],
+            "marca_nome": values[4],
+            "variacao_nome": values[5],
+            "sku": values[6],
+            "preco": values[7],
+            "quantidade_disponivel": values[8],
+            "error": "",
+            "duplicate": False,
+            "duplicate_reason": "",
+            "price": None,
+            "quantity": None,
+        }
+        missing = [
+            label
+            for key, label in BULK_IMPORT_REQUIRED_FIELDS.items()
+            if not record[key]
+        ]
+        if missing:
+            record["error"] = "Campos obrigatórios ausentes: " + ", ".join(missing) + "."
+            records.append(record)
+            continue
+        try:
+            record["price"] = _bulk_import_price(str(record["preco"]))
+        except ValueError as error:
+            record["error"] = f"Preço inválido: {error}."
+            records.append(record)
+            continue
+        try:
+            record["quantity"] = _bulk_import_quantity(
+                str(record["quantidade_disponivel"])
+            )
+        except ValueError as error:
+            record["error"] = f"Quantidade inválida: {error}."
+            records.append(record)
+            continue
+        records.append(record)
+
+    groups_by_name: dict[str, list[dict[str, object]]] = {}
+    for record in records:
+        name = str(record["produto_nome"])
+        if name:
+            groups_by_name.setdefault(name, []).append(record)
+    for group_records in groups_by_name.values():
+        signatures = {
+            (
+                record["produto_descricao"],
+                record["produto_especificacoes_tecnicas"],
+                record["categoria_nome"],
+                record["marca_nome"],
+            )
+            for record in group_records
+        }
+        if len(signatures) > 1:
+            for record in group_records:
+                if not record["error"]:
+                    record["error"] = (
+                        "Agrupamento inconsistente: descrição, especificações, "
+                        "categoria ou marca divergem para o mesmo produto."
+                    )
+
+    seen_skus: set[str] = set()
+    for record in records:
+        sku = str(record["sku"]).strip()
+        if not sku:
+            continue
+        if sku in seen_skus:
+            if not record["error"]:
+                record["error"] = "SKU duplicado no arquivo."
+        else:
+            seen_skus.add(sku)
+
+    for record in records:
+        if record["error"]:
+            continue
+        if str(record["produto_nome"]) in existing_names:
+            record["duplicate"] = True
+            record["duplicate_reason"] = "Produto já existente (pulado)."
+            continue
+        category = category_by_name.get(str(record["categoria_nome"]))
+        if category is None:
+            record["error"] = "Categoria não encontrada no catálogo."
+            continue
+        if category.status != "ATIVO":
+            record["error"] = "Categoria inativa."
+            continue
+        brand = brand_by_name.get(str(record["marca_nome"]))
+        if brand is None:
+            record["error"] = "Marca não encontrada no catálogo."
+            continue
+        if brand.status != "ATIVO":
+            record["error"] = "Marca inativa."
+            continue
+        if str(record["sku"]).strip() in existing_skus:
+            record["duplicate"] = True
+            record["duplicate_reason"] = "SKU já existente no catálogo (pulado)."
+            continue
+
+    preview: list[BulkImportRow] = []
+    for record in records:
+        status = _bulk_import_record_status(record)
+        reason = str(record["error"]) if record["error"] else str(record["duplicate_reason"])
+        preview.append(
+            BulkImportRow(
+                line=int(record["line"]),
+                product_name=str(record["produto_nome"]),
+                product_description=str(record["produto_descricao"]),
+                product_specifications=str(record["produto_especificacoes_tecnicas"]),
+                category_name=str(record["categoria_nome"]),
+                brand_name=str(record["marca_nome"]),
+                variation_name=str(record["variacao_nome"]),
+                sku=str(record["sku"]),
+                price=str(record["preco"]),
+                quantity=str(record["quantidade_disponivel"]),
+                status=status,
+                reason=reason,
+            )
+        )
+
+    valid_groups: list[BulkImportGroup] = []
+    for name, group_records in groups_by_name.items():
+        if not all(
+            _bulk_import_record_status(record) == BULK_IMPORT_VALID_STATUS
+            for record in group_records
+        ):
+            continue
+        variations = tuple(
+            BulkImportVariation(
+                name=str(record["variacao_nome"]),
+                sku=str(record["sku"]).strip(),
+                price=float(record["price"]),
+                quantity=int(record["quantity"]),
+            )
+            for record in group_records
+        )
+        valid_groups.append(
+            BulkImportGroup(
+                product_name=name,
+                description=str(group_records[0]["produto_descricao"]),
+                specifications=str(
+                    group_records[0]["produto_especificacoes_tecnicas"]
+                ),
+                category_name=str(group_records[0]["categoria_nome"]),
+                brand_name=str(group_records[0]["marca_nome"]),
+                variations=variations,
+            )
+        )
+    return preview, valid_groups
+
+
+def _bulk_import_failure_message(error: Exception) -> str:
+    if isinstance(error, ValueError) and str(error).startswith(
+        "Missing required environment variable:"
+    ):
+        variable = str(error).split(":", maxsplit=1)[1].strip().rstrip(".")
+        return f"Configuração ausente: {variable}."
+    if isinstance(error, urllib.error.HTTPError):
+        if error.code in {401, 403}:
+            return "Você não tem autorização para essa operação."
+        if error.code == 429:
+            return "Limite de requisições do catálogo atingido. Tente novamente mais tarde."
+    if isinstance(error, ValueError):
+        return str(error)
+    return "Não foi possível concluir a operação. Tente novamente."
+
+
+def _bulk_import_group_failure_message(error: Exception) -> str:
+    if isinstance(error, urllib.error.HTTPError) and error.code == 429:
+        return "Limite de requisições atingido."
+    if isinstance(error, ValueError):
+        return str(error)
+    return "Falha ao gravar o produto."
+
+
+def _bulk_import_error_body(error: urllib.error.HTTPError) -> str:
+    try:
+        return error.read().decode("utf-8", errors="replace")
+    except (AttributeError, OSError, ValueError):
+        return ""
+
+
 class State(rx.State):
     integration_loading: bool = False
     integration_status: str = "idle"
@@ -1412,6 +1988,16 @@ class State(rx.State):
     variation_form_price: str = ""
     variation_form_quantity: str = ""
     product_image_message: str = ""
+    bulk_import_preview: list[BulkImportRow] = []
+    bulk_import_report: list[BulkImportResult] = []
+    bulk_import_message: str = ""
+    bulk_import_progress: str = ""
+    bulk_import_loading: bool = False
+    bulk_import_has_valid: bool = False
+    bulk_import_cancel_requested: bool = False
+    _bulk_import_valid_groups: list[BulkImportGroup] = []
+    _bulk_import_last_request_at: float = 0.0
+    _bulk_import_in_progress: bool = False
 
     def _clear_catalog_state(self):
         self.categories = []
@@ -1442,6 +2028,16 @@ class State(rx.State):
         self.variation_form_price = ""
         self.variation_form_quantity = ""
         self.product_image_message = ""
+        self.bulk_import_preview = []
+        self.bulk_import_report = []
+        self.bulk_import_message = ""
+        self.bulk_import_progress = ""
+        self.bulk_import_loading = False
+        self.bulk_import_has_valid = False
+        self.bulk_import_cancel_requested = False
+        self._bulk_import_valid_groups = []
+        self._bulk_import_last_request_at = 0.0
+        self._bulk_import_in_progress = False
 
     def _clear_authentication_state(
         self,
@@ -1470,6 +2066,7 @@ class State(rx.State):
         method: str = "GET",
         record_id: int | None = None,
         payload: dict[str, object] | None = None,
+        retry_rate_limit: bool | None = None,
     ) -> XanoJson:
         if (
             not self._auth_token
@@ -1483,12 +2080,14 @@ class State(rx.State):
         url = _required_environment_url(collection_url_env).rstrip("/")
         if record_id is not None:
             url = f"{url}/{record_id}"
-        return await _server_side_xano_request(
-            url,
-            method=method,
-            payload=payload,
-            authorization="Bearer " + self._auth_token,
-        )
+        request_kwargs: dict[str, object] = {
+            "method": method,
+            "payload": payload,
+            "authorization": "Bearer " + self._auth_token,
+        }
+        if retry_rate_limit is not None:
+            request_kwargs["retry_rate_limit"] = retry_rate_limit
+        return await _server_side_xano_request(url, **request_kwargs)
 
     async def _fetch_catalog_entries(
         self,
@@ -2146,6 +2745,335 @@ class State(rx.State):
             self.product_image_message = _product_failure_message(error)
         finally:
             self.products_loading = False
+
+    def _bulk_import_is_admin(self) -> bool:
+        return (
+            bool(self._auth_token)
+            and self.is_authenticated
+            and self.session_status == "success"
+            and self.user_role == "ADMINISTRADOR"
+            and self.user_status == "ATIVO"
+        )
+
+    async def _bulk_import_wait(self) -> None:
+        async with self:
+            last_request_at = self._bulk_import_last_request_at
+        if last_request_at:
+            elapsed = time.monotonic() - last_request_at
+            remaining = BULK_IMPORT_REQUEST_INTERVAL_SECONDS - elapsed
+            if remaining > 0:
+                await asyncio.sleep(remaining)
+        async with self:
+            self._bulk_import_last_request_at = time.monotonic()
+
+    async def _bulk_import_request(
+        self,
+        collection_url_env: str,
+        *,
+        method: str = "GET",
+        payload: dict[str, object] | None = None,
+        throttle: bool = True,
+    ) -> XanoJson:
+        if throttle:
+            await self._bulk_import_wait()
+        return await self._catalog_request(
+            collection_url_env,
+            method=method,
+            payload=payload,
+            retry_rate_limit=True,
+        )
+
+    async def _bulk_import_load_catalog(
+        self,
+    ) -> tuple[list[CatalogEntry], list[CatalogEntry], list[ProductEntry]]:
+        categories = _catalog_entries(
+            await self._bulk_import_request(XANO_CATEGORIES_URL_ENV)
+        )
+        brands = _catalog_entries(
+            await self._bulk_import_request(XANO_BRANDS_URL_ENV)
+        )
+        products_payload = await self._bulk_import_request(XANO_PRODUCTS_URL_ENV)
+        variations_payload = await self._bulk_import_request(
+            XANO_VARIATIONS_URL_ENV
+        )
+        products = _product_entries(
+            products_payload, variations_payload, categories, brands
+        )
+        return categories, brands, products
+
+    @rx.event
+    async def preview_bulk_import(self, files: list[rx.UploadFile]):
+        if self.bulk_import_loading or self._bulk_import_in_progress:
+            self.bulk_import_message = "Aguarde a conclusão da operação em andamento."
+            return
+        self.bulk_import_message = ""
+        self.bulk_import_progress = ""
+        self.bulk_import_preview = []
+        self.bulk_import_report = []
+        self.bulk_import_has_valid = False
+        self._bulk_import_valid_groups = []
+        if not self._bulk_import_is_admin():
+            self.bulk_import_message = "Você não tem autorização para essa operação."
+            return
+        if len(files) != 1:
+            self.bulk_import_message = "Selecione exatamente um arquivo."
+            return
+        self.bulk_import_loading = True
+        try:
+            file = files[0]
+            data = await file.read()
+            data_rows = _bulk_import_parse(file.name, data)
+            self._bulk_import_last_request_at = time.monotonic()
+            categories, brands, products = await self._bulk_import_load_catalog()
+            preview, groups = _bulk_import_validate(
+                data_rows, categories, brands, products
+            )
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as error:
+            self.bulk_import_message = _bulk_import_failure_message(error)
+            return
+        finally:
+            self.bulk_import_loading = False
+        self.bulk_import_preview = preview
+        self._bulk_import_valid_groups = groups
+        self.bulk_import_has_valid = bool(groups)
+        valid_count = sum(
+            1 for row in preview if row.status == BULK_IMPORT_VALID_STATUS
+        )
+        self.bulk_import_message = (
+            f"Pré-visualização: {len(preview)} linha(s), "
+            f"{valid_count} válida(s), {len(groups)} produto(s) prontos."
+        )
+    @rx.event(background=True)
+    async def confirm_bulk_import(self):
+        async with self:
+            if not self._bulk_import_is_admin():
+                self.bulk_import_message = (
+                    "Você não tem autorização para essa operação."
+                )
+                return
+            if not self._bulk_import_valid_groups:
+                self.bulk_import_message = "Nenhuma linha válida para importar."
+                return
+            if self._bulk_import_in_progress or self.bulk_import_loading:
+                return
+            self._bulk_import_in_progress = True
+            self.bulk_import_loading = True
+            self.bulk_import_message = ""
+            self.bulk_import_progress = "Carregando catálogo..."
+            self.bulk_import_report = []
+            self.bulk_import_cancel_requested = False
+            self._bulk_import_last_request_at = time.monotonic()
+            groups = list(self._bulk_import_valid_groups)
+
+        results: list[BulkImportResult] = []
+        created = 0
+        skipped = 0
+        failed = 0
+        authorization_failure = False
+        cancel_requested = False
+        try:
+            try:
+                categories, brands, products = await self._bulk_import_load_catalog()
+            except (
+                urllib.error.HTTPError,
+                urllib.error.URLError,
+                TimeoutError,
+                ValueError,
+                json.JSONDecodeError,
+            ) as error:
+                async with self:
+                    self.bulk_import_message = _bulk_import_failure_message(error)
+                return
+
+            category_by_name = {entry.name.strip(): entry for entry in categories}
+            brand_by_name = {entry.name.strip(): entry for entry in brands}
+            existing_names = {
+                product.name.strip() for product in products if product.name.strip()
+            }
+
+            for index, group in enumerate(groups, start=1):
+                async with self:
+                    if self.bulk_import_cancel_requested:
+                        cancel_requested = True
+                        break
+                    self.bulk_import_progress = (
+                        f"Processando {index}/{len(groups)}: {group.product_name} "
+                        f"(criados: {created}, pulados: {skipped}, "
+                        f"falhas: {failed})"
+                    )
+                if group.product_name in existing_names:
+                    results.append(
+                        BulkImportResult(
+                            group.product_name,
+                            BULK_IMPORT_SKIPPED_OUTCOME,
+                            "Produto já existente.",
+                        )
+                    )
+                    skipped += 1
+                    continue
+                category = category_by_name.get(group.category_name)
+                brand = brand_by_name.get(group.brand_name)
+                if (
+                    category is None
+                    or brand is None
+                    or category.status != "ATIVO"
+                    or brand.status != "ATIVO"
+                ):
+                    results.append(
+                        BulkImportResult(
+                            group.product_name,
+                            BULK_IMPORT_FAILED_OUTCOME,
+                            "Categoria ou marca indisponível.",
+                        )
+                    )
+                    failed += 1
+                    continue
+                payload: dict[str, object] = {
+                    "nome": group.product_name,
+                    "descricao": group.description,
+                    "especificacoes_tecnicas": group.specifications,
+                    "categoria_id": category.id,
+                    "marca_id": brand.id,
+                    "variacoes": [
+                        {
+                            "nome_ou_descricao": variation.name,
+                            "sku": variation.sku,
+                            "preco": variation.price,
+                            "quantidade_disponivel": variation.quantity,
+                        }
+                        for variation in group.variations
+                    ],
+                }
+                await self._bulk_import_wait()
+                async with self:
+                    if self.bulk_import_cancel_requested:
+                        cancel_requested = True
+                        break
+                try:
+                    await self._bulk_import_request(
+                        XANO_PRODUCTS_URL_ENV,
+                        method="POST",
+                        payload=payload,
+                        throttle=False,
+                    )
+                except urllib.error.HTTPError as error:
+                    if error.code in {401, 403}:
+                        results.append(
+                            BulkImportResult(
+                                group.product_name,
+                                BULK_IMPORT_FAILED_OUTCOME,
+                                "Sessão sem autorização.",
+                            )
+                        )
+                        authorization_failure = True
+                        break
+                    if error.code == 400 and "already exists" in (
+                        _bulk_import_error_body(error).lower()
+                    ):
+                        results.append(
+                            BulkImportResult(
+                                group.product_name,
+                                BULK_IMPORT_SKIPPED_OUTCOME,
+                                "Registro já existente.",
+                            )
+                        )
+                        skipped += 1
+                        existing_names.add(group.product_name)
+                        continue
+                    results.append(
+                        BulkImportResult(
+                            group.product_name,
+                            BULK_IMPORT_FAILED_OUTCOME,
+                            _bulk_import_group_failure_message(error),
+                        )
+                    )
+                    failed += 1
+                    continue
+                except (
+                    urllib.error.URLError,
+                    TimeoutError,
+                    ValueError,
+                ) as error:
+                    results.append(
+                        BulkImportResult(
+                            group.product_name,
+                            BULK_IMPORT_FAILED_OUTCOME,
+                            _bulk_import_group_failure_message(error),
+                        )
+                    )
+                    failed += 1
+                    continue
+                results.append(
+                    BulkImportResult(
+                        group.product_name,
+                        BULK_IMPORT_CREATED_OUTCOME,
+                        "",
+                    )
+                )
+                created += 1
+                existing_names.add(group.product_name)
+
+            async with self:
+                self.bulk_import_report = results
+                self.bulk_import_progress = ""
+                if authorization_failure:
+                    self.bulk_import_message = (
+                        "A importação foi interrompida por falta de autorização."
+                    )
+                elif cancel_requested:
+                    self.bulk_import_message = (
+                        f"Importação cancelada. Criados: {created}, "
+                        f"pulados: {skipped}, falhas: {failed}."
+                    )
+                else:
+                    self.bulk_import_message = (
+                        f"Importação concluída. Criados: {created}, "
+                        f"pulados: {skipped}, falhas: {failed}."
+                    )
+
+            try:
+                async with self:
+                    await self._refresh_products()
+            except Exception:
+                BULK_IMPORT_LOGGER.exception(
+                    "bulk import product refresh failed"
+                )
+        except Exception:
+            BULK_IMPORT_LOGGER.exception("bulk import unexpected failure")
+            async with self:
+                self.bulk_import_report = results
+                self.bulk_import_progress = ""
+                self.bulk_import_message = (
+                    f"Importação interrompida por erro inesperado. "
+                    f"Criados: {created}, pulados: {skipped}, falhas: {failed}."
+                )
+        finally:
+            async with self:
+                self.bulk_import_loading = False
+                self._bulk_import_in_progress = False
+                self.bulk_import_progress = ""
+                self.bulk_import_cancel_requested = False
+
+    @rx.event
+    def cancel_bulk_import(self):
+        self.bulk_import_cancel_requested = True
+
+    @rx.event
+    def reset_bulk_import(self):
+        if self.bulk_import_loading or self._bulk_import_in_progress:
+            return
+        self.bulk_import_preview = []
+        self.bulk_import_report = []
+        self.bulk_import_message = ""
+        self.bulk_import_progress = ""
+        self.bulk_import_has_valid = False
+        self._bulk_import_valid_groups = []
 
     @rx.event
     async def load_categories(self):
@@ -3955,6 +4883,12 @@ _STATUS_SCHEMES = {
     "INATIVO": "gray",
     "AGUARDANDO_PAGAMENTO": "amber",
     "PENDENTE": "amber",
+    "VÁLIDA": "green",
+    "ERRO": "red",
+    "DUPLICADA": "amber",
+    "CRIADO": "green",
+    "PULADO": "gray",
+    "FALHA": "red",
 }
 
 
@@ -4679,6 +5613,150 @@ def index() -> rx.Component:
         rx.fragment(),
     )
 
+    bulk_import_management = rx.cond(
+        State.user_role == "ADMINISTRADOR",
+        surface_card(
+            rx.vstack(
+                section_heading("Importar produtos em massa"),
+                rx.text(
+                    "Envie um arquivo CSV ou XLSX com as colunas: "
+                    "produto_nome, produto_descricao, "
+                    "produto_especificacoes_tecnicas, categoria_nome, "
+                    "marca_nome, variacao_nome, sku, preco, "
+                    "quantidade_disponivel. Limites: 200 linhas, "
+                    "50 produtos e 2 MB.",
+                    color=COLOR_TEXT_MUTED,
+                ),
+                rx.upload(
+                    rx.text("Selecione um arquivo CSV ou XLSX"),
+                    id="bulk-import-file",
+                    accept={
+                        "text/csv": [".csv"],
+                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
+                            ".xlsx"
+                        ],
+                    },
+                    max_files=1,
+                    disabled=State.bulk_import_loading,
+                    width="100%",
+                ),
+                rx.hstack(
+                    primary_button(
+                        "Pré-visualizar",
+                        type="button",
+                        on_click=State.preview_bulk_import(
+                            rx.upload_files("bulk-import-file")
+                        ),
+                        disabled=State.bulk_import_loading,
+                    ),
+                    secondary_button(
+                        "Limpar",
+                        type="button",
+                        on_click=State.reset_bulk_import,
+                        disabled=State.bulk_import_loading,
+                    ),
+                    spacing="2",
+                    wrap="wrap",
+                ),
+                feedback_text(State.bulk_import_message),
+                rx.cond(
+                    State.bulk_import_loading,
+                    loading_text("Processando importação..."),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    State.bulk_import_progress != "",
+                    rx.text(State.bulk_import_progress, color=COLOR_TEXT_MUTED),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    State.bulk_import_preview.length() > 0,
+                    rx.vstack(
+                        section_heading("Pré-visualização", size="4"),
+                        rx.foreach(
+                            State.bulk_import_preview,
+                            lambda row: surface_card(
+                                rx.vstack(
+                                    rx.hstack(
+                                        rx.text(
+                                            "Linha "
+                                            + row.line.to_string()
+                                            + ": "
+                                            + row.product_name,
+                                            weight="bold",
+                                        ),
+                                        status_badge(row.status),
+                                        justify="between",
+                                        width="100%",
+                                    ),
+                                    rx.text(row.reason, color=COLOR_TEXT_MUTED),
+                                    align="stretch",
+                                    spacing="1",
+                                    width="100%",
+                                ),
+                            ),
+                        ),
+                        align="stretch",
+                        spacing="2",
+                        width="100%",
+                    ),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    State.bulk_import_has_valid,
+                    rx.hstack(
+                        primary_button(
+                            "Confirmar importação",
+                            type="button",
+                            on_click=State.confirm_bulk_import,
+                            disabled=State.bulk_import_loading,
+                        ),
+                        secondary_button(
+                            "Cancelar importação",
+                            type="button",
+                            on_click=State.cancel_bulk_import,
+                            disabled=~State.bulk_import_loading,
+                        ),
+                        spacing="2",
+                        wrap="wrap",
+                    ),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    State.bulk_import_report.length() > 0,
+                    rx.vstack(
+                        section_heading("Resultado", size="4"),
+                        rx.foreach(
+                            State.bulk_import_report,
+                            lambda item: surface_card(
+                                rx.vstack(
+                                    rx.hstack(
+                                        rx.text(item.product_name, weight="bold"),
+                                        status_badge(item.outcome),
+                                        justify="between",
+                                        width="100%",
+                                    ),
+                                    rx.text(item.detail, color=COLOR_TEXT_MUTED),
+                                    align="stretch",
+                                    spacing="1",
+                                    width="100%",
+                                ),
+                            ),
+                        ),
+                        align="stretch",
+                        spacing="2",
+                        width="100%",
+                    ),
+                    rx.fragment(),
+                ),
+                align="stretch",
+                spacing="3",
+                width="100%",
+            ),
+        ),
+        rx.fragment(),
+    )
+
     catalog_management = rx.cond(
         State.user_role == "ADMINISTRADOR",
         rx.vstack(
@@ -4762,6 +5840,7 @@ State.toggle_brand_status,
             ),
             catalog_management,
             product_management,
+            bulk_import_management,
             spacing="4",
             align="stretch",
             width="100%",
