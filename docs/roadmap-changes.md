@@ -14,9 +14,9 @@ Fontes: `AGENTS.md`, `docs/project-overview.md`, `docs/domain-model.md`, `opensp
 
 ## Estado atual
 
-- **ATIVA:** nenhuma. `gestao-produtos` foi **concluída (15/15 tarefas)**, **arquivada em 2026-10-18** (`openspec/changes/archive/2026-10-18-gestao-produtos/`) e **publicada em `origin/main`** (commits `3421dc8`, `3b91921`). **Limitação conhecida:** o upload de imagem principal (`POST /products/{id}/image`) não é operacional na instância Xano Free (HTTP 403, `ERROR_CODE_ACCESS_DENIED`) — permanece **não validado e não declarado funcional**, dependendo de plano pago ou armazenamento externo gratuito a tratar em mudança própria.
+- **ATIVA:** nenhuma. `cadastro-produtos-em-massa` foi **concluída (17/17 tarefas)**, **arquivada em 2026-10-18** (`openspec/changes/archive/2026-10-18-cadastro-produtos-em-massa/`) e **publicada em `origin/main`** (commits `d7ef848`, `39039cb`), com a spec consolidada criada em `openspec/specs/product-bulk-import/spec.md`. Antes disso, `gestao-produtos` foi **concluída (15/15 tarefas)**, **arquivada em 2026-10-18** (`openspec/changes/archive/2026-10-18-gestao-produtos/`) e **publicada em `origin/main`** (commits `3421dc8`, `3b91921`). **Limitação conhecida:** o upload de imagem principal (`POST /products/{id}/image`) não é operacional na instância Xano Free (HTTP 403, `ERROR_CODE_ACCESS_DENIED`) — permanece **não validado e não declarado funcional**, dependendo de plano pago ou armazenamento externo gratuito a tratar em mudança própria.
 - **BLOQUEADA por limitação técnica (Xano Free):** `baixa-estoque-checkout` (C1) — artefatos OpenSpec criados; implementação bloqueada até confirmar que `db.direct_query` participa da transação/rollback do checkout.
-- **ARQUIVADAS (16, concluídas, não recriar):** integracao-reflex-xano, acesso-interno, carrinho-compras, catalogo-publico, gestao-categorias-marcas, pagamento-pedido, design-interface-voltix, home-publica-voltix, resiliencia-catalogo-publico, cadastro-cliente-enderecos, checkout-pedidos, conectar-catalogo-publico-xano, documentacao-ap2, melhorar-ux-ui-ap2, validar-jornada-compra-e2e, gestao-produtos.
+- **ARQUIVADAS (17, concluídas, não recriar):** integracao-reflex-xano, acesso-interno, carrinho-compras, catalogo-publico, gestao-categorias-marcas, pagamento-pedido, design-interface-voltix, home-publica-voltix, resiliencia-catalogo-publico, cadastro-cliente-enderecos, checkout-pedidos, conectar-catalogo-publico-xano, documentacao-ap2, melhorar-ux-ui-ap2, validar-jornada-compra-e2e, gestao-produtos, cadastro-produtos-em-massa.
 
 ## Decisões aprovadas (E1–E7)
 
@@ -73,6 +73,7 @@ Pendências são detalhadas no `design` da respectiva change na hora da implemen
 
 ```
 F0  gestao-produtos (CONCLUÍDA 15/15, arquivada 2026-10-18)
+F1  cadastro-produtos-em-massa (CONCLUÍDA 17/17, arquivada 2026-10-18)
  1  C1  baixa-estoque-checkout
  2  C2  cancelamento-pedido
  3  C3  gestao-pedidos-painel
