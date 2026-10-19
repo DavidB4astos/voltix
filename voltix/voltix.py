@@ -25,6 +25,19 @@ from dotenv import load_dotenv
 
 from rxconfig import config
 
+try:
+    from .demo_images import resolve_demo_image, resolve_demo_image_named
+except Exception:
+    def resolve_demo_image(sku: str, existing_image_url: str) -> str:
+        return existing_image_url
+
+    def resolve_demo_image_named(
+        name: str,
+        sku: str,
+        existing_image_url: str,
+    ) -> str:
+        return existing_image_url
+
 
 load_dotenv()
 
@@ -2224,7 +2237,14 @@ class State(rx.State):
             *(self._public_product_image(product.id) for product in products)
         )
         return [
-            replace(product, image_url=image_url)
+            replace(
+                product,
+                image_url=resolve_demo_image_named(
+                    product.name,
+                    product.variations[0].sku if product.variations else "",
+                    image_url,
+                ),
+            )
             for product, image_url in zip(products, image_urls, strict=True)
         ]
 
@@ -2286,9 +2306,27 @@ class State(rx.State):
                 record_id=product_id,
             )
             image_url = await self._public_product_image(product_id)
+            product_payload = details.get("product") if isinstance(details, dict) else None
+            variations_payload = details.get("variations") if isinstance(details, dict) else None
+            first_sku = ""
+            if isinstance(variations_payload, list) and variations_payload:
+                first = variations_payload[0]
+                if isinstance(first, dict):
+                    sku = first.get("sku")
+                    if isinstance(sku, str):
+                        first_sku = sku
+            product_name = ""
+            if isinstance(product_payload, dict):
+                nome = product_payload.get("nome")
+                if isinstance(nome, str):
+                    product_name = nome
             self.public_selected_product = _public_product_details(
                 details,
-                image_url=image_url,
+                image_url=resolve_demo_image_named(
+                    product_name,
+                    first_sku,
+                    image_url,
+                ),
             )
         except (
             urllib.error.HTTPError,

@@ -1,0 +1,216 @@
+﻿{
+    "updated": "2026-10-19",
+    "criteria": "Exact model match (variant/capacity/version). Sources: manufacturers, distributors, specialty retailers, marketplaces. No AI images, similar products, or different versions. Public accessibility does not equal authorization. Download only authorized or properly licensed images; in doubt, keep placeholder and record pending.",
+    "summary": {
+        "verified": 3,
+        "usable": 3,
+        "pending": 17
+    },
+    "products": [
+        {
+            "sku": "VTX-DEMO-001",
+            "product": "Mouse Logitech G203 LIGHTSYNC",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons. Logitech Assets License restricts Logitech-provided assets to use in regions where the party has been formally granted rights by Logitech; Voltix has no such grant.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (intitle:G203 - no Logitech product photos)",
+                "https://www.logitech.com/en-us/tos/logitech-assets-license"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-002",
+            "product": "Mouse Logitech M90",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons. Logitech Assets License requires formal grant of rights; not authorized.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (intitle:M90 intitle:Logitech - no results)",
+                "https://www.logitech.com/en-us/tos/logitech-assets-license"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-003",
+            "product": "Teclado Logitech K120",
+            "status": "approved",
+            "file": "vtx-demo-003.jpg",
+            "source_url": "https://commons.wikimedia.org/wiki/File:Logitech_K120_Keyboard.jpg",
+            "author": "TaurusEmerald",
+            "license": "CC BY-SA 4.0",
+            "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+            "attribution": "Logitech K120 Keyboard.jpg by TaurusEmerald, CC BY-SA 4.0, via Wikimedia Commons",
+            "note": "Independent own-work photo (not a Logitech Asset); Logitech TOS does not govern it. Exact model confirmed via file description and Wikidata Q136086723."
+        },
+        {
+            "sku": "VTX-DEMO-004",
+            "product": "Mouse Logitech MX Master 3S",
+            "status": "approved",
+            "file": "vtx-demo-004.jpg",
+            "source_url": "https://commons.wikimedia.org/wiki/File:Logitech_MX_Master_3S_HS14.jpg",
+            "author": "Hayden Schiff",
+            "license": "CC BY 4.0",
+            "license_url": "https://creativecommons.org/licenses/by/4.0/",
+            "attribution": "Logitech MX Master 3S HS14.jpg by Hayden Schiff, CC BY 4.0, via Wikimedia Commons",
+            "note": "Independent own-work photo (not a Logitech Asset). Exact model confirmed via file description and Wikidata Q125697788; category 'Computer mice with white background'."
+        },
+        {
+            "sku": "VTX-DEMO-005",
+            "product": "Headset HyperX Cloud II",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons. HP/HyperX public terms cover user-submitted content only; no public license found granting use of HyperX press product images.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (intitle:Cloud intitle:HyperX - no results; Category:HyperX headsets - only event photos)",
+                "https://hyperx.com/pages/hp-hyperx-visual-content-terms-of-use"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-006",
+            "product": "Headset HyperX Cloud Stinger 2",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons. No public HyperX license for press product images.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (intitle:Cloud Stinger - no results)"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-007",
+            "product": "Webcam Logitech C920 HD Pro",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons (Category:Logitech webcams has C910/C922 but not C920). Logitech Assets License not authorized for Voltix.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (Category:Logitech C920 empty; intitle:C920 - no webcam photos)",
+                "https://www.logitech.com/en-us/tos/logitech-assets-license"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-008",
+            "product": "Microfone HyperX SoloCast",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons. No public HyperX license for press product images.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (intitle:SoloCast - no results)"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-009",
+            "product": "SSD Kingston A400 480GB",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons. Kingston LoDA content license limits use to legitimate business purposes relating to a potential/current Kingston business partner role; Voltix is not a Kingston partner.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (intitle:Kingston intitle:A400 - no results)",
+                "https://www.kingstonloda.com/ (LoDA Terms of Use)"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-010",
+            "product": "SSD Kingston NV2 1TB",
+            "status": "pending",
+            "reason": "Commons has '2023 Dysk SSD Kingston NV2 2TB.jpg' (CC BY-SA 4.0) but it is the 2TB variant, not 1TB; exact-capacity rule forbids use. Kingston LoDA not authorized for Voltix.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/wiki/File:2023_Dysk_SSD_Kingston_NV2_2TB.jpg",
+                "https://www.kingstonloda.com/ (LoDA Terms of Use)"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-011",
+            "product": "SSD Samsung 870 EVO 500GB",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons. Samsung Newsroom terms restrict materials to personal, informational and non-commercial use.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (intitle:870 EVO - no results)",
+                "https://news.samsung.com/global/terms-of-use"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-012",
+            "product": "SSD WD Blue SN580 1TB",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons. WD media kits are labeled for press/media use; no explicit public license found for commercial store use.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (intitle:SN580 - no results)",
+                "https://www.westerndigital.com/company/newsroom/media-kits"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-013",
+            "product": "Memoria Kingston FURY Beast DDR4 16GB 3200MHz",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons. Kingston LoDA not authorized for Voltix.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (intitle:FURY Beast - no results)",
+                "https://www.kingstonloda.com/ (LoDA Terms of Use)"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-014",
+            "product": "Processador AMD Ryzen 5 5600",
+            "status": "pending",
+            "reason": "Commons Category:AMD Ryzen 5 5600 contains only benchmark screenshots, not product photos. AMD marketing materials require an AMD Amplify account.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/wiki/Category:AMD_Ryzen_5_5600",
+                "https://www.amd.com/en/newsroom.html"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-015",
+            "product": "Processador Intel Core i5-12400F",
+            "status": "approved",
+            "file": "vtx-demo-015.jpg",
+            "source_url": "https://commons.wikimedia.org/wiki/File:Intel@intel7(10nmESF)@AlderLake@ADL-S(6P+0E)@i5-12400F@SRL5Z_DSCx01@VIS_(52402436460).jpg",
+            "author": "Fritzchens Fritz",
+            "license": "CC0 1.0",
+            "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+            "attribution": "Intel Core i5-12400F photo by Fritzchens Fritz, CC0 1.0, via Wikimedia Commons",
+            "note": "Real product photo of the exact model (Alder Lake-S 6P+0E, SRL5Z). Original 3154x2682; downloaded at 1280px. CC0 requires no attribution but credit is recorded."
+        },
+        {
+            "sku": "VTX-DEMO-016",
+            "product": "Placa de video ASUS Dual GeForce RTX 4060 8GB",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons. ASUS Copyright Usage Guidelines restrict ASUS Resource use to licensees/dealers/resellers with agreements with ASUSTeK, require 'Used with permission from ASUS' and prior marketing review.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (intitle:4060 intitle:Dual - no results)",
+                "https://channel.asus.com/guideline/inner?index=asusCopyright_en"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-017",
+            "product": "Roteador TP-Link Archer C6",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons. TP-Link Terms of Use prohibit commercial use of site content without prior written consent or a reseller/distribution license; official assets require Brandfolder access request.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (intitle:Archer C6 - no results)",
+                "https://www.tp-link.com/us/about-us/privacy/",
+                "https://brandfolder.com/demo-tplinkusa"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-018",
+            "product": "Adaptador USB Wi-Fi TP-Link Archer T3U",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons. TP-Link terms not authorized for Voltix.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (intitle:Archer T3U - no results)",
+                "https://www.tp-link.com/us/about-us/privacy/"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-019",
+            "product": "Monitor LG 24MP400-B",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons. LG legal terms: materials may not be copied, distributed or transmitted for commercial use without express written consent of LG Electronics.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (intitle:24MP400 - no results)",
+                "https://lgusnewsroom.com/legal/"
+            ]
+        },
+        {
+            "sku": "VTX-DEMO-020",
+            "product": "Monitor Samsung T350 24 polegadas",
+            "status": "pending",
+            "reason": "No freely licensed exact-model photo on Wikimedia Commons. Samsung Newsroom terms restrict materials to personal, informational and non-commercial use.",
+            "researched_sources": [
+                "https://commons.wikimedia.org/ (intitle:T350 intitle:Samsung - no results)",
+                "https://news.samsung.com/global/terms-of-use"
+            ]
+        }
+    ]
+}
