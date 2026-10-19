@@ -1969,6 +1969,7 @@ class State(rx.State):
     public_categories: list[CatalogEntry] = []
     public_products: list[PublicProductEntry] = []
     public_catalog_loading: bool = False
+    public_catalog_loaded: bool = False
     public_catalog_message: str = ""
     public_category_id: str = ""
     public_product_loading: bool = False
@@ -2266,6 +2267,7 @@ class State(rx.State):
             )
         finally:
             self.public_catalog_loading = False
+            self.public_catalog_loaded = True
 
     @rx.event
     async def filter_public_catalog(self, category_id: str):
@@ -6404,7 +6406,7 @@ def home_page() -> rx.Component:
                 align="center",
             ),
             rx.cond(
-                State.public_catalog_loading,
+                State.public_catalog_loading | (State.public_catalog_loaded == False),
                 loading_text("Carregando produtos..."),
                 rx.cond(
                     State.public_catalog_message != "",
@@ -6420,7 +6422,8 @@ def home_page() -> rx.Component:
                         ),
                     ),
                     rx.cond(
-                        State.public_products.length() == 0,
+                        (State.public_catalog_loaded == True)
+                        & (State.public_products.length() == 0),
                         empty_state(
                             "Nenhum produto disponível para exibição."
                         ),
@@ -6759,7 +6762,7 @@ def public_catalog_page() -> rx.Component:
             padding="3",
         ),
         rx.cond(
-            State.public_catalog_loading,
+            State.public_catalog_loading | (State.public_catalog_loaded == False),
             loading_text("Carregando catálogo..."),
             rx.fragment(),
         ),
@@ -6780,6 +6783,7 @@ def public_catalog_page() -> rx.Component:
         ),
         rx.cond(
             (State.public_catalog_loading == False)
+            & (State.public_catalog_loaded == True)
             & (State.public_catalog_message == "")
             & (State.public_products.length() == 0),
             empty_state("Nenhum produto disponível para exibição."),

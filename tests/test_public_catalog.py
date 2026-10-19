@@ -20,6 +20,7 @@ class _FakePublicState:
     public_categories = []
     public_products = []
     public_catalog_loading = False
+    public_catalog_loaded = False
     public_catalog_message = ""
     public_category_id = ""
     public_product_loading = False
@@ -217,6 +218,47 @@ class PublicCatalogTests(unittest.TestCase):
             state.public_products[0].image_url,
             "https://files.example.invalid/signed-image",
         )
+
+    def test_catalog_initial_state_is_not_loaded(self):
+        state = _FakePublicState()
+        self.assertFalse(state.public_catalog_loaded)
+        self.assertFalse(state.public_catalog_loading)
+        self.assertEqual(state.public_products, [])
+
+    def test_catalog_load_success_marks_state_as_loaded(self):
+        state = _FakePublicState()
+        category = {"id": 2, "name": "Notebooks", "description": "", "status": "ATIVO"}
+        state._public_catalog_request = AsyncMock(
+            side_effect=[
+                [category],
+                [self.product_payload()],
+                {"image_url": None},
+            ]
+        )
+
+        async def run():
+            await app.State.load_public_catalog.fn(state)
+
+        asyncio.run(run())
+        self.assertTrue(state.public_catalog_loaded)
+        self.assertFalse(state.public_catalog_loading)
+        self.assertEqual(state.public_catalog_message, "")
+        self.assertEqual(len(state.public_products), 1)
+
+    def test_catalog_failure_still_marks_state_as_loaded(self):
+        state = _FakePublicState()
+        state._public_catalog_request = AsyncMock(
+            side_effect=URLError("backend unavailable")
+        )
+
+        async def run():
+            await app.State.load_public_catalog.fn(state)
+
+        asyncio.run(run())
+        self.assertTrue(state.public_catalog_loaded)
+        self.assertFalse(state.public_catalog_loading)
+        self.assertNotEqual(state.public_catalog_message, "")
+        self.assertEqual(state.public_products, [])
 
     def test_product_detail_load_and_failure_are_observable(self):
         state = _FakePublicState()
