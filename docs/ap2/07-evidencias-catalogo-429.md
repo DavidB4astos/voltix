@@ -115,3 +115,93 @@ Interpretação: no baseline, 6 navegações geravam 18 requisições e todas ca
 - Pós-correção (automatizado + funcional): cache e single-flight reduzem as requisições; o retry com `Retry-After` mantém o catálogo funcional sem exibir falha; falhas persistentes seguem observáveis e logadas com segurança.
 - Verificação visual (CV-01): confirmada pelo próprio usuário em 14/10/2026 — o catálogo carrega corretamente e o erro de carregamento não reaparece.
 
+## 7. Correção do fan-out de imagens (2026-10-22)
+
+### 7.1 Causa
+
+A carga do catálogo fazia uma requisição HTTP de imagem por produto (`public_catalog.product_image`) via `asyncio.gather`. Com 20 produtos, a carga fria emitia ~22 requisições e excedia o limite de 10/20 s do Xano Free. O log `reflex_v3000_err.log` registrou 18 respostas `429` nesse endpoint, incluindo 4 novas após ~1h16 sem tráfego.
+
+### 7.2 Implementação no working tree
+
+- `xano/api/public_catalog/products_GET.xs`: `imagem_principal` incluída na projeção interna dos dois ramos; URL assinada com TTL 3600 no `foreach`; campo `image_url` na resposta; caminho privado omitido.
+- `voltix/voltix.py`: `_public_catalog_products` lê e valida `image_url`; `_fetch_public_products` usa a URL da listagem e não chama mais `_public_product_image` por produto; `resolve_demo_image_named` e o endpoint dedicado do detalhe permanecem.
+- `tests/test_public_catalog.py`: mocks e contagens atualizados de 3 para 2 requisições por carga; teste de regressão com múltiplos produtos confirma `await_count == 2` e nenhuma chamada por produto.
+
+### 7.3 Verificação automatizada desta passagem
+
+| Verificação | Resultado |
+|---|---|
+| `python -m unittest discover -s tests` | **139 testes OK** |
+| `python -m unittest discover -s tests -p "test_public_catalog.py"` | **23 testes OK** |
+| `python -m py_compile voltix/voltix.py` | **OK** |
+| `reflex compile` | **OK** — app compilado em 6,392 s |
+| `git diff --check` | **OK** (sem erros; apenas avisos de CRLF) |
+| Hashes de `reflex.lock/*` antes/depois do compile | **inalterados** |
+
+Contrato esperado após a publicação: a carga fria emite no máximo **2 requisições** (categorias + produtos), independentemente da quantidade de produtos, sem requisições de imagem por produto. O detalhe continua usando o endpoint dedicado.
+
+### 7.4 Pendente (bloqueado pela publicação manual no Xano)
+
+- Publicar `products_GET.xs` no Xano e validar o contrato com uma chamada somente-leitura.
+- Abrir `/catalogo` e a Home em sessão limpa, confirmar imagens, ausência de `429` e registrar a contagem real de requisições.
+- O smoke e a medição real **não foram executados** nesta passagem; a tarefa 7.6 e o archive da Home permanecem bloqueados até essa publicação.
+
+### 8. Verificação pós-publicação (2026-10-23)
+
+#### 8.1 Contrato do endpoint publicado
+
+Chamada única e somente-leitura a `GET /products`, sem repetição:
+
+| Verificação | Resultado |
+|---|---|
+| HTTP | **200** |
+| Tempo | **0,869 s** |
+| Produtos | **23** (`ATIVO=23`) |
+| Campo `image_url` presente | **23/23** |
+| `image_url` HTTPS | **0** |
+| `image_url` nulo/vazio | **23** |
+| Campo `imagem_principal` exposto | **0** |
+
+O endpoint publicado inclui `image_url` e não expõe `imagem_principal` nem caminhos privados. Como todos os produtos estão sem imagem no Xano, o ramo HTTPS assinado não pôde ser exercitado; a resposta atual é integralmente `null`.
+
+#### 8.2 Smoke de `/catalogo` — inválido por servidor desatualizado
+
+O servidor `localhost:3000` foi reutilizado sem reinício (PID **15944**, iniciado em 21/10/2026 17:41, comando `reflex run --env prod --single-port --frontend-port 3000`). O reload de `/catalogo` renderizou **23 produtos**, **3 imagens locais** (`/demo/vtx-demo-003.jpg`, `004.jpg`, `015.jpg`) e **20 placeholders**, mas exibiu **"Connection Error:"**.
+
+O log `reflex_v3000_err.log` foi atualizado durante o reload e passou de 18 para **46 linhas**, com **28 novas falhas** de `public_catalog.product_image` (**12×429**, **16×`None`**). Isso prova que o processo em execução ainda usa o build anterior e continua o fan-out de imagens; portanto, o smoke **não valida** a correção e **não foi repetido**, conforme a regra de não insistir sob HTTP 429.
+
+#### 8.3 Estado das tarefas
+
+- **7.2:** concluída — publicação e contrato validados.
+- **5.3:** **PASSOU** em 2026-10-23; `/carrinho`, `/cliente` e `/interno` permanecem aprovados na tentativa anterior.
+- **7.6:** **PASSOU** em 2026-10-23 (passagem única); `/catalogo` e Home verificados.
+- **6.7:** **pronto para encerramento; archive não executado** — aguarda aprovação explícita.
+
+#### 8.4 Verificação final de `/catalogo` e Home (2026-10-23 10:18–10:22)
+
+Passagem única, reutilizando o servidor existente (`localhost:3000`, PID **31912**), sem reinício, build ou teste adicional.
+
+**`/catalogo` — PASSOU.**
+
+- 23 cards de produto renderizados.
+- 3 imagens locais (`/demo/vtx-demo-003.jpg`, `004.jpg`, `015.jpg`) com `complete=true` e `naturalWidth > 0`.
+- **0 imagens quebradas.**
+- 20 cards com `image_url` nulo foram apresentados sem `<img>` e sem ícone quebrado; a área de imagem é omitida (`div` de 0 px), sem placeholder visual dedicado.
+- Evidência: `C:\Users\venda\AppData\Local\Temp\opencode\voltix-final-catalogo-20261023.png`.
+
+**Home (`/`) — PASSOU.**
+
+- Hero "Tecnologia premium para elevar o seu setup." presente.
+- Bloco de categorias e seção "Categorias" presentes.
+- Seção editorial "Tecnologia em contexto" presente.
+- Vitrine "Destaques da loja" com 3 produtos e 5 imagens locais no total do snapshot.
+- Evidência: `C:\Users\venda\AppData\Local\Temp\opencode\voltix-final-home-20261023.png`.
+- A avaliação DOM detalhada da Home expirou na ferramenta, mas o snapshot de acessibilidade confirmou as seções e as imagens.
+
+**Xano / 429 — PASSOU.**
+
+- `reflex.err.log` do servidor novo: **0 linhas**, sem novo HTTP 429.
+- `reflex_v3000_err.log` antigo: inalterado (46 linhas, mtime 09:58:31), pertencente ao build anterior.
+- A contagem de rede em runtime não foi medida (SSR; o browser não emitiu XHR/fetch); a cobertura de 2 requisições permanece no teste de regressão 7.4.
+
+Nenhum código, dependência, imagem ou lockfile foi alterado; nenhum commit, push Git ou archive OpenSpec foi executado.
