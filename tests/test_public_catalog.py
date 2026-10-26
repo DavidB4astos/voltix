@@ -23,6 +23,7 @@ class _FakePublicState:
     public_catalog_loaded = False
     public_catalog_message = ""
     public_category_id = ""
+    public_catalog_search = ""
     public_product_loading = False
     public_product_message = ""
     public_product_detail_id = None
@@ -80,10 +81,19 @@ class PublicCatalogTests(unittest.TestCase):
             )
 
     def test_public_product_list_rejects_inactive_and_private_image_fields(self):
-        product = app._public_catalog_products([self.product_payload()])[0]
+        product = app._public_catalog_products(
+            [
+                self.product_payload(
+                    image_url="https://files.example.invalid/signed-image"
+                )
+            ]
+        )[0]
         self.assertEqual(product.category_name, "Notebooks")
         self.assertEqual(product.brand_name, "Voltix")
-        self.assertEqual(product.image_url, "")
+        self.assertEqual(
+            product.image_url,
+            "https://files.example.invalid/signed-image",
+        )
         with self.assertRaises(ValueError):
             app._public_catalog_products(
                 [self.product_payload(status="INATIVO")]
@@ -91,6 +101,14 @@ class PublicCatalogTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             app._public_catalog_products(
                 [self.product_payload(imagem_principal="/vault/private.jpg")]
+            )
+        with self.assertRaises(ValueError):
+            app._public_catalog_products(
+                [self.product_payload(image_url="http://files.example.invalid/x")]
+            )
+        with self.assertRaises(ValueError):
+            app._public_catalog_products(
+                [self.product_payload(image_url=123)]
             )
 
     def test_product_details_include_only_active_variations_and_zero_stock(self):
@@ -159,6 +177,7 @@ class PublicCatalogTests(unittest.TestCase):
             state._public_catalog_request.call_args.kwargs["query_params"],
             {"category_id": "2"},
         )
+        state._public_product_image.assert_not_awaited()
 
     def test_invalid_or_expired_image_url_fails_instead_of_rendering(self):
         state = _FakePublicState()
@@ -198,12 +217,13 @@ class PublicCatalogTests(unittest.TestCase):
     def test_catalog_loads_public_data_and_signed_images_without_login(self):
         state = _FakePublicState()
         category = {"id": 2, "name": "Notebooks", "description": "", "status": "ATIVO"}
-        product = self.product_payload()
+        product = self.product_payload(
+            image_url="https://files.example.invalid/signed-image"
+        )
         state._public_catalog_request = AsyncMock(
             side_effect=[
                 [category],
                 [product],
-                {"image_url": "https://files.example.invalid/signed-image"},
             ]
         )
 
@@ -217,6 +237,45 @@ class PublicCatalogTests(unittest.TestCase):
         self.assertEqual(
             state.public_products[0].image_url,
             "https://files.example.invalid/signed-image",
+        )
+        self.assertEqual(state._public_catalog_request.await_count, 2)
+
+    def test_catalog_load_uses_listing_images_without_per_product_requests(self):
+        state = _FakePublicState()
+        category = {"id": 2, "name": "Notebooks", "description": "", "status": "ATIVO"}
+        products = [
+            self.product_payload(
+                id=7,
+                image_url="https://files.example.invalid/image-7",
+            ),
+            self.product_payload(
+                id=8,
+                nome="Monitor Voltix",
+                image_url="https://files.example.invalid/image-8",
+            ),
+        ]
+        state._public_catalog_request = AsyncMock(
+            side_effect=[
+                [category],
+                products,
+            ]
+        )
+        state._public_product_image = AsyncMock(
+            side_effect=AssertionError("per-product image request")
+        )
+
+        async def run():
+            await app.State.load_public_catalog.fn(state)
+
+        asyncio.run(run())
+        self.assertEqual(state._public_catalog_request.await_count, 2)
+        state._public_product_image.assert_not_awaited()
+        self.assertEqual(
+            [product.image_url for product in state.public_products],
+            [
+                "https://files.example.invalid/image-7",
+                "https://files.example.invalid/image-8",
+            ],
         )
 
     def test_catalog_initial_state_is_not_loaded(self):
@@ -232,7 +291,6 @@ class PublicCatalogTests(unittest.TestCase):
             side_effect=[
                 [category],
                 [self.product_payload()],
-                {"image_url": None},
             ]
         )
 
@@ -314,7 +372,12 @@ class PublicCatalogTests(unittest.TestCase):
         self.assertIn('$db.produto.status == "ATIVO"', product_list)
         self.assertIn('$category_record.status == "ATIVO"', product_list)
         self.assertIn('$brand_record.status == "ATIVO"', product_list)
-        self.assertNotIn("imagem_principal", product_list)
+        self.assertGreaterEqual(product_list.count('"imagem_principal"'), 2)
+        self.assertIn("storage.sign_private_url", product_list)
+        self.assertIn("pathname = $product.imagem_principal", product_list)
+        self.assertIn("ttl = 3600", product_list)
+        self.assertIn("image_url: $image_url", product_list)
+        self.assertNotIn("imagem_principal:", product_list)
 
         details = (root / "product" / "product_id_GET.xs").read_text(
             encoding="utf-8"
@@ -347,12 +410,13 @@ class PublicCatalogTests(unittest.TestCase):
     def test_repeated_navigation_within_ttl_reuses_cached_data(self):
         state = _FakePublicState()
         category = {"id": 2, "name": "Notebooks", "description": "", "status": "ATIVO"}
-        product = self.product_payload()
+        product = self.product_payload(
+            image_url="https://files.example.invalid/signed-image"
+        )
         state._public_catalog_request = AsyncMock(
             side_effect=[
                 [category],
                 [product],
-                {"image_url": "https://files.example.invalid/signed-image"},
             ]
         )
 
@@ -361,7 +425,7 @@ class PublicCatalogTests(unittest.TestCase):
             await app.State.load_public_catalog.fn(state)
 
         asyncio.run(run())
-        self.assertEqual(state._public_catalog_request.await_count, 3)
+        self.assertEqual(state._public_catalog_request.await_count, 2)
         self.assertEqual(
             state.public_products[0].image_url,
             "https://files.example.invalid/signed-image",
@@ -375,20 +439,20 @@ class PublicCatalogTests(unittest.TestCase):
             side_effect=[
                 [category],
                 [product],
-                {"image_url": None},
                 [category],
                 [product],
-                {"image_url": None},
             ]
         )
 
         async def run():
             await app.State.load_public_catalog.fn(state)
-            app._public_catalog_cache[""].expires_at = time.monotonic() - 1.0
+            keys = list(app._public_catalog_cache.keys())
+            for key in keys:
+                app._public_catalog_cache[key].expires_at = time.monotonic() - 1.0
             await app.State.load_public_catalog.fn(state)
 
         asyncio.run(run())
-        self.assertEqual(state._public_catalog_request.await_count, 6)
+        self.assertEqual(state._public_catalog_request.await_count, 4)
 
     def test_reuse_respects_selected_category(self):
         state = _FakePublicState()
@@ -397,7 +461,6 @@ class PublicCatalogTests(unittest.TestCase):
             side_effect=[
                 [category],
                 [self.product_payload(id=7)],
-                {"image_url": None},
             ]
         )
 
@@ -408,13 +471,12 @@ class PublicCatalogTests(unittest.TestCase):
                 side_effect=[
                     [category],
                     [self.product_payload(id=8)],
-                    {"image_url": None},
                 ]
             )
             await app.State.load_public_catalog.fn(state)
 
         asyncio.run(run())
-        self.assertEqual(state._public_catalog_request.await_count, 3)
+        self.assertEqual(state._public_catalog_request.await_count, 2)
         self.assertEqual(state.public_products[0].id, 8)
 
     def test_concurrent_loads_issue_a_single_set_of_requests(self):
@@ -422,7 +484,7 @@ class PublicCatalogTests(unittest.TestCase):
         second = _FakePublicState()
         category = {"id": 2, "name": "Notebooks", "description": "", "status": "ATIVO"}
         product = self.product_payload()
-        responses = [[category], [product], {"image_url": None}]
+        responses = [[category], [product]]
         first._public_catalog_request = AsyncMock(side_effect=responses)
         second._public_catalog_request = AsyncMock(side_effect=responses)
 
@@ -437,7 +499,7 @@ class PublicCatalogTests(unittest.TestCase):
             first._public_catalog_request.await_count
             + second._public_catalog_request.await_count
         )
-        self.assertEqual(total, 3)
+        self.assertEqual(total, 2)
         self.assertEqual(first.public_products[0].id, second.public_products[0].id)
 
     def test_rate_limit_retry_succeeds_after_transient_429(self):
@@ -511,6 +573,97 @@ class PublicCatalogTests(unittest.TestCase):
         self.assertNotIn("TOP", output)
         self.assertNotIn("token=", output)
         self.assertNotIn("secret.invalid", output)
+
+    def test_public_search_by_name_sends_q_param(self):
+        state = _FakePublicState()
+        state._public_catalog_request = AsyncMock(
+            return_value=[self.product_payload()]
+        )
+
+        async def run():
+            await app.State._fetch_public_products(state, "", "notebook")
+
+        asyncio.run(run())
+        self.assertEqual(
+            state._public_catalog_request.call_args.kwargs["query_params"],
+            {"q": "notebook"},
+        )
+
+    def test_public_search_combined_with_category(self):
+        state = _FakePublicState()
+        state._public_catalog_request = AsyncMock(
+            return_value=[self.product_payload()]
+        )
+
+        async def run():
+            await app.State._fetch_public_products(state, "2", "NOTEBOOK")
+
+        asyncio.run(run())
+        self.assertEqual(
+            state._public_catalog_request.call_args.kwargs["query_params"],
+            {"category_id": "2", "q": "NOTEBOOK"},
+        )
+
+    def test_public_search_empty_term_ignored(self):
+        state = _FakePublicState()
+        state._public_catalog_request = AsyncMock(
+            return_value=[self.product_payload()]
+        )
+
+        async def run():
+            await app.State._fetch_public_products(state, "", "   ")
+
+        asyncio.run(run())
+        self.assertIsNone(
+            state._public_catalog_request.call_args.kwargs["query_params"]
+        )
+
+    def test_public_search_case_insensitive_request(self):
+        state = _FakePublicState()
+        state._public_catalog_request = AsyncMock(
+            return_value=[self.product_payload(nome="Teclado Voltix")]
+        )
+
+        async def run():
+            products = await app.State._fetch_public_products(state, "", "TECLADO")
+
+        asyncio.run(run())
+        self.assertEqual(
+            state._public_catalog_request.call_args.kwargs["query_params"],
+            {"q": "TECLADO"},
+        )
+
+    def test_public_search_no_results(self):
+        state = _FakePublicState()
+        state._public_catalog_request = AsyncMock(return_value=[])
+
+        async def run():
+            result = await app.State._fetch_public_products(state, "", "inexistente")
+            return result
+
+        result = asyncio.run(run())
+        self.assertEqual(result, [])
+
+    def test_load_public_catalog_uses_search_state(self):
+        state = _FakePublicState()
+        state.public_catalog_search = "  mouse  "
+        category = {"id": 2, "name": "Notebooks", "description": "", "status": "ATIVO"}
+        state._public_catalog_request = AsyncMock(
+            side_effect=[
+                [category],
+                [self.product_payload(nome="Mouse Voltix")],
+            ]
+        )
+
+        async def run():
+            await app.State.load_public_catalog.fn(state)
+
+        asyncio.run(run())
+        self.assertEqual(state._public_catalog_request.await_count, 2)
+        self.assertEqual(
+            state._public_catalog_request.call_args_list[1].kwargs["query_params"],
+            {"q": "mouse"},
+        )
 
 
 if __name__ == "__main__":

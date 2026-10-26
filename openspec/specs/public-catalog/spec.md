@@ -6,19 +6,36 @@ Permitir que qualquer visitante consulte produtos ativos da Voltix, navegue por 
 ## Requirements
 
 ### Requirement: Visitors can browse the public product catalog
-O sistema SHALL permitir que visitantes sem sessão consultem produtos com status `ATIVO` e suas informações gerais disponíveis: nome, descrição, especificações técnicas, imagem principal quando existente e associações a categoria e marca somente quando essas entidades estiverem `ATIVO`. A consulta pública SHALL ser somente de leitura e SHALL retornar apenas os campos necessários à apresentação do catálogo.
+
+O cat�logo p�blico SHALL permitir filtrar produtos ATIVO por categoria, quando fornecido o par�metro `category_id` v�lido e correspondente a uma categoria ATIVA. Al�m do filtro por categoria, o cat�logo p�blico SHALL permitir filtrar por nome do produto quando fornecido o par�metro opcional `q`. A busca por nome SHALL ser por correspond�ncia parcial, case-insensitive, aplicada apenas ao campo `nome` dos produtos. O par�metro `q` SHALL ser combinado com `category_id` quando ambos forem fornecidos (condi��o AND). Quando `q` for vazio ou composto apenas por espa�os em branco, ele SHALL ser ignorado. A busca SHALL respeitar que apenas produtos ATIVO sejam considerados. O formato da resposta, os endpoints p�blicos existentes e as demais regras do cat�logo p�blico SHALL permanecer inalterados.
 
 #### Scenario: Anonymous visitor lists active products
-- **WHEN** um visitante sem sessão abre o catálogo público
-- **THEN** o sistema apresenta produtos `ATIVO` e não apresenta produtos `INATIVO`, sem exigir login
+- **WHEN** o visitante an�nimo acessa a listagem p�blica sem par�metros
+- **THEN** s�o retornados apenas produtos ATIVO
 
 #### Scenario: Product has an inactive category or brand association
-- **WHEN** um produto `ATIVO` possui associação existente com Categoria ou Marca `INATIVO`
-- **THEN** o produto permanece consultável conforme seu próprio status, o nome da entidade inativa não é apresentado como opção ou classificação pública, e nenhuma associação é alterada
+- **WHEN** um produto ATIVO est� associado a uma categoria INATIVA ou marca INATIVA
+- **THEN** o cat�logo p�blico omite o nome da categoria/marca, sem excluir o produto
 
 #### Scenario: Catalog read endpoint is called without authentication
-- **WHEN** um visitante consulta os dados do catálogo sem credenciais
-- **THEN** o backend retorna somente os dados públicos previstos e não permite criar, editar ou alterar dados
+- **WHEN** o endpoint p�blico de leitura do cat�logo � chamado sem autentica��o
+- **THEN** a resposta � obtida normalmente para produtos ATIVO
+
+#### Scenario: Visitor filters products by name
+- **WHEN** o visitante fornece o par�metro `q` com parte do nome de um produto ATIVO
+- **THEN** a listagem retorna apenas os produtos ATIVO cujo `nome` contenha o termo informado, sem distin��o entre mai�sculas e min�sculas
+
+#### Scenario: Visitor combines name search and category filter
+- **WHEN** o visitante fornece `q` e `category_id` v�lido para uma categoria ATIVA
+- **THEN** a listagem retorna apenas produtos ATIVO que atendam ao filtro por nome e perten�am � categoria selecionada
+
+#### Scenario: Name search returns no results
+- **WHEN** o par�metro `q` n�o corresponde a nenhum produto ATIVO
+- **THEN** a listagem retorna vazia e a interface apresenta o estado vazio
+
+#### Scenario: Empty search term is ignored
+- **WHEN** o par�metro `q` � vazio ou cont�m apenas espa�os em branco
+- **THEN** o filtro por nome � ignorado e o comportamento � o mesmo da listagem sem busca
 
 ### Requirement: Visitors can navigate by active category
 O catálogo SHALL apresentar e permitir a seleção de Categorias `ATIVO`. A seleção SHALL limitar os resultados a produtos `ATIVO` associados à Categoria selecionada; Categorias `INATIVO` não SHALL ser oferecidas como filtro.
@@ -51,19 +68,40 @@ O sistema SHALL permitir que visitantes consultem os detalhes de um produto `ATI
 - **THEN** seus dados gerais permanecem consultáveis, sem apresentar variações inativas nem controles de compra
 
 ### Requirement: Public product images are delivered without exposing private storage paths
-Quando houver imagem principal privada, o sistema SHALL disponibilizá-la ao visitante por uma URL assinada e temporária compatível com o armazenamento nativo do Xano. A resposta pública SHALL omitir o caminho privado original do arquivo. Produto sem imagem SHALL continuar consultável. A imagem do produto SHALL ser obtida por um endpoint público dedicado de imagem do produto, distinto do endpoint de detalhes.
+
+Quando houver imagem principal privada, o sistema SHALL disponibilizá-la ao visitante por uma URL assinada e temporária compatível com o armazenamento nativo do Xano. A resposta pública SHALL omitir o caminho privado original do arquivo. Produto sem imagem SHALL continuar consultável. A listagem pública de produtos SHALL incluir, para cada produto `ATIVO`, a URL assinada temporária da imagem principal quando existente, ou a indicação de ausência de imagem. O endpoint público dedicado de imagem SHALL permanecer disponível e SHALL ser usado pelo detalhe do produto. A listagem SHALL NOT exigir uma requisição HTTP de imagem por produto.
 
 #### Scenario: Product has a private main image
-- **WHEN** o catálogo retorna um produto com imagem principal privada
-- **THEN** o visitante recebe uma URL assinada temporária para exibir a imagem, sem receber o caminho privado original
+- **WHEN** o catálogo lista um produto com imagem principal privada
+- **THEN** a listagem retorna uma URL assinada temporária no campo de imagem do produto, sem retornar o caminho privado original
 
 #### Scenario: Product has no main image
-- **WHEN** o catálogo retorna um produto sem imagem principal
-- **THEN** o sistema apresenta os demais dados normalmente e não exige imagem
+- **WHEN** o catálogo lista um produto sem imagem principal
+- **THEN** a listagem indica a ausência de imagem e o sistema apresenta os demais dados normalmente, sem exigir imagem
+
+#### Scenario: Catalog listing includes image references for all products
+- **WHEN** o catálogo lista múltiplos produtos `ATIVO`
+- **THEN** a resposta da listagem inclui a referência de imagem de cada produto e o cliente não emite uma requisição de imagem por produto
 
 #### Scenario: Client requests the dedicated image endpoint
-- **WHEN** o catálogo público precisa exibir a imagem de um produto
-- **THEN** o cliente solicita a imagem ao endpoint dedicado de imagem do produto e não ao endpoint de detalhes, usando a URL assinada retornada quando existir
+- **WHEN** o visitante abre o detalhe de um produto
+- **THEN** o cliente solicita a imagem ao endpoint dedicado de imagem do produto, usando a URL assinada retornada quando existir
+
+### Requirement: Public catalog loads images without per-product HTTP requests
+
+A carga da listagem pública SHALL obter as referências de imagem de todos os produtos na mesma resposta de produtos, sem emitir uma requisição HTTP de imagem por produto. Uma carga fria SHALL emitir no máximo uma requisição de categorias e uma requisição de produtos, independentemente da quantidade de produtos `ATIVO`. O endpoint dedicado de imagem SHALL permanecer disponível e SHALL ser usado pelo detalhe do produto.
+
+#### Scenario: Cold catalog load has bounded requests
+- **WHEN** o cache do catálogo está expirado e a listagem pública é carregada com N produtos `ATIVO`
+- **THEN** o cliente envia uma requisição de categorias e uma requisição de produtos, sem requisições de imagem por produto
+
+#### Scenario: Many products do not multiply image requests
+- **WHEN** a quantidade de produtos `ATIVO` aumenta
+- **THEN** o número de requisições HTTP da listagem permanece limitado a duas (categorias e produtos)
+
+#### Scenario: Product detail uses the dedicated image endpoint
+- **WHEN** um visitante abre o detalhe de um produto `ATIVO`
+- **THEN** o sistema solicita a imagem desse produto ao endpoint dedicado de imagem, sem alterar o limite de requisições da listagem
 
 ### Requirement: Public catalog reuses recently loaded data
 

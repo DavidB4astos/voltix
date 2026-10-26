@@ -913,9 +913,9 @@ class _PublicCatalogCacheEntry:
     expires_at: float
 
 
-_public_catalog_cache: dict[str, _PublicCatalogCacheEntry] = {}
+_public_catalog_cache: dict[Any, _PublicCatalogCacheEntry] = {}
 _public_catalog_inflight: dict[
-    str, "asyncio.Future[tuple[list[CatalogEntry], list[PublicProductEntry], str]]"
+    Any, "asyncio.Future[tuple[list[CatalogEntry], list[PublicProductEntry], str]]"
 ] = {}
 
 
@@ -924,7 +924,7 @@ def _reset_public_catalog_cache() -> None:
     _public_catalog_inflight.clear()
 
 
-def _public_catalog_cache_get(key: str) -> _PublicCatalogCacheEntry | None:
+def _public_catalog_cache_get(key: Any) -> _PublicCatalogCacheEntry | None:
     entry = _public_catalog_cache.get(key)
     if entry is None:
         return None
@@ -935,7 +935,7 @@ def _public_catalog_cache_get(key: str) -> _PublicCatalogCacheEntry | None:
 
 
 def _public_catalog_cache_put(
-    key: str,
+    key: Any,
     categories: list[CatalogEntry],
     products: list[PublicProductEntry],
 ) -> None:
@@ -949,8 +949,10 @@ def _public_catalog_cache_put(
 async def _load_public_catalog_with_cache(
     state: "State",
     category_id: str,
+    search: str = "",
 ) -> tuple[list[CatalogEntry], list[PublicProductEntry], str]:
-    key = category_id
+    search_term = search.strip()
+    key = (category_id, search_term)
     cached = _public_catalog_cache_get(key)
     if cached is not None:
         return list(cached.categories), list(cached.products), category_id
@@ -965,7 +967,8 @@ async def _load_public_catalog_with_cache(
     _public_catalog_inflight[key] = future
     try:
         categories, products, category_id = await state._load_public_catalog_data(
-            category_id
+            category_id,
+            search_term,
         )
         result = (categories, products, category_id)
         _public_catalog_cache_put(key, categories, products)
@@ -1171,6 +1174,7 @@ def _public_product_entry(
     status = payload.get("status")
     category_name = payload.get("categoria_nome")
     brand_name = payload.get("marca_nome")
+    item_image_url = payload.get("image_url", "")
     if (
         not isinstance(product_id, int)
         or isinstance(product_id, bool)
@@ -1183,10 +1187,18 @@ def _public_product_entry(
         or (specifications is not None and not isinstance(specifications, str))
         or (category_name is not None and not isinstance(category_name, str))
         or (brand_name is not None and not isinstance(brand_name, str))
+        or (item_image_url is not None and not isinstance(item_image_url, str))
         or "imagem_principal" in payload
         or status != "ATIVO"
     ):
         raise ValueError("Public product response has an invalid record.")
+
+    if item_image_url:
+        parsed_url = urlparse(item_image_url)
+        if parsed_url.scheme != "https" or not parsed_url.netloc:
+            raise ValueError("Public image URL must be an HTTPS URL.")
+
+    final_image_url = image_url or item_image_url or ""
 
     return PublicProductEntry(
         id=product_id,
@@ -1195,7 +1207,7 @@ def _public_product_entry(
         technical_specifications=specifications or "",
         category_name=category_name or "",
         brand_name=brand_name or "",
-        image_url=image_url,
+        image_url=final_image_url,
         variations=variations or [],
     )
 
@@ -1985,6 +1997,7 @@ class State(rx.State):
     public_catalog_loaded: bool = False
     public_catalog_message: str = ""
     public_category_id: str = ""
+    public_catalog_search: str = ""
     public_product_loading: bool = False
     public_product_message: str = ""
     public_product_detail_id: int | None = None
@@ -2226,31 +2239,34 @@ class State(rx.State):
     async def _fetch_public_products(
         self,
         category_id: str = "",
+        search: str = "",
     ) -> list[PublicProductEntry]:
-        query_params = {"category_id": category_id} if category_id else None
+        query_params = {}
+        if category_id:
+            query_params["category_id"] = category_id
+        if search.strip():
+            query_params["q"] = search.strip()
         payload = await self._public_catalog_request(
             XANO_PUBLIC_PRODUCTS_URL_ENV,
-            query_params=query_params,
+            query_params=query_params if query_params else None,
         )
         products = _public_catalog_products(payload)
-        image_urls = await asyncio.gather(
-            *(self._public_product_image(product.id) for product in products)
-        )
         return [
             replace(
                 product,
                 image_url=resolve_demo_image_named(
                     product.name,
                     product.variations[0].sku if product.variations else "",
-                    image_url,
+                    product.image_url,
                 ),
             )
-            for product, image_url in zip(products, image_urls, strict=True)
+            for product in products
         ]
 
     async def _load_public_catalog_data(
         self,
         category_id: str,
+        search: str = "",
     ) -> tuple[list[CatalogEntry], list[PublicProductEntry], str]:
         categories_payload = await self._public_catalog_request(
             XANO_PUBLIC_CATEGORIES_URL_ENV
@@ -2260,7 +2276,7 @@ class State(rx.State):
             str(category.id) == category_id for category in categories
         ):
             category_id = ""
-        products = await self._fetch_public_products(category_id)
+        products = await self._fetch_public_products(category_id, search)
         return categories, products, category_id
 
     @rx.event
@@ -2268,9 +2284,11 @@ class State(rx.State):
         self.public_catalog_loading = True
         self.public_catalog_message = ""
         try:
+            search = getattr(self, "public_catalog_search", "").strip()
             categories, products, category_id = await _load_public_catalog_with_cache(
                 self,
                 self.public_category_id.strip(),
+                search,
             )
             self.public_category_id = category_id
             self.public_categories = categories
