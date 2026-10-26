@@ -1,7 +1,9 @@
+import json
 import os
 
 DEMO_ASSETS_DIR = os.path.join("assets", "demo")
 DEMO_ASSET_URL_PREFIX = "/demo/"
+DEMO_MANIFEST_PATH = os.path.join(DEMO_ASSETS_DIR, "manifest.json")
 
 DEMO_SUPPORTED_EXTENSIONS = (".png", ".jpg", ".jpeg", ".webp")
 
@@ -63,3 +65,56 @@ def resolve_demo_image_named(
     if demo_sku:
         return resolve_demo_image(demo_sku, existing_image_url)
     return existing_image_url
+
+
+_CREDIT_FIELDS = ("author", "license", "license_url", "source_url", "attribution")
+
+_credit_by_filename: dict[str, dict[str, str]] | None = None
+
+
+def _load_credits_by_filename() -> dict[str, dict[str, str]]:
+    """Le credits de assets/demo/manifest.json (fonte unica) uma vez.
+
+    Retorna um mapa nome-de-arquivo -> campos de credito das entradas aprovadas
+    que possuem arquivo registrado. Em qualquer falha de leitura, retorna vazio.
+    """
+    global _credit_by_filename
+    if _credit_by_filename is not None:
+        return _credit_by_filename
+    credits: dict[str, dict[str, str]] = {}
+    try:
+        with open(DEMO_MANIFEST_PATH, encoding="utf-8-sig") as manifest_file:
+            manifest = json.load(manifest_file)
+    except (OSError, json.JSONDecodeError):
+        _credit_by_filename = credits
+        return credits
+    products = manifest.get("products") if isinstance(manifest, dict) else None
+    if isinstance(products, list):
+        for product in products:
+            if not isinstance(product, dict):
+                continue
+            filename = product.get("file")
+            if not isinstance(filename, str) or not filename:
+                continue
+            if product.get("status") != "approved":
+                continue
+            credits[filename] = {
+                field: str(product.get(field) or "")
+                for field in _CREDIT_FIELDS
+            }
+    _credit_by_filename = credits
+    return credits
+
+
+def demo_image_credit(image_url: str) -> dict[str, str] | None:
+    """Retorna o credito da imagem demo, ou None se nao houver correspondencia.
+
+    A correspondencia e verificavel: o nome do arquivo vem da propria URL demo
+    (/demo/<arquivo>) e precisa existir como entrada aprovada no manifesto.
+    """
+    if not image_url or not image_url.startswith(DEMO_ASSET_URL_PREFIX):
+        return None
+    filename = image_url[len(DEMO_ASSET_URL_PREFIX):]
+    if not filename or "/" in filename:
+        return None
+    return _load_credits_by_filename().get(filename)

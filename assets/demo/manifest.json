@@ -6,6 +6,17 @@
         "usable": 3,
         "pending": 17
     },
+    "editorial_images": [
+        {
+            "file": "vtx-editorial-setup.jpg",
+            "role": "home_hero",
+            "status": "user_provided",
+            "origin": "AI-generated image created with ChatGPT and supplied by the project owner.",
+            "purpose": "Editorial composition for the Voltix public home hero.",
+            "license": "Not a Creative Commons work; no photographic authorship. No third-party license declared by the supplier.",
+            "note": "The equipment shown is illustrative scenery and does not represent specific SKUs offered for sale. No price or commercial claim is attached. Do not present as a product photo."
+        }
+    ],
     "products": [
         {
             "sku": "VTX-DEMO-001",
