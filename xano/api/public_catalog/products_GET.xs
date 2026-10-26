@@ -2,7 +2,8 @@ query "products" verb=GET {
   api_group = "Public Catalog"
 
   input {
-   int category_id?
+    int category_id?
+    text q?
   }
 
   stack {
@@ -23,46 +24,104 @@ query "products" verb=GET {
           error = "Category not found."
         }
 
-        db.query produto {
-          return = {type: "list"}
-          where = $db.produto.status == "ATIVO" && $db.produto.categoria_id == $input.category_id
-          sort = {nome: "asc"}
-          output = [
-            "id",
-            "nome",
-            "descricao",
-            "especificacoes_tecnicas",
-            "categoria_id",
-            "marca_id",
-            "status"
-          ]
-        } as $filtered_products
+        conditional {
+          if ($input.q != null && $input.q != "") {
+            db.query produto {
+              return = {type: "list"}
+              where = ($db.produto.status == "ATIVO") && ($db.produto.categoria_id == $input.category_id) && ($db.produto.nome includes $input.q)
+              sort = {nome: "asc"}
+              output = [
+                "id",
+                "nome",
+                "descricao",
+                "especificacoes_tecnicas",
+                "categoria_id",
+                "marca_id",
+                "imagem_principal",
+                "status"
+              ]
+            } as $filtered_products
 
-        var.update $products {
-          value = $filtered_products
+            var.update $products {
+              value = $filtered_products
+            }
+          }
+        }
+
+        conditional {
+          if ($input.q == null || $input.q == "") {
+            db.query produto {
+              return = {type: "list"}
+              where = ($db.produto.status == "ATIVO") && ($db.produto.categoria_id == $input.category_id)
+              sort = {nome: "asc"}
+              output = [
+                "id",
+                "nome",
+                "descricao",
+                "especificacoes_tecnicas",
+                "categoria_id",
+                "marca_id",
+                "imagem_principal",
+                "status"
+              ]
+            } as $filtered_products
+
+            var.update $products {
+              value = $filtered_products
+            }
+          }
         }
       }
     }
 
     conditional {
       if ($input.category_id == null || $input.category_id == 0) {
-        db.query produto {
-          return = {type: "list"}
-          where = $db.produto.status == "ATIVO"
-          sort = {nome: "asc"}
-          output = [
-            "id",
-            "nome",
-            "descricao",
-            "especificacoes_tecnicas",
-            "categoria_id",
-            "marca_id",
-            "status"
-          ]
-        } as $all_products
+        conditional {
+          if ($input.q != null && $input.q != "") {
+            db.query produto {
+              return = {type: "list"}
+              where = ($db.produto.status == "ATIVO") && ($db.produto.nome includes $input.q)
+              sort = {nome: "asc"}
+              output = [
+                "id",
+                "nome",
+                "descricao",
+                "especificacoes_tecnicas",
+                "categoria_id",
+                "marca_id",
+                "imagem_principal",
+                "status"
+              ]
+            } as $all_products
 
-        var.update $products {
-          value = $all_products
+            var.update $products {
+              value = $all_products
+            }
+          }
+        }
+
+        conditional {
+          if ($input.q == null || $input.q == "") {
+            db.query produto {
+              return = {type: "list"}
+              where = $db.produto.status == "ATIVO"
+              sort = {nome: "asc"}
+              output = [
+                "id",
+                "nome",
+                "descricao",
+                "especificacoes_tecnicas",
+                "categoria_id",
+                "marca_id",
+                "imagem_principal",
+                "status"
+              ]
+            } as $all_products
+
+            var.update $products {
+              value = $all_products
+            }
+          }
         }
       }
     }
@@ -109,6 +168,23 @@ query "products" verb=GET {
           }
         }
 
+        var $image_url {
+          value = null
+        }
+
+        conditional {
+          if ($product.imagem_principal != null && $product.imagem_principal != "") {
+            storage.sign_private_url {
+              pathname = $product.imagem_principal
+              ttl = 3600
+            } as $signed_url
+
+            var.update $image_url {
+              value = $signed_url
+            }
+          }
+        }
+
         var.update $product_list {
           value = $product_list|push:{
             id: $product.id
@@ -120,6 +196,7 @@ query "products" verb=GET {
             categoria_nome: $category_name
             marca_nome: $brand_name
             status: $product.status
+            image_url: $image_url
           }
         }
       }
