@@ -949,6 +949,11 @@ def _public_catalog_cache_put(
     )
 
 
+def _public_search_term(value: object) -> str:
+    """Normalize public search without accepting arbitrary form objects."""
+    return value.strip()[:100] if isinstance(value, str) else ""
+
+
 async def _load_public_catalog_with_cache(
     state: "State",
     category_id: str,
@@ -2001,6 +2006,7 @@ class State(rx.State):
     public_catalog_message: str = ""
     public_category_id: str = ""
     public_catalog_search: str = ""
+    public_catalog_search_input: str = ""
     public_product_loading: bool = False
     public_product_message: str = ""
     public_product_detail_id: int | None = None
@@ -2219,6 +2225,8 @@ class State(rx.State):
                 _public_endpoint_label(url_env),
                 _public_endpoint_status(error),
             )
+            if isinstance(error, urllib.error.HTTPError):
+                error.close()
             raise
 
     async def _public_product_image(self, product_id: int) -> str:
@@ -2314,6 +2322,7 @@ class State(rx.State):
     async def enter_public_home(self):
         self.public_category_id = ""
         self.public_catalog_search = ""
+        self.public_catalog_search_input = ""
         self.close_public_product_details()
         await self.load_public_catalog()
 
@@ -2322,17 +2331,52 @@ class State(rx.State):
         params = self.router.url.query_parameters
         category = params.get("category_id", "")
         self.public_category_id = category if category.isascii() and category.isdigit() and len(category) <= 10 else ""
-        self.public_catalog_search = ""
+        self.public_catalog_search = _public_search_term(params.get("q", ""))
+        self.public_catalog_search_input = self.public_catalog_search
         self.close_public_product_details()
         await self.load_public_catalog()
         product = params.get("product_id", "")
         if product.isascii() and product.isdigit() and len(product) <= 10 and int(product) > 0:
             await self.load_public_product_details(int(product))
 
+    def _public_catalog_navigation(self):
+        params = {}
+        if self.public_category_id:
+            params["category_id"] = self.public_category_id
+        if self.public_catalog_search:
+            params["q"] = self.public_catalog_search
+        destination = "/catalogo" + ("?" + urlencode(params) if params else "")
+        current = self.router.url.path + ("?" + self.router.url.query if self.router.url.query else "")
+        return State.load_public_catalog if current == destination else rx.redirect(destination)
+
     @rx.event
-    async def filter_public_catalog(self, category_id: str):
+    def set_public_catalog_search_input(self, value: str):
+        self.public_catalog_search_input = value[:100]
+
+    @rx.event
+    def search_public_catalog(self, form_data: dict[str, Any]):
+        self.public_catalog_search = _public_search_term(form_data.get("search", ""))
+        self.public_catalog_search_input = self.public_catalog_search
+        self.close_public_product_details()
+        self.public_catalog_loading = True
+        return self._public_catalog_navigation()
+
+    @rx.event
+    def filter_public_catalog(self, category_id: str):
         self.public_category_id = category_id
-        await self.load_public_catalog()
+        self.public_catalog_search_input = self.public_catalog_search
+        self.close_public_product_details()
+        self.public_catalog_loading = True
+        return self._public_catalog_navigation()
+
+    @rx.event
+    def clear_public_catalog_filters(self):
+        self.public_category_id = ""
+        self.public_catalog_search = ""
+        self.public_catalog_search_input = ""
+        self.close_public_product_details()
+        self.public_catalog_loading = True
+        return self._public_catalog_navigation()
 
     @rx.event
     async def load_public_product_details(self, product_id: int):
@@ -6584,10 +6628,11 @@ def public_catalog_page() -> rx.Component:
         )
 
     return page_shell(
+        rx.el.link(rel="stylesheet", href="/voltix-catalog-search.css"),
         rx.vstack(
             section_heading("Catálogo de produtos"),
             rx.text(
-                "Explore os produtos disponíveis e filtre por categoria.",
+                "Busque pelo nome do produto ou explore as categorias.",
                 color=COLOR_TEXT_MUTED,
             ),
             spacing="2",
@@ -6595,40 +6640,53 @@ def public_catalog_page() -> rx.Component:
             width="100%",
         ),
         surface_card(
-            rx.flex(
+            rx.box(
+                rx.form(
+                    rx.box(
+                        rx.box(
+                            rx.el.label("Buscar no catálogo", html_for="catalog-search", class_name="vx-catalog-tools__label"),
+                            rx.input(
+                                id="catalog-search", name="search",
+                                placeholder="Nome do produto", max_length=100,
+                                value=State.public_catalog_search_input,
+                                on_change=State.set_public_catalog_search_input,
+                                disabled=State.public_catalog_loading,
+                                class_name="vx-catalog-tools__input"),
+                            class_name="vx-catalog-tools__field"),
+                        rx.button(rx.icon("search", size=17, aria_hidden=True), "Buscar",
+                                  type="submit", disabled=State.public_catalog_loading,
+                                  class_name="vx-catalog-tools__submit"),
+                        class_name="vx-catalog-tools__search-row"),
+                    on_submit=State.search_public_catalog, reset_on_submit=False,
+                    class_name="vx-catalog-tools__search"),
                 rx.box(
+                    rx.el.label("Categoria", html_for="catalog-category", class_name="vx-catalog-tools__label"),
                     rx.select.root(
-                        rx.select.trigger(placeholder="Todas as categorias"),
-                        rx.select.content(
-                            rx.foreach(
-                                State.public_categories,
-                                lambda category: rx.select.item(
-                                    category.name,
-                                    value=category.id.to_string(),
-                                ),
-                            )
-                        ),
+                        rx.select.trigger(id="catalog-category", aria_label="Filtrar por categoria",
+                                          placeholder="Todas as categorias", class_name="vx-catalog-tools__select"),
+                        rx.select.content(rx.foreach(State.public_categories,
+                            lambda category: rx.select.item(category.name, value=category.id.to_string()))),
                         value=State.public_category_id,
-                        on_change=lambda v: State.filter_public_catalog(v),
-                        width="100%",
+                        on_change=State.filter_public_catalog,
+                        disabled=State.public_catalog_loading,
                     ),
-                    flex="1",
-                    width="100%",
-                    min_width="0",
-                ),
-                secondary_button(
-                    "Limpar filtro",
-                    on_click=State.filter_public_catalog(""),
-                    disabled=State.public_category_id == "",
-                    width={"initial": "100%", "sm": "auto"},
-                ),
-                direction={"initial": "column", "sm": "row"},
-                gap="3",
-                align={"initial": "stretch", "sm": "center"},
-                width="100%",
-                wrap="wrap",
-            ),
-            padding="3",
+                    class_name="vx-catalog-tools__category"),
+                rx.button("Limpar filtros", type="button", on_click=State.clear_public_catalog_filters,
+                          disabled=State.public_catalog_loading | ((State.public_category_id == "")
+                              & (State.public_catalog_search == "") & (State.public_catalog_search_input == "")),
+                          class_name="vx-catalog-tools__clear"),
+                class_name="vx-catalog-tools"),
+            padding="4",
+        ),
+        rx.cond(
+            ~State.public_catalog_loading & State.public_catalog_loaded & (State.public_catalog_message == ""),
+            rx.text(
+                rx.cond(State.public_catalog_search != "",
+                        "Resultados para “" + State.public_catalog_search + "” · ", "Catálogo · "),
+                rx.cond(State.public_products.length() == 1, "1 produto",
+                        State.public_products.length().to_string() + " produtos"),
+                role="status", aria_live="polite", class_name="vx-catalog-results"),
+            rx.fragment(),
         ),
         rx.cond(
             State.public_catalog_loading | (State.public_catalog_loaded == False),
@@ -6655,12 +6713,19 @@ def public_catalog_page() -> rx.Component:
             & (State.public_catalog_loaded == True)
             & (State.public_catalog_message == "")
             & (State.public_products.length() == 0),
-            empty_state("Nenhum produto disponível para exibição."),
+            rx.cond(State.public_catalog_search != "",
+                    rx.box(
+                        rx.icon("search-x", size=25, color=COLOR_TEXT_MUTED, aria_hidden=True),
+                        rx.heading("Nenhum produto encontrado", as_="h2"),
+                        rx.text("Tente outro nome ou limpe os filtros para ampliar a busca."),
+                        class_name="vx-catalog-results-empty"),
+                    empty_state("Nenhum produto disponível para exibição.")),
             rx.fragment(),
         ),
         selected_product_details(),
         rx.cond(
-            (State.public_catalog_message == "")
+            ~State.public_catalog_loading & State.public_catalog_loaded
+            & (State.public_catalog_message == "")
             & (State.public_products.length() > 0),
             rx.grid(
                 rx.foreach(State.public_products, product_card),

@@ -23,6 +23,12 @@ class _CatalogState:
 
 class PublicCatalogHttpRecoveryTests(unittest.TestCase):
     def test_retry_recovers_after_real_local_http_503(self):
+        self._check_recovery()
+
+    def test_retry_preserves_applied_search_and_category(self):
+        self._check_recovery(category='2', search='mouse & teclado')
+
+    def _check_recovery(self, category='', search=''):
         calls = []
         recovery = threading.Event()
 
@@ -52,6 +58,14 @@ class PublicCatalogHttpRecoveryTests(unittest.TestCase):
         app._reset_public_catalog_cache()
         base = f'http://127.0.0.1:{server.server_port}'
         state = _CatalogState()
+        state.public_category_id = category
+        state.public_catalog_search = search
+        params = {}
+        if category:
+            params['category_id'] = category
+        if search:
+            params['q'] = search
+        products_path = '/products' + ('?' + app.urlencode(params) if params else '')
 
         async def run():
             with patch.dict('os.environ', {
@@ -70,7 +84,9 @@ class PublicCatalogHttpRecoveryTests(unittest.TestCase):
                 self.assertFalse(state.public_catalog_loading)
                 self.assertEqual(state.public_categories[0].name, 'Monitores')
                 self.assertEqual(state.public_products, [])
-                self.assertEqual([path for path, _ in calls], ['/categories', '/categories', '/products'])
+                self.assertEqual([path for path, _ in calls], ['/categories', '/categories', products_path])
+                self.assertEqual(state.public_catalog_search, search)
+                self.assertEqual(state.public_category_id, category)
                 self.assertTrue(all(auth is None for _, auth in calls))
 
         try:
