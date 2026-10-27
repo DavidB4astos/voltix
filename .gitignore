@@ -19,3 +19,50 @@ reflex.log
 
 # Kit visual de referência (não versionar)
 docs/voltix-frontend-kit.zip
+
+# Ambiente recriado neste PC
+.venv-novo-pc/
+
+# Ambientes e backups locais
+/.venv-windows/
+/.local-backup/
+
+# Dependências/configuração pessoal do OpenCode
+/.opencode/node_modules/
+/.opencode/package.json
+/.opencode/package-lock.json
+/.opencode/bun.lock
+
+# Referências visuais de trabalho (não são assets aprovados)
+/docs/referencias/
+
+# Diagnósticos gerados localmente na raiz
+/reflex*.log
+/reflex_run2.png
+/reflex_run2.txt
+/checkout.txt
+/checkout_out.txt
+/shopping.txt
+/shopping_out.txt
+/resultado_testes.txt
+/summary.txt
+/test_detail.txt
+/test_fail.txt
+/test_output.txt
+/test_run.txt
+/xano_dryrun*.txt
+/xano_push*.txt
+/check_routes.py
+/check_server.py
+/check_state.py
+/check_status.py
+/fix_c6.py
+/fix_c6_v2.py
+/fix_rerun.py
+/fix_rerun2.py
+/fix_type.py
+/read_log.py
+/readlog.py
+/smoke_test.py
+/test_interactions.py
+/e2e/tests/capture-home.spec.js
