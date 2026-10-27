@@ -1,0 +1,40 @@
+/* Public product detail: presentation only, existing commerce events preserved. */
+.vx-product-detail{color:#071525;background:#fff;border:1px solid #dce3eb;border-radius:20px;padding:24px;overflow-wrap:anywhere}
+.vx-product-detail__top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}
+.vx-product-detail__eyebrow{margin:0;color:#526579;font-size:11px;letter-spacing:.14em;font-weight:700}
+.vx-product-detail__close{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:44px;white-space:nowrap;padding:0 12px;background:transparent;color:#405569;border:1px solid #dce3eb;border-radius:999px;cursor:pointer;font:inherit;font-size:13px}
+.vx-product-detail__grid{display:grid;grid-template-columns:minmax(0,1fr);gap:28px}
+.vx-product-detail__media{margin:0;min-width:0}
+.vx-product-detail__frame{display:flex;align-items:center;justify-content:center;aspect-ratio:1;background:#f5f7fa;border-radius:14px;overflow:hidden}
+.vx-product-detail__image{display:block;width:100%;height:100%;object-fit:contain}
+.vx-product-detail__placeholder{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;color:#526579}
+.vx-product-detail__media figcaption{margin-top:12px}
+.vx-product-detail__media .vx-catalog-card__credit{margin:0;line-height:1.6}
+.vx-product-detail__summary{min-width:0}
+.vx-product-detail__brand{margin:0 0 10px;color:#526579;text-transform:uppercase;font-weight:700;font-size:12px;letter-spacing:.12em}
+.vx-product-detail__title{font-size:clamp(26px,2.4vw,36px);line-height:1.13;letter-spacing:-.035em;font-weight:650;margin:0 0 12px}
+.vx-product-detail__category{font-size:13px;color:#526579;margin:0 0 16px}
+.vx-product-detail__description{font-size:16px;line-height:1.65;color:#405569;margin:0 0 24px;white-space:pre-wrap}
+.vx-product-detail__subheading{font-size:16px;font-weight:650;line-height:1.4;margin:0 0 10px}
+.vx-product-detail__hint{font-size:12px;line-height:1.6;color:#526579;margin:0 0 12px}
+.vx-product-detail__variant{border-top:1px solid #dce3eb;padding:18px 0 4px;margin-top:14px}
+.vx-product-detail__variant-name{font-size:15px;font-weight:650;margin:0 0 4px}
+.vx-product-detail__sku{font-size:11px;letter-spacing:.03em;color:#526579;margin:0}
+.vx-product-detail__price{font-size:28px;letter-spacing:-.035em;font-weight:650;line-height:1.2;margin:16px 0 8px;font-variant-numeric:tabular-nums}
+.vx-product-detail__stock{font-size:13px;line-height:1.5;color:#405569;margin:0 0 16px}
+.vx-product-detail__buy{display:flex;align-items:center;justify-content:center;gap:10px;min-height:48px;width:100%;padding:12px 20px;background:#0866d9;color:#fff;border:0;border-radius:999px;cursor:pointer;font:inherit;font-size:14px;font-weight:650}
+.vx-product-detail__buy:hover:not(:disabled){background:#0758bc}
+.vx-product-detail__buy:disabled{background:#e4e9ef;color:#526579;cursor:not-allowed}
+.vx-product-detail__buy:focus-visible,.vx-product-detail__close:focus-visible{outline:3px solid #0866d9;outline-offset:4px}
+.vx-product-detail__close:hover{background:#f5f7fa;color:#071525}
+.vx-product-detail__empty{background:#f5f7fa;padding:16px;border-radius:10px;font-size:14px;line-height:1.6;color:#526579}
+.vx-product-detail__feedback{font-size:13px;line-height:1.6;margin-top:14px}
+.vx-product-detail__feedback a{display:inline-flex;align-items:center;min-height:44px;color:#0866d9;text-decoration:underline;text-underline-offset:3px}
+.vx-product-detail__specifications{border-top:1px solid #dce3eb;margin-top:28px;padding-top:22px}
+.vx-product-detail__specification-text{font-size:14px;line-height:1.75;color:#405569;white-space:pre-wrap;margin:0}
+@media(min-width:1024px){.vx-product-detail{padding:28px}.vx-product-detail__grid{grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:36px}.vx-product-detail__frame{min-height:360px}}
+@media(max-width:480px){.vx-product-detail{padding:16px}.vx-product-detail__top{align-items:flex-start;gap:8px}.vx-product-detail__eyebrow{font-size:10px}.vx-product-detail__close{font-size:12px;padding:0 9px}}
+.vx-product-detail__media .vx-catalog-card__credit{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:12px;color:#526579}
+.vx-product-detail__media .vx-catalog-card__credit span{flex-basis:100%}
+.vx-product-detail__media .vx-catalog-card__credit a{display:inline-flex;align-items:center;min-height:32px;color:#405e78;text-decoration:underline;text-underline-offset:3px}
+.vx-product-detail a:focus-visible{outline:3px solid #0866d9;outline-offset:3px;border-radius:2px}

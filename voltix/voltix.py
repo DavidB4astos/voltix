@@ -6499,131 +6499,93 @@ def public_catalog_page() -> rx.Component:
                 class_name="vx-catalog-card__content"),
             class_name="vx-catalog-card")
 
+    def detail_variation(variation: ProductVariation) -> rx.Component:
+        label = rx.cond(variation.name_or_description != "", variation.name_or_description, variation.sku)
+        price = rx.Var.create(f"{variation.price:.2f}").to(str).replace(".", ",")
+        return rx.el.article(
+            rx.box(
+                rx.el.h4(label, class_name="vx-product-detail__variant-name"),
+                rx.text("SKU: " + variation.sku, class_name="vx-product-detail__sku"),
+                class_name="vx-product-detail__variant-label"),
+            rx.text("R$ " + price, class_name="vx-product-detail__price"),
+            rx.text(rx.cond(
+                variation.available_quantity > 0,
+                "Disponível: " + variation.available_quantity.to_string() + " em estoque",
+                "Indisponível para compra (estoque zero)"),
+                class_name="vx-product-detail__stock"),
+            rx.button(
+                rx.icon("shopping-bag", size=18, aria_hidden=True),
+                "Adicionar ao carrinho",
+                aria_label="Adicionar ao carrinho: " + label + " — SKU " + variation.sku,
+                on_click=State.add_to_cart(variation.id),
+                disabled=State.cart_loading | (variation.available_quantity <= 0),
+                class_name="vx-product-detail__buy"),
+            class_name="vx-product-detail__variant")
+
     def selected_product_details() -> rx.Component:
+        product = State.public_selected_product
         return rx.cond(
-            State.public_selected_product != None,
-            surface_card(
-                rx.vstack(
-                    rx.hstack(
-                        section_heading(
-                            State.public_selected_product.name,
-                            size="5",
-                        ),
-                        secondary_button(
-                            "Fechar detalhes",
-                            on_click=State.close_public_product_details,
-                        ),
-                        justify="between",
-                        width="100%",
-                    ),
-                    rx.cond(
-                        State.public_selected_product.image_url != "",
-                        rx.image(
-                            src=State.public_selected_product.image_url,
-                            alt=State.public_selected_product.name,
-                            max_width="640px",
-                            max_height="420px",
-                            object_fit="contain",
-                        ),
-                        rx.fragment(),
-                    ),
-                    rx.cond(
-                        State.public_selected_product.description != "",
-                        rx.text(State.public_selected_product.description),
-                        rx.fragment(),
-                    ),
-                    rx.cond(
-                        State.public_selected_product.technical_specifications
-                        != "",
-                        rx.text(
-                            "Especificações: "
-                            + State.public_selected_product.technical_specifications
-                        ),
-                        rx.fragment(),
-                    ),
-                    rx.cond(
-                        State.public_selected_product.category_name != "",
-                        rx.text(
-                            "Categoria: "
-                            + State.public_selected_product.category_name
-                        ),
-                        rx.fragment(),
-                    ),
-                    rx.cond(
-                        State.public_selected_product.brand_name != "",
-                        rx.text(
-                            "Marca: "
-                            + State.public_selected_product.brand_name
-                        ),
-                        rx.fragment(),
-                    ),
-                    section_heading("Variações disponíveis", size="4"),
-                    rx.cond(
-                        State.public_selected_product.variations.length() == 0,
-                        empty_state("Não há variações ativas disponíveis."),
-                        rx.foreach(
-                            State.public_selected_product.variations,
-                            lambda variation: rx.box(
-                                rx.vstack(
-                                    rx.text(
-                                        rx.cond(
-                                            variation.name_or_description != "",
-                                            variation.name_or_description,
-                                            variation.sku,
-                                        ),
-                                        weight="bold",
-                                        color=COLOR_NAVY,
-                                    ),
-                                    rx.text("SKU: " + variation.sku),
-                                    rx.text("Preço: R$ " + variation.price.to_string()),
-                                    rx.text(
-                                        rx.cond(
-                                            variation.available_quantity > 0,
-                                            "Disponível: "
-                                            + variation.available_quantity.to_string(),
-                                            "Indisponível para compra (estoque zero)",
-                                        )
-                                    ),
-                                    primary_button(
-                                        "Adicionar ao carrinho",
-                                        on_click=State.add_to_cart(variation.id),
-                                        disabled=(
-                                            State.cart_loading
-                                            | (variation.available_quantity <= 0)
-                                        ),
-                                    ),
-                                    align="stretch",
-                                    spacing="2",
-                                ),
-                                border=f"1px solid {COLOR_BORDER}",
-                                border_radius=RADIUS,
-                                padding="3",
-                                width="100%",
-                                background=COLOR_SURFACE,
-                            ),
-                        ),
-                    ),
-                    feedback_text(State.cart_message, tone="error"),
-                    rx.cond(
-                        State.cart_message != "",
-                        rx.cond(
-                            State.customer_authenticated,
-                            rx.link("Ver carrinho", href="/carrinho"),
-                            rx.link("Entrar como Cliente", href="/cliente"),
-                        ),
-                        rx.fragment(),
-                    ),
-                    align="stretch",
-                    spacing="3",
-                    width="100%",
-                ),
-            ),
-            rx.fragment(),
-        )
+            product != None,
+            rx.el.section(
+                rx.box(
+                    rx.text("DETALHES DO PRODUTO", class_name="vx-product-detail__eyebrow"),
+                    rx.button(rx.icon("x", size=17, aria_hidden=True), "Fechar detalhes",
+                              on_click=State.close_public_product_details,
+                              class_name="vx-product-detail__close"),
+                    class_name="vx-product-detail__top"),
+                rx.box(
+                    rx.el.figure(
+                        rx.box(rx.cond(
+                            product.image_url != "",
+                            rx.image(src=product.image_url, alt=product.name,
+                                     class_name="vx-product-detail__image"),
+                            rx.box(rx.icon("image", size=40, aria_hidden=True),
+                                   rx.text("Imagem não disponível"),
+                                   class_name="vx-product-detail__placeholder")),
+                            class_name="vx-product-detail__frame"),
+                        (rx.match(product.image_url,
+                                  *[(url, rx.el.figcaption(compact_credit(credit)))
+                                    for url, credit in photo_credits.items()], rx.fragment())
+                         if photo_credits else rx.fragment()),
+                        class_name="vx-product-detail__media"),
+                    rx.box(
+                        rx.cond(product.brand_name != "", rx.text(product.brand_name,
+                                class_name="vx-product-detail__brand"), rx.fragment()),
+                        rx.el.h2(product.name, id="product-detail-title",
+                                 class_name="vx-product-detail__title"),
+                        rx.cond(product.category_name != "", rx.text(product.category_name,
+                                class_name="vx-product-detail__category"), rx.fragment()),
+                        rx.cond(product.description != "", rx.text(product.description,
+                                class_name="vx-product-detail__description"), rx.fragment()),
+                        rx.el.h3("Variações disponíveis", class_name="vx-product-detail__subheading"),
+                        rx.cond(product.variations.length() == 0,
+                                rx.text("Não há variações ativas disponíveis.",
+                                        class_name="vx-product-detail__empty"),
+                                rx.box(
+                                    rx.text("Cada acionamento adiciona 1 unidade da variação escolhida.",
+                                            class_name="vx-product-detail__hint"),
+                                    rx.foreach(product.variations, detail_variation))),
+                        rx.box(
+                            feedback_text(State.cart_message, tone="error"),
+                            rx.cond(State.cart_message != "",
+                                    rx.cond(State.customer_authenticated,
+                                            rx.link("Ver carrinho", href="/carrinho"),
+                                            rx.link("Entrar como Cliente", href="/cliente")), rx.fragment()),
+                            role="status", aria_live="polite", class_name="vx-product-detail__feedback"),
+                        class_name="vx-product-detail__summary"),
+                    class_name="vx-product-detail__grid"),
+                rx.cond(product.technical_specifications != "",
+                        rx.box(rx.el.h3("Especificações técnicas", class_name="vx-product-detail__subheading"),
+                               rx.text(product.technical_specifications,
+                                       class_name="vx-product-detail__specification-text"),
+                               class_name="vx-product-detail__specifications"), rx.fragment()),
+                aria_labelledby="product-detail-title", class_name="vx-product-detail"),
+            rx.fragment())
 
     return page_shell(
         rx.el.link(rel="stylesheet", href="/voltix-catalog-search.css"),
         rx.el.link(rel="stylesheet", href="/voltix-catalog-cards.css"),
+        rx.el.link(rel="stylesheet", href="/voltix-product-details.css"),
         rx.vstack(
             section_heading("Catálogo de produtos"),
             rx.text(
