@@ -6133,8 +6133,8 @@ def home_page() -> rx.Component:
                     rx.heading("Tecnologia premium ",
                                rx.el.span("para elevar o seu setup."),
                                as_="h1", class_name="vx-hero__title"),
-                    rx.text("Monte sua estação com as melhores marcas, suporte especializado "
-                            "e entrega rápida para o seu dia a dia.", class_name="vx-hero__copy"),
+                    rx.text("Explore equipamentos e acessórios para trabalhar, estudar "
+                            "e montar o seu setup.", class_name="vx-hero__copy"),
                     rx.link("Explorar produtos", rx.icon("arrow-right", size=19),
                             href="/catalogo", class_name="vx-button vx-button--primary"),
                     class_name="vx-hero__content",
@@ -6147,9 +6147,9 @@ def home_page() -> rx.Component:
 
     def benefits_strip():
         items = [
-            ("truck", "Envio rápido", "Despacho em até 24h úteis."),
-            ("shield-check", "Garantia estendida", "Proteção do equipamento."),
-            ("headphones", "Suporte dedicado", "Atendimento no pós-venda."),
+            ("layout-grid", "Explore por categoria", "Encontre o que seu setup precisa."),
+            ("search", "Conheça os detalhes", "Consulte informações e variações."),
+            ("user", "Sua conta, seus pedidos", "Acompanhe seu histórico de compras."),
         ]
         return rx.el.section(
             *[rx.box(

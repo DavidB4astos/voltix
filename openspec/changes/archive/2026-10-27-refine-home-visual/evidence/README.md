@@ -5,3 +5,5 @@
 - validation.md, home-*.png, home-qa-results.json e after-*.png: evidências históricas da implementação inicial, incluindo dados públicos aplicados em contexto de teste. Não representam a última versão nem comprovam disponibilidade contínua do backend.
 
 Tasks.md é o registro das pendências atuais. Nenhuma evidência histórica deve ser interpretada como teste completo de acessibilidade, autenticação, compra ou retry real. Não há alteração de dados remotos.
+
+- final-review.md, keyboard-final.json, focus-editorial-final.png e home-final.png: fechamento da change, revisão de teclado, conteúdo aprovado e teste HTTP isolado. A evidência mais recente substitui o texto dos benefícios das capturas antigas.

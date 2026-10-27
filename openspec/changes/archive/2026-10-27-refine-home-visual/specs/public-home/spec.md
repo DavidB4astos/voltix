@@ -65,7 +65,7 @@ The public home SHALL show a benefits strip below the hero summarizing store adv
 #### Scenario: Visitor views benefits
 - **WHEN** the home displays the benefits strip at desktop or mobile width
 - **THEN** the benefit items remain legible, in reading order, and within the viewport
-- **AND** each benefit displays its approved text without alteration: "Envio rápido / Despacho em até 24h úteis", "Garantia estendida / Proteção do equipamento", "Suporte dedicado / Atendimento no pós-venda"
+- **AND** each benefit displays its approved text without alteration: "Explore por categoria / Encontre o que seu setup precisa.", "Conheça os detalhes / Consulte informações e variações.", "Sua conta, seus pedidos / Acompanhe seu histórico de compras."
 
 ---
 

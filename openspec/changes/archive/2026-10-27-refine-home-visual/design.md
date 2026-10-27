@@ -13,10 +13,14 @@ Frontend Reflex, dados públicos no Xano e desenvolvimento incremental com OpenS
 9. Referência observada: https://www.apple.com/br/ em 27/10/2026. Adotar hierarquia clara, uma mensagem por seção, CTA simples e superfícies neutras; manter identidade e assets Voltix.
 
 ## Scope and Risks
-Sem alterações em APIs, autenticação, estoque, dados, dependências ou lockfiles. Outras mudanças locais do repositório não pertencem a esta entrega. Fotos atuais possuem enquadramento e resolução limitados; substituição depende de novos assets adequados e autorizados. Promessas de prazo e garantia foram preservadas, mas ainda precisam de confirmação de conteúdo pelo responsável do projeto.
+Sem alterações em APIs, autenticação, estoque, dados, dependências ou lockfiles. Outras mudanças locais do repositório não pertencem a esta entrega. Fotos atuais possuem enquadramento e resolução limitados; substituição depende de novos assets adequados e autorizados. Promessas de prazo, garantia e suporte foram substituídas por funcionalidades comprovadas, após aprovação do usuário.
 
 ## Verification
-149 testes aprovados, compilação Reflex e OpenSpec strict válidos na última implementação. Navegação real conferida: categoria Monitores, produto MX Master 3S, retorno à Home e parâmetros inválidos. Evidências anteriores de estados simulados são históricas e identificadas como tal. A cobertura completa de teclado e o retry com falha real ainda não foram comprovados; tarefas correspondentes permanecem abertas.
+149 testes aprovados, compilação Reflex e OpenSpec strict válidos na última implementação. Navegação real conferida: categoria Monitores, produto MX Master 3S, retorno à Home e parâmetros inválidos. Evidências anteriores de estados simulados são históricas e identificadas como tal. A revisão final percorreu os links por teclado e comprovou recuperação do loader após HTTP 503 em servidor local isolado, sem alterar Xano. Ver evidence/final-review.md.
 
 ## Rollback
 Reverter o commit desta change restaura código e estilos versionados anteriores. Não há migração de dados ou alteração remota a desfazer. Não reverter outras mudanças locais para desfazer esta entrega.
+
+
+## Revisão de conteúdo aprovada — 27/10/2026
+O usuário aprovou substituir prazo de envio, garantia estendida e suporte não documentados por funcionalidades comprovadas: categorias, detalhes/variações e conta com histórico de pedidos. Remover também entrega rápida da frase do hero. Não introduzir novas regras de negócio.

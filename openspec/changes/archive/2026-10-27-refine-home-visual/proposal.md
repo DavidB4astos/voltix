@@ -24,3 +24,7 @@ Backend, APIs Xano, dados, autenticação, autorização, regras de compra, depe
 
 ## Authorization
 A extensão desktop e a navegação contextual substituem as restrições dos rascunhos anteriores sobre não modificar site_header, State e destinos, exclusivamente para os elementos descritos acima. A mudança inicial também implementou o layout responsivo já previsto; não se iniciou outro redesenho mobile.
+
+
+## Revisão de conteúdo aprovada — 27/10/2026
+O usuário aprovou substituir prazo de envio, garantia estendida e suporte não documentados por funcionalidades comprovadas: categorias, detalhes/variações e conta com histórico de pedidos. Remover também entrega rápida da frase do hero. Não introduzir novas regras de negócio.

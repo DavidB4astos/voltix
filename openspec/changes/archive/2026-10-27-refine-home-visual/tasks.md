@@ -23,12 +23,12 @@
 - [x] Estados e assets ausentes verificados em contexto de teste controlado (evidência histórica).
 - [x] Registrar captura desktop atual separada das capturas históricas.
 
-## 3. Pendências — não arquivar como concluída
-- [ ] Percorrer toda a Home por teclado e registrar foco de todos os controles.
-- [ ] Conferir o CTA editorial no fluxo atual e registrar resultado.
-- [ ] Exercitar erro real e retry do servidor em ambiente isolado, sem alterar dados remotos.
-- [ ] Revisar e confirmar os textos comerciais de prazo/garantia com o responsável pelo projeto.
-- [ ] Concluir revisão final e arquivar/sincronizar a change somente após resolver as pendências.
+## 3. Revisão de fechamento
+- [x] Percorrer toda a Home por teclado e registrar foco de todos os controles.
+- [x] Conferir o CTA editorial no fluxo atual e registrar resultado.
+- [x] Exercitar falha HTTP real e nova tentativa do loader contra servidor local isolado; sem alterar dados remotos. O clique de retry foi coberto anteriormente em contexto de navegador controlado, não com indisponibilidade do Xano.
+- [x] Revisar textos com o usuário: substituir prazo/garantia/suporte não comprovados por categorias, detalhes e conta/pedidos.
+- [x] Concluir revisão final e arquivar/sincronizar a change após resolver as pendências, com limites do teste descritos em evidence/final-review.md.
 
 ## 4. Versionamento
 - [x] Revisar staged diff limitado à Home e navegação pública aprovada; criar commit local (esta revisão).

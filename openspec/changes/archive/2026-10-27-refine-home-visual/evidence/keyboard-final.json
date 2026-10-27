@@ -1,0 +1,282 @@
+[
+  {
+    "color": "rgb(103, 232, 249)",
+    "href": "/",
+    "label": "Início",
+    "outline": "solid",
+    "tag": "A",
+    "top": 0,
+    "visible": true,
+    "width": "2px"
+  },
+  {
+    "color": "rgb(103, 232, 249)",
+    "href": "/catalogo",
+    "label": "Produtos",
+    "outline": "solid",
+    "tag": "A",
+    "top": 0,
+    "visible": true,
+    "width": "2px"
+  },
+  {
+    "color": "rgb(103, 232, 249)",
+    "href": "/cliente",
+    "label": "Minha conta",
+    "outline": "solid",
+    "tag": "A",
+    "top": 8,
+    "visible": true,
+    "width": "2px"
+  },
+  {
+    "color": "rgb(103, 232, 249)",
+    "href": "/carrinho",
+    "label": "Carrinho",
+    "outline": "solid",
+    "tag": "A",
+    "top": 8,
+    "visible": true,
+    "width": "2px"
+  },
+  {
+    "color": "rgb(103, 232, 249)",
+    "href": "/interno",
+    "label": "Acesso interno",
+    "outline": "solid",
+    "tag": "A",
+    "top": 8,
+    "visible": true,
+    "width": "2px"
+  },
+  {
+    "color": "rgb(103, 232, 249)",
+    "href": "/catalogo",
+    "label": "Explorar produtos",
+    "outline": "solid",
+    "tag": "A",
+    "top": 342.828125,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "/catalogo",
+    "label": "Ver catálogo completo",
+    "outline": "solid",
+    "tag": "A",
+    "top": 428.328125,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "/catalogo?category_id=3",
+    "label": "Monitores",
+    "outline": "solid",
+    "tag": "A",
+    "top": 210.359375,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "/catalogo?category_id=4",
+    "label": "PeriféricosPeriféricos em geral",
+    "outline": "solid",
+    "tag": "A",
+    "top": 484.359375,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "/catalogo?category_id=5",
+    "label": "ArmazenamentoArmazenamento em geral",
+    "outline": "solid",
+    "tag": "A",
+    "top": 484.359375,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "/catalogo?category_id=6",
+    "label": "ComponentesComponentes de hardware",
+    "outline": "solid",
+    "tag": "A",
+    "top": 484.359375,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "/catalogo?category_id=7",
+    "label": "Redes e conectividadeRoteadores, switches e conectividade",
+    "outline": "solid",
+    "tag": "A",
+    "top": 484.359375,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "/catalogo",
+    "label": "Ver catálogo completo",
+    "outline": "solid",
+    "tag": "A",
+    "top": 550.09375,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "/catalogo?product_id=25",
+    "label": "Ver Mouse Logitech MX Master 3S no catálogo",
+    "outline": "solid",
+    "tag": "A",
+    "top": 521.84375,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "/catalogo?product_id=25",
+    "label": "Mouse Logitech MX Master 3S",
+    "outline": "solid",
+    "tag": "A",
+    "top": 615.640625,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "https://commons.wikimedia.org/wiki/File:Logitech_MX_Master_3S_HS14.jpg",
+    "label": "Fonte",
+    "outline": "solid",
+    "tag": "A",
+    "top": 558.015625,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "https://creativecommons.org/licenses/by/4.0/",
+    "label": "Licença",
+    "outline": "solid",
+    "tag": "A",
+    "top": 438.015625,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "/catalogo?product_id=36",
+    "label": "Ver Processador Intel Core i5-12400F no catálogo",
+    "outline": "solid",
+    "tag": "A",
+    "top": 27.84375,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "/catalogo?product_id=36",
+    "label": "Processador Intel Core i5-12400F",
+    "outline": "solid",
+    "tag": "A",
+    "top": 615.640625,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "https://commons.wikimedia.org/wiki/File:Intel@intel7(10nmESF)@AlderLake@ADL-S(6P+0E)@i5-12400F@SRL5Z_DSCx01@VIS_(52402436460).jpg",
+    "label": "Fonte",
+    "outline": "solid",
+    "tag": "A",
+    "top": 558.015625,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "https://creativecommons.org/publicdomain/zero/1.0/",
+    "label": "Licença",
+    "outline": "solid",
+    "tag": "A",
+    "top": 438.015625,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "/catalogo?product_id=24",
+    "label": "Ver Teclado Logitech K120 no catálogo",
+    "outline": "solid",
+    "tag": "A",
+    "top": 27.84375,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "/catalogo?product_id=24",
+    "label": "Teclado Logitech K120",
+    "outline": "solid",
+    "tag": "A",
+    "top": 615.640625,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "https://commons.wikimedia.org/wiki/File:Logitech_K120_Keyboard.jpg",
+    "label": "Fonte",
+    "outline": "solid",
+    "tag": "A",
+    "top": 558.015625,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "https://creativecommons.org/licenses/by-sa/4.0/",
+    "label": "Licença",
+    "outline": "solid",
+    "tag": "A",
+    "top": 438.015625,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "https://commons.wikimedia.org/wiki/File:Logitech_MX_Master_3S_HS14.jpg",
+    "label": "Fonte",
+    "outline": "solid",
+    "tag": "A",
+    "top": 624.09375,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "https://creativecommons.org/licenses/by/4.0/",
+    "label": "Licença",
+    "outline": "solid",
+    "tag": "A",
+    "top": 624.09375,
+    "visible": true,
+    "width": "3px"
+  },
+  {
+    "color": "rgb(0, 134, 163)",
+    "href": "/catalogo",
+    "label": "Ver catálogo",
+    "outline": "solid",
+    "tag": "A",
+    "top": 556.203125,
+    "visible": true,
+    "width": "3px"
+  }
+]
