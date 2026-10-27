@@ -26,7 +26,9 @@ from dotenv import load_dotenv
 from rxconfig import config
 
 try:
-    from .demo_images import resolve_demo_image, resolve_demo_image_named, demo_image_credit
+    from .demo_images import (
+        resolve_demo_image, resolve_demo_image_named, demo_image_credit, demo_image_credits,
+    )
 except Exception:
     def resolve_demo_image(sku: str, existing_image_url: str) -> str:
         return existing_image_url
@@ -40,6 +42,9 @@ except Exception:
 
     def demo_image_credit(image_url: str) -> dict[str, str] | None:
         return None
+
+    def demo_image_credits() -> dict[str, dict[str, str]]:
+        return {}
 
 
 load_dotenv()
@@ -6456,54 +6461,43 @@ def home_page() -> rx.Component:
 
 
 def public_catalog_page() -> rx.Component:
+    photo_credits = demo_image_credits()
+
+    def compact_credit(credit):
+        return rx.box(
+            rx.text("Foto: " + credit["author"], as_="span"),
+            rx.link("Fonte", href=credit["source_url"], is_external=True,
+                    title=credit["attribution"], aria_label="Fonte da imagem: " + credit["attribution"]),
+            rx.link(credit["license"], href=credit["license_url"], is_external=True),
+            class_name="vx-catalog-card__credit")
+
     def product_card(product: PublicProductEntry) -> rx.Component:
-        return surface_card(
-            rx.vstack(
+        name = rx.cond(product.name != "", product.name, "Produto #" + product.id.to_string())
+        return rx.el.article(
+            rx.box(
                 rx.cond(
                     product.image_url != "",
-                    rx.image(
-                        src=product.image_url,
-                        alt=product.name,
-                        width="100%",
-                        height="220px",
-                        object_fit="cover",
-                        border_radius=RADIUS,
-                    ),
-                    rx.fragment(),
-                ),
-                section_heading(
-                    rx.cond(
-                        product.name != "",
-                        product.name,
-                        "Produto #" + product.id.to_string(),
-                    ),
-                    size="4",
-                ),
-                rx.cond(
-                    product.category_name != "",
-                    rx.text("Categoria: " + product.category_name),
-                    rx.fragment(),
-                ),
-                rx.cond(
-                    product.brand_name != "",
-                    rx.text("Marca: " + product.brand_name),
-                    rx.fragment(),
-                ),
-                rx.text(product.description, color=COLOR_TEXT_MUTED, flex_grow="1"),
-                rx.spacer(),
-                secondary_button(
-                    "Ver detalhes",
-                    on_click=State.load_public_product_details(product.id),
-                    disabled=State.public_product_loading,
-                    width="100%",
-                ),
-                align="stretch",
-                spacing="3",
-                width="100%",
-                height="100%",
-            ),
-            height="100%",
-        )
+                    rx.image(src=product.image_url, alt=name, loading="lazy",
+                             class_name="vx-catalog-card__image"),
+                    rx.box(rx.icon("image", size=30, aria_hidden=True),
+                           rx.text("Imagem não disponível"),
+                           class_name="vx-catalog-card__placeholder")),
+                class_name="vx-catalog-card__media"),
+            rx.box(
+                rx.cond(product.brand_name != "", rx.text(product.brand_name, class_name="vx-catalog-card__brand"), rx.fragment()),
+                rx.heading(name, as_="h2", class_name="vx-catalog-card__title"),
+                rx.cond(product.category_name != "", rx.text(product.category_name, class_name="vx-catalog-card__category"), rx.fragment()),
+                rx.box(rx.cond(product.description != "", rx.text(product.description), rx.fragment()),
+                       class_name="vx-catalog-card__description"),
+                (rx.match(product.image_url, *[(url, compact_credit(credit)) for url, credit in photo_credits.items()], rx.fragment())
+                 if photo_credits else rx.fragment()),
+                rx.button("Ver detalhes", rx.icon("arrow-right", size=17, aria_hidden=True),
+                          aria_label="Ver detalhes de " + name,
+                          on_click=State.load_public_product_details(product.id),
+                          disabled=State.public_product_loading,
+                          class_name="vx-catalog-card__action"),
+                class_name="vx-catalog-card__content"),
+            class_name="vx-catalog-card")
 
     def selected_product_details() -> rx.Component:
         return rx.cond(
@@ -6629,6 +6623,7 @@ def public_catalog_page() -> rx.Component:
 
     return page_shell(
         rx.el.link(rel="stylesheet", href="/voltix-catalog-search.css"),
+        rx.el.link(rel="stylesheet", href="/voltix-catalog-cards.css"),
         rx.vstack(
             section_heading("Catálogo de produtos"),
             rx.text(

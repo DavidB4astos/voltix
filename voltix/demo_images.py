@@ -118,3 +118,14 @@ def demo_image_credit(image_url: str) -> dict[str, str] | None:
     if not filename or "/" in filename:
         return None
     return _load_credits_by_filename().get(filename)
+
+
+def demo_image_credits() -> dict[str, dict[str, str]]:
+    """Return independent, complete credits for approved existing local photos."""
+    return {
+        DEMO_ASSET_URL_PREFIX + filename: dict(credit)
+        for filename, credit in _load_credits_by_filename().items()
+        if filename and "/" not in filename and "\\" not in filename and ":" not in filename
+        and all(credit.get(field) for field in _CREDIT_FIELDS)
+        and os.path.isfile(os.path.join(DEMO_ASSETS_DIR, filename))
+    }

@@ -1,0 +1,19 @@
+/* Cards exclusivos do catálogo público; dados e detalhes preservados. */
+.vx-catalog-card { display: flex; flex-direction: column; min-width: 0; height: 100%; overflow: hidden; border: 1px solid #dce4eb; border-radius: 16px; background: #fff; box-shadow: 0 2px 5px #07152505; }
+.vx-catalog-card .vx-catalog-card__media { position: relative; width: 100%; aspect-ratio: 4 / 3; background: #f5f7fa; border-bottom: 1px solid #e8edf2; }
+.vx-catalog-card .vx-catalog-card__image { position: absolute; inset: 0; display: block; width: 100%; height: 100%; padding: 1.25rem; box-sizing: border-box; object-fit: contain; }
+.vx-catalog-card .vx-catalog-card__placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .75rem; color: #61758a; }
+.vx-catalog-card .vx-catalog-card__placeholder p { margin: 0; font-size: .8rem; }
+.vx-catalog-card .vx-catalog-card__content { display: flex; flex-direction: column; flex: 1; gap: .75rem; padding: 1.25rem; min-width: 0; }
+.vx-catalog-card .vx-catalog-card__brand { margin: 0; color: #536b80; font-size: .7rem; line-height: 1.5; letter-spacing: .09em; font-weight: 600; text-transform: uppercase; }
+.vx-catalog-card .vx-catalog-card__title { margin: 0; color: #071525; font-size: 1.15rem; line-height: 1.4; letter-spacing: -.025em; font-weight: 600; overflow-wrap: anywhere; }
+.vx-catalog-card .vx-catalog-card__category { margin: 0; color: #486581; font-size: .8rem; line-height: 1.5; }
+.vx-catalog-card .vx-catalog-card__description { flex: 1; min-width: 0; color: #536475; font-size: .9rem; line-height: 1.65; overflow-wrap: anywhere; }
+.vx-catalog-card .vx-catalog-card__description p { margin: 0; }
+.vx-catalog-card .vx-catalog-card__credit { display: flex; flex-wrap: wrap; align-items: center; gap: .15rem .6rem; color: #536475; font-size: .75rem; line-height: 1.6; }
+.vx-catalog-card .vx-catalog-card__credit span { flex-basis: 100%; }
+.vx-catalog-card .vx-catalog-card__credit a { display: inline-flex; align-items: center; min-height: 32px; color: #41617b; text-decoration: underline; text-underline-offset: 3px; }
+.vx-catalog-card .vx-catalog-card__action { display: inline-flex; align-items: center; justify-content: space-between; gap: .75rem; width: 100%; min-height: 44px; padding: .65rem .9rem; border: 1px solid #d5e3f1; border-radius: 8px; color: #075abc; background: #f2f7fc; font-size: .85rem; font-weight: 600; cursor: pointer; }
+.vx-catalog-card .vx-catalog-card__action:hover { background: #e7f0fb; }
+.vx-catalog-card .vx-catalog-card__action:disabled { opacity: .55; cursor: default; }
+.vx-catalog-card a:focus-visible, .vx-catalog-card button:focus-visible { outline: 2px solid #0086a3; outline-offset: 3px; }
