@@ -32,7 +32,7 @@ The system SHALL serve a public homepage at the root route `/`, with a premium n
 
 The public home SHALL present a premium editorial hero on the store's dark navy surface, without an eyebrow or kicker label above the heading, with a single page-level heading, a short supporting sentence, exactly one primary call-to-action labeled "Explorar produtos" leading to the existing public catalog, and a media panel. The hero media SHALL be composed only from an approved local asset from the store's assets — either a licensed photograph or a store-owned generated image — or, when that asset does not suit the composition, a store-owned graphic panel built from the store's visual tokens. The hero SHALL NOT reference external image URLs, SHALL NOT introduce promotions, prices, ratings, or commercial claims that do not exist in the store, and SHALL keep the call-to-action's current route and access behavior.
 
-**Implementation:** The hero SHALL prioritize displaying an approved local photograph (`vtx-editorial-setup.jpg`) with its provenance statement ("Imagem gerada por IA fornecida pelo projeto"). The store-owned graphic panel SHALL be used only as fallback when the photograph is unavailable or unsuitable for the composition.
+**Implementation:** The hero SHALL prioritize displaying a store-owned generated editorial image (`vtx-home-workspace-v2.webp`) with its provenance statement ("Cenário ilustrativo gerado por IA; os equipamentos não representam produtos específicos."). The store-owned graphic panel SHALL be used only as fallback when the photograph is unavailable or unsuitable for the composition.
 
 #### Scenario: Visitor interacts with the hero
 - **WHEN** a visitor activates "Explorar produtos" in the hero
@@ -55,9 +55,9 @@ The public home SHALL present a premium editorial hero on the store's dark navy 
 - **THEN** no eyebrow, kicker or pill label is displayed above the level-one heading
 
 #### Scenario: Hero displays editorial photograph with provenance
-- **WHEN** the hero renders with the approved local photograph
-- **THEN** the photograph is displayed
-- **AND** a visible provenance statement "Imagem gerada por IA fornecida pelo projeto" is shown without requiring interaction
+- **WHEN** the hero renders with the local generated editorial image
+- **THEN** the generated editorial scenery is displayed without representing catalog SKUs
+- **AND** a visible provenance statement "Cenário ilustrativo gerado por IA; os equipamentos não representam produtos específicos." is shown without requiring interaction
 - **AND** no fabricated author, license or source is displayed
 
 ---
@@ -155,11 +155,11 @@ The public home SHALL present a short curated showcase of at most four products 
 
 The public home SHALL include one editorial section that presents an approved local photograph from the store's assets, a short heading, a short supporting sentence, and at most one call-to-action leading to an existing public route. The accompanying copy SHALL describe the photograph truthfully and SHALL NOT attribute a product, offer, setup or service to the image that it does not show. The section SHALL display the image credit. If no approved photograph is available, the section SHALL be omitted entirely.
 
-**Implementation:** The editorial section SHALL use `vtx-demo-004.jpg` (Mouse Logitech MX Master 3S) with the heading "Precisão em cada detalhe", supporting copy describing the premium equipment, and visible credit "Logitech MX Master 3S HS14.jpg by Hayden Schiff, CC BY 4.0, via Wikimedia Commons" without requiring interaction.
+**Implementation:** The editorial section SHALL use `vtx-editorial-mx-master-3s.jpg` (Mouse Logitech MX Master 3S) with the heading "Precisão em cada detalhe", supporting copy describing the premium equipment, and visible credit "Logitech MX Master 3S HS17.jpg by Hayden Schiff, CC BY 4.0, via Wikimedia Commons" without requiring interaction.
 
 #### Scenario: Visitor views the editorial section
 - **WHEN** the public home renders the editorial section
-- **THEN** it shows an approved local photograph (`vtx-demo-004.jpg`)
+- **THEN** it shows an approved local photograph (`vtx-editorial-mx-master-3s.jpg`)
 - **AND** its credit (author: Hayden Schiff, license: CC BY 4.0, source: Wikimedia Commons) is visible without interaction
 - **AND** a short heading "Precisão em cada detalhe" describes the content
 - **AND** a supporting sentence describes the premium equipment truthfully

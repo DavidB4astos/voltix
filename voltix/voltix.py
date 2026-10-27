@@ -6063,7 +6063,7 @@ State.toggle_brand_status,
 def home_page() -> rx.Component:
     """Home editorial; dados e eventos continuam no fluxo público existente."""
     assets_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "demo")
-    hero_available = os.path.isfile(os.path.join(assets_dir, "vtx-editorial-setup.jpg"))
+    hero_available = os.path.isfile(os.path.join(assets_dir, "vtx-home-workspace-v2.webp"))
     try:
         with open(os.path.join(assets_dir, "manifest.json"), encoding="utf-8-sig") as stream:
             manifest = json.load(stream)
@@ -6113,10 +6113,10 @@ def home_page() -> rx.Component:
     def hero_section():
         if hero_available:
             media = rx.box(
-                rx.image(src="/demo/vtx-editorial-setup.jpg",
-                         alt="Composição ilustrativa de uma mesa com monitor, teclado e mouse",
+                rx.image(src="/demo/vtx-home-workspace-v2.webp",
+                         alt="Cenário ilustrativo panorâmico de uma mesa com monitor, teclado e mouse",
                          class_name="vx-hero__photo", loading="eager"),
-                rx.text("Imagem gerada por IA fornecida pelo projeto.",
+                rx.text("Cenário ilustrativo gerado por IA; os equipamentos não representam produtos específicos.",
                         class_name="vx-hero__caption"),
                 class_name="vx-hero__media",
             )
@@ -6243,19 +6243,23 @@ def home_page() -> rx.Component:
         )
 
     def editorial_section():
-        editorial = next(((url, credit) for _name, url, credit in approved_images
-                          if url == "/demo/vtx-demo-004.jpg"), None)
-        if editorial is None:
+        credit = next((entry for entry in manifest.get("editorial_images", [])
+                       if entry.get("role") == "home_editorial"
+                       and entry.get("status") == "approved"
+                       and entry.get("file") == "vtx-editorial-mx-master-3s.jpg"), None)
+        if (not credit or not all(credit.get(key) for key in
+                ("attribution", "source_url", "license_url"))
+                or not os.path.isfile(os.path.join(assets_dir, credit["file"]))):
             return rx.fragment()
-        url, credit = editorial
+        url = "/demo/" + credit["file"]
         return rx.el.section(
-            rx.box(rx.image(src=url, alt="Vista inferior do mouse Logitech MX Master 3S",
+            rx.box(rx.image(src=url, alt="Vista lateral do mouse Logitech MX Master 3S, com roda e botões",
                             loading="lazy", class_name="vx-editorial__image"),
                    photo_credit(credit), class_name="vx-editorial__media"),
             rx.box(
                 rx.text("LOGITECH MX MASTER 3S", class_name="vx-editorial__label"),
                 rx.heading("Precisão em cada detalhe", as_="h2", class_name="vx-editorial__heading"),
-                rx.text("Uma visão de perto do MX Master 3S: sensor, controles e acabamento "
+                rx.text("Uma visão de perto do MX Master 3S: roda lateral, botões e acabamento "
                         "em um equipamento pensado para compor o seu espaço de trabalho.",
                         class_name="vx-editorial__copy"),
                 rx.link("Ver catálogo", rx.icon("arrow-right", size=18),

@@ -128,7 +128,7 @@
  .vx-home .vx-hero__copy { max-width: 58ch; margin: 1rem auto 1.4rem; line-height: 1.55; font-size: 1.125rem; }
  .vx-home .vx-button { border-radius: 999px; min-height: 46px; font-weight: 500; padding: .7rem 1.5rem; }
  .vx-home .vx-hero__media { width: min(100%,62rem); margin-inline: auto; }
- .vx-home .vx-hero__photo { aspect-ratio: auto; height: 300px; object-position: center 58%; border: 0; border-radius: 18px; box-shadow: none; }
+ .vx-home .vx-hero__photo { aspect-ratio: 3 / 1; height: auto; object-position: center; object-fit: contain; border: 0; border-radius: 18px; box-shadow: none; }
  .vx-home .vx-hero__caption { font-size: .75rem; margin-top: .6rem; }
  .vx-home .vx-benefits { padding-block: 1.6rem; border-top: 0; }
  .vx-home .vx-section { margin-top: 4rem; }

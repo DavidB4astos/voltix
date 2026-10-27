@@ -1,5 +1,5 @@
-﻿{
-    "updated": "2026-10-19",
+{
+    "updated": "2026-10-27",
     "criteria": "Exact model match (variant/capacity/version). Sources: manufacturers, distributors, specialty retailers, marketplaces. No AI images, similar products, or different versions. Public accessibility does not equal authorization. Download only authorized or properly licensed images; in doubt, keep placeholder and record pending.",
     "summary": {
         "verified": 3,
@@ -15,6 +15,27 @@
             "purpose": "Editorial composition for the Voltix public home hero.",
             "license": "Not a Creative Commons work; no photographic authorship. No third-party license declared by the supplier.",
             "note": "The equipment shown is illustrative scenery and does not represent specific SKUs offered for sale. No price or commercial claim is attached. Do not present as a product photo."
+        },
+        {
+            "file": "vtx-home-workspace-v2.webp",
+            "role": "home_hero_v2",
+            "status": "generated",
+            "origin": "Generated with OpenAI image generation for Voltix on 2026-10-27.",
+            "purpose": "Generic panoramic editorial scenery; not a photograph of catalog SKUs.",
+            "license": "Project-generated illustrative image; no third-party photographic license claimed.",
+            "provenance": "Cenário ilustrativo gerado por IA; os equipamentos não representam produtos específicos.",
+            "note": "Converted from generated PNG to WebP without retouching; no Apple assets or marks."
+        },
+        {
+            "file": "vtx-editorial-mx-master-3s.jpg",
+            "role": "home_editorial",
+            "status": "approved",
+            "source_url": "https://commons.wikimedia.org/wiki/File:Logitech_MX_Master_3S_HS17.jpg",
+            "author": "Hayden Schiff",
+            "license": "CC BY 4.0",
+            "license_url": "https://creativecommons.org/licenses/by/4.0/",
+            "attribution": "Logitech MX Master 3S HS17.jpg by Hayden Schiff, CC BY 4.0, via Wikimedia Commons",
+            "note": "Exact MX Master 3S side close-up. Independent own-work photo, unretouched 1280px Commons rendition."
         }
     ],
     "products": [
@@ -55,12 +76,12 @@
             "product": "Mouse Logitech MX Master 3S",
             "status": "approved",
             "file": "vtx-demo-004.jpg",
-            "source_url": "https://commons.wikimedia.org/wiki/File:Logitech_MX_Master_3S_HS14.jpg",
+            "source_url": "https://commons.wikimedia.org/wiki/File:Logitech_MX_Master_3S_with_receiver_HS05.jpg",
             "author": "Hayden Schiff",
             "license": "CC BY 4.0",
             "license_url": "https://creativecommons.org/licenses/by/4.0/",
-            "attribution": "Logitech MX Master 3S HS14.jpg by Hayden Schiff, CC BY 4.0, via Wikimedia Commons",
-            "note": "Independent own-work photo (not a Logitech Asset). Exact model confirmed via file description and Wikidata Q125697788; category 'Computer mice with white background'."
+            "attribution": "Logitech MX Master 3S with receiver HS05.jpg by Hayden Schiff, CC BY 4.0, via Wikimedia Commons",
+            "note": "Exact MX Master 3S, top three-quarter view and receiver. Independent own-work photo. Replaces underside HS14; downloaded Commons 1280px rendition, no product retouching."
         },
         {
             "sku": "VTX-DEMO-005",
