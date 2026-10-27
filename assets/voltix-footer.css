@@ -1,0 +1,23 @@
+/* Rodapé público: variante desktop opt-in, legado preservado. */
+.vx-footer { width: 100%; }
+.vx-footer .vx-footer__desktop { display: none; }
+@media (min-width: 1024px) {
+  .vx-footer .vx-footer__legacy { display: none; }
+  .vx-footer .vx-footer__desktop { display: block; color: #d3dfeb; background: #071525; border-top: 1px solid #234054; }
+  .vx-footer .vx-footer__inner { width: min(100% - 3rem,72rem); margin-inline: auto; padding-block: 3rem 1.5rem; }
+  .vx-footer .vx-footer__columns { display: grid; grid-template-columns: 1.45fr .75fr .85fr 1.2fr; gap: 3rem; padding-bottom: 2rem; }
+  .vx-footer .vx-footer__identity, .vx-footer .vx-footer__group { min-width: 0; }
+  .vx-footer .vx-footer__brand { display: inline-flex; align-items: center; gap: .65rem; min-height: 44px; color: #fff; font-size: 1.65rem; letter-spacing: -.05em; font-weight: 700; text-decoration: none; }
+  .vx-footer .vx-footer__mark { width: 6px; height: 24px; background: #00b8d9; border-radius: 3px; }
+  .vx-footer .vx-footer__description { margin: .6rem 0; max-width: 30ch; color: #b8c8d6; font-size: .9rem; line-height: 1.65; }
+  .vx-footer .vx-footer__title { margin: .5rem 0 .65rem; color: #fff; font-size: .85rem; font-weight: 650; }
+  .vx-footer .vx-footer__link { display: flex; align-items: center; width: fit-content; min-height: 44px; color: #bdcddb; font-size: .85rem; line-height: 1.5; text-decoration: none; }
+  .vx-footer .vx-footer__link:hover { color: #fff; text-decoration: underline; text-underline-offset: 4px; }
+  .vx-footer .vx-footer__notice { display: flex; align-items: center; justify-content: space-between; gap: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #294052; font-size: .8rem; line-height: 1.6; }
+  .vx-footer .vx-footer__notice-title { margin: 0; color: #9de9f3; }
+  .vx-footer .vx-footer__notice-copy { margin: 0; color: #b8c8d6; }
+  .vx-footer a:focus-visible { outline: 2px solid #67e8f9; outline-offset: 4px; border-radius: 3px; }
+}
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .vx-footer .vx-footer__columns { gap: 2rem; }
+}

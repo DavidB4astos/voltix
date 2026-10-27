@@ -185,15 +185,15 @@ Images displayed on the public home SHALL declare provenance appropriate to thei
 - **THEN** that image is not displayed
 
 ### Requirement: Home visual layer is scoped to the public home
-The home visual refinement SHALL be implemented with styles scoped to the public home and SHALL NOT change the presentation or behavior of the catalog, product detail, customer account, cart, checkout, orders or internal administrative surfaces. Home-specific classes SHALL use a dedicated prefix, and global link, button and focus selectors SHALL NOT be introduced. The refinement SHALL preserve the shared header and footer, every existing route, handler, data contract and business behavior; it SHALL NOT add, remove or rename routes.
+The home visual refinement SHALL be implemented with styles scoped to the public home and SHALL NOT change the content presentation or business behavior of the catalog, product detail, customer account, cart, checkout, orders or internal administrative surfaces, except for the explicitly approved shared public desktop footer defined by Institutional footer. Home-specific classes SHALL use a dedicated prefix, and global link, button and focus selectors SHALL NOT be introduced. The refinement SHALL preserve the existing public header and internal footer, every existing route, handler, data contract and business behavior; it SHALL NOT add, remove or rename routes.
 
 #### Scenario: Visitor navigates to another surface
 - **WHEN** a visitor moves from the home to the catalog, cart, checkout, account, orders or internal access
-- **THEN** those pages keep their existing presentation, routes, data and behavior
+- **THEN** those pages keep their existing content presentation, routes, data and business behavior, while public desktop pages use the Institutional footer
 
 #### Scenario: Shared chrome and routes are preserved
 - **WHEN** the refined home is compared with the previous home
-- **THEN** the shared header and footer, the route map, the handlers and the data contracts are unchanged
+- **THEN** the existing header, internal footer, route map, handlers and data contracts are unchanged; the public desktop footer follows Institutional footer
 
 ### Requirement: Home accessibility and responsive behavior
 The public home SHALL expose one level-one heading, headings in semantic order, visible keyboard focus on every interactive element, descriptive alternative text for informative images, and touch targets of at least 44 pixels for primary controls. The home SHALL reflow from 360 to 1440 pixels without horizontal overflow and SHALL honor the user's reduced-motion preference by removing non-essential movement while keeping content visible.
@@ -215,11 +215,23 @@ The public home SHALL expose one level-one heading, headings in semantic order, 
 - **THEN** the image has alternative text describing its content, or an empty alternative when it is purely decorative
 
 ### Requirement: Institutional footer
-The public home SHALL end with an institutional footer consistent with the Voltix identity, without changing existing footer content rules.
+The public home and existing public storefront pages SHALL end with a Voltix institutional footer. At widths of at least 1024px it SHALL show the brand and grouped links to existing Home, catalog, account, cart, orders and internal access routes, with the academic-project and simulated-prices/payments notice visible. It SHALL NOT invent contacts, policies or commercial services. Links SHALL have visible keyboard focus and targets at least 44px high. Narrower viewports and internal pages SHALL retain the legacy footer. Shared public pages SHALL explicitly opt into the desktop variant.
 
 #### Scenario: Visitor scrolls to the footer
 - **WHEN** the public home footer is displayed
 - **THEN** it presents the Voltix institutional content consistently on desktop and mobile
+
+#### Scenario: Desktop visitor follows footer links
+- **WHEN** a desktop visitor chooses a footer navigation link
+- **THEN** it opens the existing destination without changing access rules or submitting a form
+
+#### Scenario: Visitor uses footer keyboard navigation
+- **WHEN** a visitor tabs through the desktop footer
+- **THEN** each link exposes a visible focus indicator in reading order
+
+#### Scenario: Legacy footer remains available
+- **WHEN** a visitor uses a viewport below 1024px or an internal page
+- **THEN** only the legacy footer appears
 
 ### Requirement: Internal access relocated without behavior change
 The internal access screen SHALL move from the root route to `/interno`, preserving login, session validation, authorization and administrative visibility exactly as before.

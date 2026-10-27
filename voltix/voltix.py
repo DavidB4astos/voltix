@@ -4931,9 +4931,9 @@ def site_header(
     )
 
 
-def site_footer(*, wide: bool = False) -> rx.Component:
+def site_footer(*, wide: bool = False, public_storefront: bool = False) -> rx.Component:
     """Rodape compartilhado das paginas em banda navy."""
-    return rx.box(
+    legacy_footer = rx.box(
         rx.container(
             rx.flex(
                 rx.vstack(
@@ -4981,6 +4981,54 @@ def site_footer(*, wide: bool = False) -> rx.Component:
         + " 100%)",
         border_top=f"3px solid {COLOR_CYAN}",
         width="100%",
+    )
+
+    if not public_storefront:
+        return legacy_footer
+
+    def footer_link(label: str, href: str):
+        return rx.link(label, href=href, class_name="vx-footer__link")
+
+    return rx.box(
+        rx.el.link(rel="stylesheet", href="/voltix-footer.css"),
+        rx.box(legacy_footer, class_name="vx-footer__legacy"),
+        rx.el.footer(
+            rx.box(
+                rx.box(
+                    rx.box(
+                        rx.link(rx.el.span(class_name="vx-footer__mark"), "Voltix",
+                                href="/", aria_label="Voltix — início pelo rodapé",
+                                class_name="vx-footer__brand"),
+                        rx.text("Tecnologia para trabalhar, estudar e criar.",
+                                class_name="vx-footer__description"),
+                        class_name="vx-footer__identity"),
+                    rx.el.nav(
+                        rx.text("Explorar", class_name="vx-footer__title"),
+                        footer_link("Início", "/"),
+                        footer_link("Produtos", "/catalogo"),
+                        aria_label="Explorar a loja no rodapé",
+                        class_name="vx-footer__group"),
+                    rx.el.nav(
+                        rx.text("Sua conta", class_name="vx-footer__title"),
+                        footer_link("Minha conta", "/cliente"),
+                        footer_link("Carrinho", "/carrinho"),
+                        footer_link("Meus pedidos", "/pedidos"),
+                        aria_label="Sua conta no rodapé",
+                        class_name="vx-footer__group"),
+                    rx.box(
+                        rx.text("Projeto", class_name="vx-footer__title"),
+                        rx.text("Uma loja de tecnologia com gestão integrada, desenvolvida como projeto acadêmico.",
+                                class_name="vx-footer__description"),
+                        footer_link("Acesso interno", "/interno"),
+                        class_name="vx-footer__group"),
+                    class_name="vx-footer__columns"),
+                rx.box(
+                    rx.text("Projeto acadêmico", class_name="vx-footer__notice-title"),
+                    rx.text("Preços e pagamentos simulados.", class_name="vx-footer__notice-copy"),
+                    class_name="vx-footer__notice"),
+                class_name="vx-footer__inner"),
+            class_name="vx-footer__desktop"),
+        class_name="vx-footer", width="100%",
     )
 
 
@@ -5157,6 +5205,7 @@ def page_shell(
     max_width: str = "64rem",
     header: rx.Component | None = None,
     show_footer: bool = True,
+    public_footer: bool = False,
     size: str = "3",
 ) -> rx.Component:
     """Shell de pagina: fundo claro, largura responsiva, header e footer."""
@@ -5181,7 +5230,7 @@ def page_shell(
         )
     )
     if show_footer:
-        parts.append(site_footer(wide=size != "3"))
+        parts.append(site_footer(wide=size != "3", public_storefront=public_footer))
     return rx.box(
         rx.flex(
             *parts,
@@ -6357,7 +6406,7 @@ def home_page() -> rx.Component:
                    rx.box(benefits_strip(), categories_section(), products_section(), editorial_section(),
                           class_name="vx-container vx-home__sections"),
                    class_name="vx-home vx-home__surface"),
-        home_chrome(site_footer(wide=True)),
+        home_chrome(site_footer(wide=True, public_storefront=True)),
         width="100%", background=COLOR_SURFACE, color=COLOR_TEXT,
     )
 
@@ -6656,6 +6705,7 @@ def public_catalog_page() -> rx.Component:
             logo_href="/",
         ),
         max_width="64rem",
+        public_footer=True,
     )
 
 
@@ -7143,6 +7193,7 @@ columns={"initial": "1", "md": "2"},
             badge="Área do cliente",
         ),
         max_width="56rem",
+        public_footer=True,
     )
 
 
@@ -7273,6 +7324,7 @@ def customer_cart_page() -> rx.Component:
             badge="Carrinho",
         ),
         max_width="48rem",
+        public_footer=True,
     )
 
 
@@ -7471,6 +7523,7 @@ def customer_checkout_page() -> rx.Component:
             badge="Checkout",
         ),
         max_width="48rem",
+        public_footer=True,
     )
 
 
@@ -7646,6 +7699,7 @@ def customer_orders_page() -> rx.Component:
             badge="Meus pedidos",
         ),
         max_width="48rem",
+        public_footer=True,
     )
 
 

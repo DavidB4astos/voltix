@@ -1,0 +1,44 @@
+[
+  {
+    "height": 44,
+    "href": "/",
+    "label": "Início",
+    "outline": "solid",
+    "width": "2px"
+  },
+  {
+    "height": 44,
+    "href": "/catalogo",
+    "label": "Produtos",
+    "outline": "solid",
+    "width": "2px"
+  },
+  {
+    "height": 44,
+    "href": "/cliente",
+    "label": "Minha conta",
+    "outline": "solid",
+    "width": "2px"
+  },
+  {
+    "height": 44,
+    "href": "/carrinho",
+    "label": "Carrinho",
+    "outline": "solid",
+    "width": "2px"
+  },
+  {
+    "height": 44,
+    "href": "/pedidos",
+    "label": "Meus pedidos",
+    "outline": "solid",
+    "width": "2px"
+  },
+  {
+    "height": 44,
+    "href": "/interno",
+    "label": "Acesso interno",
+    "outline": "solid",
+    "width": "2px"
+  }
+]

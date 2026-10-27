@@ -1,0 +1,22 @@
+[
+  {
+    "link": "Produtos",
+    "url": "http://localhost:3000/catalogo",
+    "footerVisible": true
+  },
+  {
+    "link": "Minha conta",
+    "url": "http://localhost:3000/cliente",
+    "footerVisible": true
+  },
+  {
+    "link": "Carrinho",
+    "url": "http://localhost:3000/carrinho",
+    "footerVisible": true
+  },
+  {
+    "link": "Meus pedidos",
+    "url": "http://localhost:3000/pedidos",
+    "footerVisible": true
+  }
+]
