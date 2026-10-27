@@ -1,0 +1,39 @@
+/* Cabeçalho desktop das páginas públicas. Mobile e área interna preservados. */
+.vx-navigation { width: 100%; }
+.vx-navigation .vx-nav__desktop { display: none; }
+@media (min-width: 1024px) {
+  .vx-navigation { position: sticky; top: 0; z-index: 50; background: #071525; }
+  .vx-navigation .vx-nav__legacy { display: none; }
+  .vx-navigation .vx-nav__desktop { display: block; width: 100%; color: #fff; background: #071525; border-bottom: 1px solid #ffffff18; }
+  .vx-navigation .vx-nav__inner { display: flex; align-items: center; gap: 3rem; width: min(100% - 3rem, 72rem); min-height: 88px; margin-inline: auto; }
+  .vx-navigation .vx-nav__brand { display: inline-flex; align-items: center; gap: .65rem; flex-shrink: 0; min-height: 48px; color: #fff; text-decoration: none; }
+  .vx-navigation .vx-nav__brand-mark { display: block; width: 7px; height: 27px; border-radius: 3px; background: #00b8d9; }
+  .vx-navigation .vx-nav__brand-name { font-size: 1.85rem; line-height: 1; font-weight: 700; letter-spacing: -.055em; }
+  .vx-navigation .vx-nav__primary { display: flex; align-items: stretch; align-self: stretch; gap: 1.75rem; margin-left: 1.25rem; }
+  .vx-navigation .vx-nav__actions { display: flex; align-items: center; gap: 1.5rem; margin-left: auto; }
+  .vx-navigation .vx-nav__link { position: relative; display: inline-flex; align-items: center; gap: .55rem; min-height: 48px; color: #d3dfeb; font-size: .9rem; line-height: 1.4; font-weight: 500; white-space: nowrap; text-decoration: none; transition: color 160ms ease; }
+  .vx-navigation .vx-nav__primary .vx-nav__link::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: transparent; transition: background-color 160ms ease; }
+  .vx-navigation .vx-nav__link:hover { color: #fff; }
+  .vx-navigation .vx-nav__link--active { color: #fff; font-weight: 650; }
+  .vx-navigation .vx-nav__primary .vx-nav__link--active::after { background: #00b8d9; }
+  .vx-navigation .vx-nav__actions .vx-nav__link--active { color: #9de9f3; }
+  .vx-navigation .vx-nav__link--secondary { padding-left: 1.5rem; margin-left: .1rem; border-left: 1px solid #ffffff25; color: #aabfce; font-size: .78rem; }
+  .vx-navigation a:focus-visible { outline: 2px solid #67e8f9; outline-offset: 6px; border-radius: 3px; }
+  .vx-home-category-bar { display: none; }
+}
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .vx-navigation .vx-nav__inner { gap: 2rem; }
+  .vx-navigation .vx-nav__primary { margin-left: 0; gap: 1.25rem; }
+  .vx-navigation .vx-nav__actions { gap: 1.2rem; }
+  .vx-navigation .vx-nav__link--secondary { padding-left: 1.2rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vx-navigation .vx-nav__link, .vx-navigation .vx-nav__link::after { transition: none; }
+}
+@media (min-width: 1024px) {
+ .vx-navigation .vx-nav__inner { min-height: 64px; }
+ .vx-navigation .vx-nav__brand-name { font-size: 1.5rem; }
+ .vx-navigation .vx-nav__brand-mark { height: 23px; width: 6px; }
+ .vx-navigation .vx-nav__link { font-size: .82rem; }
+ .vx-navigation .vx-nav__link--secondary { font-size: .75rem; }
+}

@@ -26,7 +26,7 @@ from dotenv import load_dotenv
 from rxconfig import config
 
 try:
-    from .demo_images import resolve_demo_image, resolve_demo_image_named
+    from .demo_images import resolve_demo_image, resolve_demo_image_named, demo_image_credit
 except Exception:
     def resolve_demo_image(sku: str, existing_image_url: str) -> str:
         return existing_image_url
@@ -37,6 +37,9 @@ except Exception:
         existing_image_url: str,
     ) -> str:
         return existing_image_url
+
+    def demo_image_credit(image_url: str) -> dict[str, str] | None:
+        return None
 
 
 load_dotenv()
@@ -2306,6 +2309,25 @@ class State(rx.State):
         finally:
             self.public_catalog_loading = False
             self.public_catalog_loaded = True
+
+    @rx.event
+    async def enter_public_home(self):
+        self.public_category_id = ""
+        self.public_catalog_search = ""
+        self.close_public_product_details()
+        await self.load_public_catalog()
+
+    @rx.event
+    async def enter_public_catalog(self):
+        params = self.router.url.query_parameters
+        category = params.get("category_id", "")
+        self.public_category_id = category if category.isascii() and category.isdigit() and len(category) <= 10 else ""
+        self.public_catalog_search = ""
+        self.close_public_product_details()
+        await self.load_public_catalog()
+        product = params.get("product_id", "")
+        if product.isascii() and product.isdigit() and len(product) <= 10 and int(product) > 0:
+            await self.load_public_product_details(int(product))
 
     @rx.event
     async def filter_public_catalog(self, category_id: str):
@@ -4809,7 +4831,7 @@ def site_header(
             nav_link(label, href, emphasized=True) for label, href in internal
         )
 
-    return rx.box(
+    legacy_header = rx.box(
         rx.container(
             rx.flex(
                 rx.hstack(
@@ -4859,6 +4881,53 @@ def site_header(
         border_bottom=f"3px solid {COLOR_CYAN}",
         box_shadow="0 6px 20px rgba(7, 21, 37, 0.18)",
         width="100%",
+    )
+
+    # A variante antiga permanece intacta para mobile e área interna.
+    if active not in {"/", "/catalogo", "/cliente", "/carrinho", "/checkout", "/pedidos"}:
+        return legacy_header
+
+    def desktop_link(label, href, *, icon=None, secondary=False):
+        classes = "vx-nav__link"
+        if active == href:
+            classes += " vx-nav__link--active"
+        if secondary:
+            classes += " vx-nav__link--secondary"
+        return rx.link(
+            *([rx.icon(icon, size=19, aria_hidden=True)] if icon else []),
+            rx.el.span(label), href=href, class_name=classes,
+            aria_current="page" if active == href else None,
+        )
+
+    extra_links = [(label, href) for label, href in commercial
+                   if href not in {"/", "/catalogo", "/cliente", "/carrinho"}]
+    return rx.box(
+        rx.el.link(rel="stylesheet", href="/voltix-navigation.css"),
+        rx.box(legacy_header, class_name="vx-nav__legacy"),
+        rx.el.header(
+            rx.box(
+                rx.link(
+                    rx.el.span(class_name="vx-nav__brand-mark", aria_hidden=True),
+                    rx.el.span("Voltix", class_name="vx-nav__brand-name"),
+                    href="/", class_name="vx-nav__brand", aria_label="Voltix — página inicial",
+                ),
+                rx.el.nav(
+                    desktop_link("Início", "/"),
+                    desktop_link("Produtos", "/catalogo"),
+                    *[desktop_link(label, href) for label, href in extra_links],
+                    aria_label="Navegação principal", class_name="vx-nav__primary",
+                ),
+                rx.el.nav(
+                    desktop_link("Minha conta", "/cliente", icon="user"),
+                    desktop_link("Carrinho", "/carrinho", icon="shopping-cart"),
+                    *[desktop_link(label, href, secondary=True) for label, href in internal],
+                    aria_label="Conta e acesso", class_name="vx-nav__actions",
+                ),
+                class_name="vx-nav__inner",
+            ),
+            class_name="vx-nav__desktop",
+        ),
+        class_name="vx-navigation", width="100%",
     )
 
 
@@ -5992,510 +6061,207 @@ State.toggle_brand_status,
 
 
 def home_page() -> rx.Component:
-    """Home publica premium: hero, beneficios, categorias e vitrine."""
+    """Home editorial; dados e eventos continuam no fluxo público existente."""
+    assets_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "assets", "demo")
+    hero_available = os.path.isfile(os.path.join(assets_dir, "vtx-editorial-setup.jpg"))
+    try:
+        with open(os.path.join(assets_dir, "manifest.json"), encoding="utf-8-sig") as stream:
+            manifest = json.load(stream)
+    except (OSError, ValueError):
+        manifest = {}
+    if not isinstance(manifest, dict):
+        manifest = {}
+    approved_images = []
+    for entry in manifest.get("products", []):
+        filename = entry.get("file", "")
+        if entry.get("status") != "approved" or not filename or os.path.basename(filename) != filename:
+            continue
+        url = "/demo/" + filename
+        credit = demo_image_credit(url)
+        if (os.path.isfile(os.path.join(assets_dir, filename)) and credit
+                and credit.get("attribution")
+                and resolve_demo_image_named(entry.get("product", ""), entry.get("sku", ""), "") == url):
+            approved_images.append((entry["product"], url, credit))
 
-    home_radius = "18px"
+    def eligible(product):
+        matches = rx.Var.create(False)
+        for name, url, _credit in approved_images:
+            matches = matches | ((product.name == name) & (product.image_url == url))
+        return matches
 
-    def hero_section() -> rx.Component:
+    # Filter only the Home's presentation, never the shared catalog or its State.
+    showcase = State.public_products.filter(eligible)[:4]
+    loading = State.public_catalog_loading | ~State.public_catalog_loaded
+    has_error = State.public_catalog_message != ""
+
+    def photo_credit(credit: dict[str, str], *, class_name="vx-credit") -> rx.Component:
         return rx.box(
-            rx.grid(
-                rx.vstack(
-                    rx.hstack(
-                        rx.icon("sparkles", size=15, color=COLOR_BLUE),
-                        rx.text(
-                            "LOJA DE TECNOLOGIA PREMIUM",
-                            color=COLOR_BLUE,
-                            font_weight="700",
-                            font_size="0.8rem",
-                            letter_spacing="0.14em",
-                        ),
-                        spacing="2",
-                        align="center",
-                        background="rgba(8, 102, 217, 0.10)",
-                        padding_x="0.75rem",
-                        padding_y="0.25rem",
-                        border_radius="9999px",
-                    ),
-                    rx.heading(
-                        "Tecnologia premium para elevar o seu setup.",
-                        size="8",
-                        font_size=rx.breakpoints(
-                            initial="2.4rem",
-                            sm="2.9rem",
-                            md="3.6rem",
-                        ),
-                        color=COLOR_NAVY,
-                        line_height="1.03",
-                        letter_spacing="-0.03em",
-                        max_width="46rem",
-                    ),
-                    rx.text(
-                        "Monte sua estação com as melhores marcas, suporte "
-                        "especializado e entrega rápida para o seu dia a dia.",
-                        color=COLOR_TEXT_MUTED,
-                        font_size=rx.breakpoints(initial="1.05rem", md="1.2rem"),
-                        line_height="1.65",
-                        max_width="34rem",
-                    ),
-                    rx.hstack(
-                        rx.link(
-                            rx.hstack(
-                                rx.text("Explorar produtos"),
-                                rx.icon("arrow-right", size=18),
-                                spacing="2",
-                                align="center",
-                            ),
-                            href="/catalogo",
-                            display="inline-flex",
-                            align_items="center",
-                            padding_x="2rem",
-                            padding_y="0.75rem",
-                            background=COLOR_BLUE,
-                            color=COLOR_CARD,
-                            border_radius="9999px",
-                            font_weight="700",
-                            font_size="1.05rem",
-                            text_decoration="none",
-                            box_shadow="0 10px 24px rgba(8, 102, 217, 0.32)",
-                            _hover={
-                                "background": COLOR_CYAN_DARK,
-                                "transform": "translateY(-2px)",
-                                "box_shadow": "0 14px 28px rgba(8, 102, 217, 0.38)",
-                            },
-                            _focus_visible=FOCUS_STYLE,
-                        ),
-                        spacing="4",
-                        align="center",
-                        wrap="wrap",
-                    ),
-                    align="start",
-                    spacing="4",
-                    width="100%",
-                    justify="center",
-                    min_height="220px",
-                ),
-                rx.cond(
-                    (State.public_products.length() > 0)
-                    & (State.public_products[0].image_url != ""),
-                    rx.image(
-                        src=State.public_products[0].image_url,
-                        alt=State.public_products[0].name,
-                        width="100%",
-                        height="100%",
-                        min_height="220px",
-                        max_height="300px",
-                        object_fit="cover",
-                        border_radius=home_radius,
-                        box_shadow=CARD_SHADOW,
-                    ),
-                    rx.box(
-                        rx.vstack(
-                            rx.flex(
-                                rx.icon("cpu", size=36, color=COLOR_CARD),
-                                width="4.5rem",
-                                height="4.5rem",
-                                background="rgba(255,255,255,0.14)",
-                                border="1px solid rgba(255,255,255,0.28)",
-                                border_radius="9999px",
-                                align="center",
-                                justify="center",
-                            ),
-                            rx.heading(
-                                "Voltix",
-                                size="8",
-                                color=COLOR_CARD,
-                                letter_spacing="-0.02em",
-                            ),
-                            rx.box(
-                                width="3.5rem",
-                                height="4px",
-                                background=COLOR_CYAN,
-                                border_radius="9999px",
-                            ),
-                            rx.text(
-                                "Tecnologia para o seu setup",
-                                color="rgba(255,255,255,0.88)",
-                                font_size="0.95rem",
-                            ),
-                            spacing="4",
-                            align="center",
-                            justify="center",
-                            padding="1.5rem",
-                        ),
-                        background="radial-gradient(circle at 20% 15%, rgba(0,184,217,0.35) 0%, transparent 45%), radial-gradient(circle at 85% 85%, rgba(8,102,217,0.45) 0%, transparent 50%), linear-gradient(135deg, "
-                        + COLOR_NAVY
-                        + " 0%, "
-                        + COLOR_NAVY_SOFT
-                        + " 45%, "
-                        + COLOR_BLUE
-                        + " 100%)",
-                        width="100%",
-                        min_height="220px",
-                        height="100%",
-                        max_height="300px",
-                        border_radius=home_radius,
-                        align="center",
-                        justify="center",
-                        box_shadow=CARD_SHADOW,
-                    ),
-                ),
-                columns={"initial": "1", "lg": "2"},
-                spacing="5",
-                align="center",
-                width="100%",
-            ),
-            background="radial-gradient(circle at 88% 8%, rgba(0,184,217,0.16) 0%, transparent 42%), radial-gradient(circle at 4% 96%, rgba(8,102,217,0.10) 0%, transparent 46%), linear-gradient(135deg, "
-            + COLOR_CARD
-            + " 0%, "
-            + COLOR_SURFACE
-            + " 100%)",
-            border=f"1px solid {COLOR_BORDER}",
-            border_radius=home_radius,
-            box_shadow="0 18px 44px rgba(7, 21, 37, 0.10)",
-            padding=rx.breakpoints(initial="1.25rem", md="2rem"),
-            width="100%",
-            overflow="hidden",
+            rx.text(credit["attribution"], as_="span"),
+            rx.link("Fonte", href=credit["source_url"], is_external=True),
+            rx.link("Licença", href=credit["license_url"], is_external=True),
+            class_name=class_name,
         )
 
-    def benefits_strip() -> rx.Component:
+    def section_heading(title, link_label="Ver catálogo completo"):
+        return rx.box(
+            rx.heading(title, as_="h2", class_name="vx-section__title"),
+            rx.link(link_label, rx.icon("arrow-up-right", size=17),
+                    href="/catalogo", class_name="vx-link-arrow"),
+            class_name="vx-section__heading",
+        )
+
+    def hero_section():
+        if hero_available:
+            media = rx.box(
+                rx.image(src="/demo/vtx-editorial-setup.jpg",
+                         alt="Composição ilustrativa de uma mesa com monitor, teclado e mouse",
+                         class_name="vx-hero__photo", loading="eager"),
+                rx.text("Imagem gerada por IA fornecida pelo projeto.",
+                        class_name="vx-hero__caption"),
+                class_name="vx-hero__media",
+            )
+        else:
+            media = rx.box(
+                rx.icon("cpu", size=72),
+                rx.text("Voltix", class_name="vx-hero__graphic-name"),
+                rx.text("Tecnologia para o seu setup"),
+                class_name="vx-hero__media vx-hero__graphic",
+            )
+        return rx.el.section(
+            rx.box(
+                rx.box(
+                    rx.heading("Tecnologia premium ",
+                               rx.el.span("para elevar o seu setup."),
+                               as_="h1", class_name="vx-hero__title"),
+                    rx.text("Monte sua estação com as melhores marcas, suporte especializado "
+                            "e entrega rápida para o seu dia a dia.", class_name="vx-hero__copy"),
+                    rx.link("Explorar produtos", rx.icon("arrow-right", size=19),
+                            href="/catalogo", class_name="vx-button vx-button--primary"),
+                    class_name="vx-hero__content",
+                ),
+                media,
+                class_name="vx-container vx-hero__inner",
+            ),
+            class_name="vx-hero", aria_label="Conheça a Voltix",
+        )
+
+    def benefits_strip():
         items = [
             ("truck", "Envio rápido", "Despacho em até 24h úteis."),
             ("shield-check", "Garantia estendida", "Proteção do equipamento."),
             ("headphones", "Suporte dedicado", "Atendimento no pós-venda."),
         ]
-        return rx.grid(
-            *[
-                surface_card(
-                    rx.vstack(
-                        rx.flex(
-                            rx.icon(icon, size=26, color=COLOR_BLUE),
-                            width="3.6rem",
-                            height="3.6rem",
-                            background="rgba(8, 102, 217, 0.10)",
-                            border_radius="9999px",
-                            align="center",
-                            justify="center",
-                            flex_shrink="0",
-                        ),
-                        rx.vstack(
-                            rx.text(
-                                title,
-                                weight="bold",
-                                color=COLOR_NAVY,
-                                font_size="1.1rem",
-                            ),
-                            rx.text(
-                                description,
-                                color=COLOR_TEXT_MUTED,
-                                font_size="0.92rem",
-                                line_height="1.5",
-                            ),
-                            spacing="1",
-                            align="start",
-                        ),
-                        spacing="3",
-                        align="start",
-                        width="100%",
-                    ),
-                    height="100%",
-                    padding="1.75rem",
-                    border_radius=home_radius,
-                )
-                for icon, title, description in items
-            ],
-            columns={"initial": "1", "sm": "2", "md": "3"},
-            spacing="4",
-            align="stretch",
-            width="100%",
+        return rx.el.section(
+            *[rx.box(
+                rx.box(rx.icon(icon, size=23, aria_hidden=True), class_name="vx-benefit__icon"),
+                rx.box(rx.text(title, class_name="vx-benefit__title"),
+                       rx.text(copy, class_name="vx-benefit__copy")),
+                class_name="vx-benefit") for icon, title, copy in items],
+            class_name="vx-benefits", aria_label="Benefícios da loja",
         )
 
-    def categories_section() -> rx.Component:
-        return rx.vstack(
-            rx.hstack(
-                section_heading("Categorias", size="7"),
-                rx.link(
-                    rx.hstack(
-                        rx.text("Ver catálogo completo"),
-                        rx.icon("arrow-right", size=16),
-                        spacing="1",
-                        align="center",
-                    ),
-                    href="/catalogo",
-                    color=COLOR_BLUE,
-                    font_weight="600",
-                    text_decoration="none",
-                    _hover={"color": COLOR_CYAN_DARK},
-                ),
-                justify="between",
-                width="100%",
-                wrap="wrap",
-                align="center",
+    def categories_section():
+        return rx.el.section(
+            rx.box(
+                rx.heading("Encontre seu próximo upgrade.", as_="h2", class_name="vx-section__title"),
+                rx.text("Explore as categorias e descubra novas possibilidades para o seu setup.",
+                        class_name="vx-section__copy"),
+                rx.link("Ver catálogo completo", rx.icon("arrow-up-right", size=17),
+                        href="/catalogo", class_name="vx-link-arrow"),
+                class_name="vx-categories__intro",
             ),
             rx.cond(
-                State.public_categories.length() == 0,
-                empty_state("Nenhuma categoria disponível no momento."),
-                rx.grid(
-                    rx.foreach(
-                        State.public_categories,
-                        lambda category: rx.link(
-                            rx.box(
-                                rx.flex(
-                                    rx.icon(
-                                        "layers",
-                                        size=36,
-                                        color=COLOR_CARD,
-                                    ),
-                                    rx.flex(
-                                        rx.icon(
-                                            "arrow-right",
-                                            size=18,
-                                            color=COLOR_CARD,
-                                        ),
-                                        width="2.4rem",
-                                        height="2.4rem",
-                                        background="rgba(255,255,255,0.18)",
-                                        border="1px solid rgba(255,255,255,0.30)",
-                                        border_radius="9999px",
-                                        align="center",
-                                        justify="center",
-                                        flex_shrink="0",
-                                    ),
-                                    background="radial-gradient(circle at 82% 18%, rgba(0,184,217,0.45) 0%, transparent 55%), linear-gradient(135deg, "
-                                    + COLOR_NAVY
-                                    + " 0%, "
-                                    + COLOR_BLUE
-                                    + " 100%)",
-                                    width="100%",
-                                    height="120px",
-                                    border_radius=home_radius,
-                                    align="center",
-                                    justify="between",
-                                    padding_x="1.5rem",
-                                ),
-                                rx.vstack(
-                                    rx.text(
-                                        category.name,
-                                        weight="bold",
-                                        color=COLOR_NAVY,
-                                        font_size="1.1rem",
-                                        width="100%",
-                                        white_space="nowrap",
-                                        text_overflow="ellipsis",
-                                        overflow="hidden",
-                                    ),
-                                    rx.cond(
-                                        category.description != "",
-                                        rx.text(
-                                            category.description,
-                                            color=COLOR_TEXT_MUTED,
-                                            font_size="0.85rem",
-                                            line_height="1.4",
-                                            width="100%",
-                                            white_space="nowrap",
-                                            text_overflow="ellipsis",
-                                            overflow="hidden",
-                                        ),
-                                        rx.fragment(),
-                                    ),
-                                    spacing="1",
-                                    align="start",
-                                    width="100%",
-                                    padding_top="0.5rem",
-                                ),
-                                background=COLOR_CARD,
-                                border=f"1px solid {COLOR_BORDER}",
-                                border_radius=home_radius,
-                                box_shadow=CARD_SHADOW,
-                                padding="1rem",
-                                width="100%",
-                                height="100%",
-                                transition="transform 0.18s ease, box-shadow 0.18s ease, border 0.18s ease",
-                                _hover={
-                                    "transform": "translateY(-4px)",
-                                    "box_shadow": "0 16px 32px rgba(7, 21, 37, 0.14)",
-                                    "border": f"1px solid {COLOR_CYAN}",
-                                },
-                            ),
-                            href="/catalogo",
-                            text_decoration="none",
-                            width="100%",
-                            _focus_visible=FOCUS_STYLE,
-                        ),
-                    ),
-                    columns={"initial": "1", "sm": "2", "md": "3", "lg": "4"},
-                    spacing="4",
-                    align="stretch",
-                    width="100%",
-                ),
-            ),
-            align="stretch",
-            spacing="4",
-            width="100%",
-        )
-
-    def products_section() -> rx.Component:
-        def tile(product: PublicProductEntry) -> rx.Component:
-            return rx.link(
-                rx.box(
-                    rx.cond(
-                        product.image_url != "",
-                        rx.box(
-                            rx.image(
-                                src=product.image_url,
-                                alt=product.name,
-                                width="100%",
-                                height="300px",
-                                object_fit="cover",
-                            ),
-                            width="100%",
-                            height="300px",
-                            border_radius=home_radius,
-                            overflow="hidden",
-                            border=f"1px solid {COLOR_BORDER}",
-                        ),
-                        rx.flex(
-                            rx.icon("package", size=40, color=COLOR_CARD),
-                            background="radial-gradient(circle at 78% 18%, rgba(0,184,217,0.40) 0%, transparent 58%), linear-gradient(135deg, "
-                            + COLOR_NAVY
-                            + " 0%, "
-                            + COLOR_BLUE
-                            + " 100%)",
-                            width="100%",
-                            height="300px",
-                            border_radius=home_radius,
-                            align="center",
-                            justify="center",
-                        ),
-                    ),
-                    rx.vstack(
-                        rx.cond(
-                            product.brand_name != "",
-                            rx.badge(
-                                product.brand_name,
-                                color_scheme="cyan",
-                                variant="soft",
-                                radius="full",
-                                size="1",
-                            ),
-                            rx.fragment(),
-                        ),
-                        rx.text(
-                            product.name,
-                            weight="bold",
-                            color=COLOR_NAVY,
-                            font_size="1.15rem",
-                            line_height="1.3",
-                        ),
-                        rx.cond(
-                            product.category_name != "",
-                            rx.text(
-                                product.category_name,
-                                color=COLOR_TEXT_MUTED,
-                                font_size="0.85rem",
-                            ),
-                            rx.fragment(),
-                        ),
-                        rx.box(
-                            height="1px",
-                            width="100%",
-                            background=COLOR_BORDER,
-                            margin_top="0.5rem",
-                        ),
-                        rx.hstack(
-                            rx.text(
-                                "Ver no catálogo",
-                                color=COLOR_BLUE,
-                                font_weight="700",
-                                font_size="0.9rem",
-                            ),
-                            rx.icon("arrow-right", size=15, color=COLOR_BLUE),
-                            justify="between",
-                            align="center",
-                            width="100%",
-                        ),
-                        align="start",
-                        spacing="2",
-                        width="100%",
-                        flex_grow="1",
-                    ),
-                    background=COLOR_CARD,
-                    border=f"1px solid {COLOR_BORDER}",
-                    border_radius=home_radius,
-                    box_shadow=CARD_SHADOW,
-                    padding="1rem",
-                    width="100%",
-                    height="100%",
-                    transition="transform 0.18s ease, box-shadow 0.18s ease, border 0.18s ease",
-                    _hover={
-                        "transform": "translateY(-4px)",
-                        "box_shadow": "0 16px 32px rgba(7, 21, 37, 0.14)",
-                        "border": f"1px solid {COLOR_CYAN}",
-                    },
-                ),
-                href="/catalogo",
-                text_decoration="none",
-                width="100%",
-                height="100%",
-                display="block",
-                _focus_visible=FOCUS_STYLE,
-            )
-
-        return rx.vstack(
-            rx.hstack(
-                section_heading("Destaques da loja", size="7"),
-                rx.link(
-                    rx.hstack(
-                        rx.text("Ver catálogo completo"),
-                        rx.icon("arrow-right", size=16),
-                        spacing="1",
-                        align="center",
-                    ),
-                    href="/catalogo",
-                    color=COLOR_BLUE,
-                    font_weight="600",
-                    text_decoration="none",
-                    _hover={"color": COLOR_CYAN_DARK},
-                ),
-                justify="between",
-                width="100%",
-                wrap="wrap",
-                align="center",
-            ),
-            rx.cond(
-                State.public_catalog_loading | (State.public_catalog_loaded == False),
-                loading_text("Carregando produtos..."),
+                loading,
+                rx.box(*[rx.box(class_name="vx-category-skeleton") for _ in range(3)],
+                       class_name="vx-category-grid", aria_label="Carregando categorias", role="status"),
                 rx.cond(
-                    State.public_catalog_message != "",
-                    status_panel(
-                        "triangle-alert",
-                        "Não foi possível carregar os destaques",
-                        description=State.public_catalog_message,
-                        tone="error",
-                        action=primary_button(
-                            "Tentar novamente",
-                            on_click=State.load_public_catalog,
-                            disabled=State.public_catalog_loading,
-                        ),
-                    ),
+                    has_error,
+                    rx.text("Categorias temporariamente indisponíveis.", role="status", class_name="vx-state-copy"),
                     rx.cond(
-                        (State.public_catalog_loaded == True)
-                        & (State.public_products.length() == 0),
-                        empty_state(
-                            "Nenhum produto disponível para exibição."
-                        ),
-                        rx.grid(
-                            rx.foreach(State.public_products, tile),
-                            columns={"initial": "1", "sm": "2", "lg": "3"},
-                            spacing="4",
-                            align="stretch",
-                            width="100%",
-                        ),
+                        State.public_categories.length() == 0,
+                        rx.text("Nenhuma categoria disponível no momento.", class_name="vx-state-copy"),
+                        rx.box(
+                            rx.foreach(State.public_categories, lambda category: rx.link(
+                                rx.box(
+                                    rx.text(category.name, class_name="vx-category__title"),
+                                    rx.cond(category.description != "",
+                                            rx.text(category.description, class_name="vx-category__description"),
+                                            rx.fragment()),
+                                    class_name="vx-category__body"),
+                                rx.icon("arrow-up-right", size=23, class_name="vx-category__arrow", aria_hidden=True),
+                                href="/catalogo?category_id=" + category.id.to_string(), class_name="vx-category")),
+                            class_name="vx-category-grid"),
                     ),
                 ),
             ),
-            align="stretch",
-            spacing="4",
-            width="100%",
+            class_name="vx-section vx-categories",
+        )
+
+    def product_tile(product):
+        return rx.el.article(
+            rx.link(rx.image(src=product.image_url, alt=product.name, loading="lazy",
+                             class_name="vx-product__image"),
+                    href="/catalogo?product_id=" + product.id.to_string(), class_name="vx-product__media",
+                    aria_label="Ver " + product.name + " no catálogo"),
+            rx.box(
+                rx.cond(product.brand_name != "", rx.text(product.brand_name, class_name="vx-product__brand"), rx.fragment()),
+                rx.heading(rx.link(product.name, href="/catalogo?product_id=" + product.id.to_string()), as_="h3", class_name="vx-product__title"),
+                rx.cond(product.category_name != "", rx.text(product.category_name, class_name="vx-product__category"), rx.fragment()),
+                class_name="vx-product__body"),
+            (rx.match(product.image_url,
+                      *[(url, photo_credit(credit, class_name="vx-credit vx-product__credit"))
+                        for _name, url, credit in approved_images], rx.fragment())
+             if approved_images else rx.fragment()),
+            class_name="vx-product",
+        )
+
+    def products_section():
+        skeletons = rx.box(
+            *[rx.box(rx.box(class_name="vx-skeleton__image"),
+                     rx.box(class_name="vx-skeleton__line"),
+                     rx.box(class_name="vx-skeleton__line vx-skeleton__line--short"),
+                     class_name="vx-skeleton", aria_hidden=True) for _ in range(3)],
+            class_name="vx-product-grid", role="status", aria_label="Carregando destaques", aria_busy=True,
+        )
+        content = rx.cond(
+            has_error & ~State.public_catalog_loading,
+            status_panel("triangle-alert", "Não foi possível carregar os destaques",
+                         description=State.public_catalog_message, tone="error",
+                         action=primary_button("Tentar novamente", on_click=State.load_public_catalog,
+                                               disabled=State.public_catalog_loading)),
+            rx.cond(loading, skeletons,
+                    rx.cond(State.public_products.length() == 0,
+                            rx.text("Nenhum produto disponível para exibição.", class_name="vx-state-copy"),
+                            rx.box(rx.foreach(showcase, product_tile),
+                                   class_name=rx.cond(showcase.length() == 3, "vx-product-grid", "vx-product-grid vx-product-grid--duo")))),
+        )
+        return rx.cond(
+            loading | has_error | (State.public_products.length() == 0) | (showcase.length() > 0),
+            rx.el.section(section_heading("Destaques da loja"), content,
+                          class_name="vx-section vx-showcase", aria_label="Destaques da loja"),
+            rx.fragment(),
+        )
+
+    def editorial_section():
+        editorial = next(((url, credit) for _name, url, credit in approved_images
+                          if url == "/demo/vtx-demo-004.jpg"), None)
+        if editorial is None:
+            return rx.fragment()
+        url, credit = editorial
+        return rx.el.section(
+            rx.box(rx.image(src=url, alt="Vista inferior do mouse Logitech MX Master 3S",
+                            loading="lazy", class_name="vx-editorial__image"),
+                   photo_credit(credit), class_name="vx-editorial__media"),
+            rx.box(
+                rx.text("LOGITECH MX MASTER 3S", class_name="vx-editorial__label"),
+                rx.heading("Precisão em cada detalhe", as_="h2", class_name="vx-editorial__heading"),
+                rx.text("Uma visão de perto do MX Master 3S: sensor, controles e acabamento "
+                        "em um equipamento pensado para compor o seu espaço de trabalho.",
+                        class_name="vx-editorial__copy"),
+                rx.link("Ver catálogo", rx.icon("arrow-right", size=18),
+                        href="/catalogo", class_name="vx-link-arrow"),
+                class_name="vx-editorial__content"),
+            class_name="vx-section vx-editorial",
         )
 
     def category_bar() -> rx.Component:
@@ -6568,33 +6334,27 @@ def home_page() -> rx.Component:
             rx.fragment(),
         )
 
-    return page_shell(
-        rx.vstack(
-            hero_section(),
-            benefits_strip(),
-            categories_section(),
-            products_section(),
-            spacing="8",
-            align="stretch",
-            width="100%",
-        ),
-        header=rx.fragment(
-            site_header(
-                [
-                    ("Catálogo público", "/catalogo"),
-                    ("Minha conta", "/cliente"),
-                    ("Carrinho", "/carrinho"),
-                    ("Acesso interno", "/interno"),
-                ],
-                active="/",
-                badge="Loja",
-                logo_href="/",
-                wide=True,
-            ),
-            category_bar(),
-        ),
-        max_width="72rem",
-        size="4",
+    def home_chrome(component):
+        # Only these Home instances: the shared logo is text, not a page heading.
+        if component.tag == "Heading":
+            component.as_ = rx.Var.create("h2")
+        for child in component.children:
+            home_chrome(child)
+        return component
+
+    return rx.box(
+        home_chrome(site_header([
+            ("Catálogo público", "/catalogo"), ("Minha conta", "/cliente"),
+            ("Carrinho", "/carrinho"), ("Acesso interno", "/interno")],
+            active="/", badge="Loja", logo_href="/", wide=True)),
+        rx.box(category_bar(), class_name="vx-home-category-bar", width="100%"),
+        rx.el.main(rx.el.link(rel="stylesheet", href="/voltix-home.css"),
+                   hero_section(),
+                   rx.box(benefits_strip(), categories_section(), products_section(), editorial_section(),
+                          class_name="vx-container vx-home__sections"),
+                   class_name="vx-home vx-home__surface"),
+        home_chrome(site_footer(wide=True)),
+        width="100%", background=COLOR_SURFACE, color=COLOR_TEXT,
     )
 
 
@@ -6845,6 +6605,7 @@ def public_catalog_page() -> rx.Component:
             empty_state("Nenhum produto disponível para exibição."),
             rx.fragment(),
         ),
+        selected_product_details(),
         rx.cond(
             (State.public_catalog_message == "")
             & (State.public_products.length() > 0),
@@ -6879,7 +6640,6 @@ def public_catalog_page() -> rx.Component:
             ),
             rx.fragment(),
         ),
-        selected_product_details(),
         header=site_header(
             [
                 ("Catálogo público", "/catalogo"),
@@ -7901,13 +7661,13 @@ app.add_page(
     home_page,
     route="/",
     title="Voltix - tecnologia premium",
-    on_load=State.load_public_catalog,
+    on_load=State.enter_public_home,
 )
 app.add_page(
     public_catalog_page,
     route="/catalogo",
     title="Catálogo | Voltix",
-    on_load=State.load_public_catalog,
+    on_load=State.enter_public_catalog,
 )
 app.add_page(
     customer_account_page,

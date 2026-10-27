@@ -400,7 +400,7 @@ class PublicCatalogTests(unittest.TestCase):
             "\ndef customer_account_page()", 1
         )[0]
         self.assertIn('route="/catalogo"', source)
-        self.assertIn("on_load=State.load_public_catalog", source)
+        self.assertIn("on_load=State.enter_public_catalog", source)
         self.assertIn("Indisponível para compra (estoque zero)", catalog_page)
         self.assertIn("Adicionar ao carrinho", catalog_page)
         self.assertIn("State.add_to_cart(variation.id)", catalog_page)

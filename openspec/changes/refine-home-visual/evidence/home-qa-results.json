@@ -1,0 +1,65 @@
+{
+  "source": "Snapshot público do Xano; estados controlados somente no navegador de teste",
+  "viewports": [
+    {
+      "width": 360,
+      "viewport": 360,
+      "scroll": 360,
+      "client": 360,
+      "heroColumns": "320px",
+      "productColumns": "320px",
+      "brokenImages": 0
+    },
+    {
+      "width": 390,
+      "viewport": 390,
+      "scroll": 390,
+      "client": 390,
+      "heroColumns": "350px",
+      "productColumns": "350px",
+      "brokenImages": 0
+    },
+    {
+      "width": 768,
+      "viewport": 768,
+      "scroll": 768,
+      "client": 768,
+      "heroColumns": "344px 344px",
+      "productColumns": "348px 348px",
+      "brokenImages": 0
+    },
+    {
+      "width": 1024,
+      "viewport": 1024,
+      "scroll": 1024,
+      "client": 1024,
+      "heroColumns": "462.406px 462.406px",
+      "productColumns": "309.328px 309.328px 309.344px",
+      "brokenImages": 0
+    },
+    {
+      "width": 1440,
+      "viewport": 1440,
+      "scroll": 1440,
+      "client": 1440,
+      "heroColumns": "540px 540px",
+      "productColumns": "368px 368px 368px",
+      "brokenImages": 0
+    }
+  ],
+  "scenarios": [
+    "Foco visível e CTA com alvo >=44px",
+    "Movimento reduzido: transform suprimido",
+    "Zoom 200% sem overflow",
+    "Carga inicial: skeleton, sem vazio prematuro",
+    "Erro anterior à primeira carga tem prioridade sobre skeleton e oferece retry",
+    "Catálogo vazio após carga concluída",
+    "Imagem de outro produto rejeitada; seção omitida sem elegíveis",
+    "Limite de quatro produtos elegíveis",
+    "Smoke /catalogo: sem escopo .vx-home",
+    "Smoke /carrinho: sem escopo .vx-home",
+    "Smoke /cliente: sem escopo .vx-home",
+    "Smoke /interno: sem escopo .vx-home"
+  ],
+  "errors": []
+}
