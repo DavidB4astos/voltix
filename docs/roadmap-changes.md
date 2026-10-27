@@ -210,3 +210,8 @@ efine-storefront-home. **CHANGE ATIVA/PROPOSTA VIA OPENSPEC:** openspec/changes/
 - **BLOQUEIO (E6):** exige **ambiente de testes isolado e autorizado**. Dados efÃÂªmeros e limpeza em instÃÂ¢ncia compartilhada **nÃÂ£o equivalem a isolamento**. Permanece bloqueada atÃÂ© existir soluÃÂ§ÃÂ£o aprovada (ex.: ambiente/instÃÂ¢ncia Xano dedicada de teste). NÃÂ£o iniciar sem essa aprovaÃÂ§ÃÂ£o.
 - **Aceite:** jornada completa verde em ambiente isolado aprovado; nenhum dado real exposto; suÃÂ­te E2E estÃÂ¡vel.
 - **PendÃÂªncias:** soluÃÂ§ÃÂ£o de isolamento aprovada; roteiro de cancelamento na jornada.
+
+## Atualização de organização — 27/10/2026
+- A consulta `consulta-clientes-admin` foi preservada como rascunho adiado em `docs/deferred-changes/2026-10-27-consulta-clientes-admin/`; revisão e condições de retomada no README. Não é funcionalidade concluída ou publicada nesta organização.
+- A organização dos arquivos e configurações de ferramentas está descrita em `docs/development/repository-hygiene.md`.
+- O histórico anterior desta página foi preservado, inclusive seus problemas preexistentes de codificação; esta atualização não reinterpreta marcações antigas como implementação comprovada.
