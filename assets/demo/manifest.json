@@ -1,10 +1,10 @@
 {
-    "updated": "2026-10-27",
+    "updated": "2026-10-28",
     "criteria": "Exact model match (variant/capacity/version). Sources: manufacturers, distributors, specialty retailers, marketplaces. No AI images, similar products, or different versions. Public accessibility does not equal authorization. Download only authorized or properly licensed images; in doubt, keep placeholder and record pending.",
     "summary": {
-        "verified": 3,
-        "usable": 3,
-        "pending": 17
+        "verified": 4,
+        "usable": 4,
+        "pending": 16
     },
     "editorial_images": [
         {
@@ -105,12 +105,20 @@
         {
             "sku": "VTX-DEMO-007",
             "product": "Webcam Logitech C920 HD Pro",
-            "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons (Category:Logitech webcams has C910/C922 but not C920). Logitech Assets License not authorized for Voltix.",
+            "status": "approved",
             "researched_sources": [
-                "https://commons.wikimedia.org/ (Category:Logitech C920 empty; intitle:C920 - no webcam photos)",
-                "https://www.logitech.com/en-us/tos/logitech-assets-license"
-            ]
+                "https://commons.wikimedia.org/wiki/File:Webcam_01.jpg"
+            ],
+            "file": "vtx-demo-007.jpg",
+            "source_url": "https://commons.wikimedia.org/wiki/File:Webcam_01.jpg",
+            "author": "Pmwiki1",
+            "license": "CC0 1.0",
+            "license_url": "https://creativecommons.org/publicdomain/zero/1.0/",
+            "attribution": "Webcam 01.jpg by Pmwiki1, CC0 1.0, via Wikimedia Commons",
+            "note": "Independent own-work photo explicitly identified as Logitech C920 by its author. 1280x853 Commons rendition downloaded unchanged on 2026-10-28; not a Logitech-provided asset. Prior pending search superseded by verified source.",
+            "reviewed": "2026-10-28",
+            "download_url": "https://thumb.wikimedia.org/wikipedia/commons/thumb/5/55/Webcam_01.jpg/1280px-Webcam_01.jpg",
+            "sha256": "2d1abc33d42dc41d1b900d087b1ed9c612e2779bb430b2d72db0101ed3e6aa3e"
         },
         {
             "sku": "VTX-DEMO-008",
