@@ -7445,180 +7445,104 @@ def customer_checkout_page() -> rx.Component:
         max_width="72rem", public_footer=True)
 
 
+def _order_display_label(value):
+    return rx.match(value,
+        ("AGUARDANDO_PAGAMENTO", "Aguardando pagamento"), ("PAGAMENTO_CONFIRMADO", "Pagamento confirmado"),
+        ("EM_PREPARACAO", "Em preparação"), ("ENVIADO", "Enviado"), ("ENTREGUE", "Entregue"),
+        ("CANCELADO", "Cancelado"), ("PENDENTE", "Pendente"), ("APROVADO", "Aprovado"),
+        ("RECUSADO", "Recusado"), ("CARTAO", "Cartão"), ("BOLETO", "Boleto"), value).to(str)
+
+
+def _order_card_view(order, *, busy, on_summary) -> rx.Component:
+    return rx.el.article(
+        rx.el.h3("Pedido " + order.code, class_name="vx-orders__card-title"),
+        rx.text("Data registrada: " + order.order_date, class_name="vx-orders__muted"),
+        rx.text(_order_display_label(order.status), class_name="vx-orders__status"),
+        rx.box(rx.text("Linhas de itens: " + order.order_items.length().to_string(), class_name="vx-orders__muted"),
+               rx.text(_cart_money_text(order.total), class_name="vx-orders__card-total"), class_name="vx-orders__card-meta"),
+        rx.button("Ver resumo", rx.icon("arrow-right", size=16, aria_hidden=True),
+                  aria_label="Ver resumo do pedido " + order.code, on_click=on_summary, disabled=busy,
+                  class_name="vx-orders__open"), class_name="vx-orders__card")
+
+
+def _orders_contents(view, *, on_refresh, card_renderer, on_simulate, can_simulate, simulation_notice) -> rx.Component:
+    busy = view.orders_loading | view.order_loading | view.payment_simulating
+    def summary_item(item: OrderItemSummary) -> rx.Component:
+        return rx.el.article(
+            rx.el.h4(rx.cond(item.variation_name != "", item.variation_name, item.sku), class_name="vx-orders__item-title"),
+            rx.text("SKU: " + item.sku, class_name="vx-orders__muted"),
+            rx.box(rx.text("Quantidade: " + item.quantity.to_string()),
+                   rx.text("Preço unitário: " + _cart_money_text(item.unit_price)),
+                   rx.text("Subtotal: " + _cart_money_text(item.subtotal), class_name="vx-orders__item-subtotal"),
+                   class_name="vx-orders__item-values"), class_name="vx-orders__item")
+    return rx.box(
+        rx.box(rx.text("Histórico da sua conta", class_name="vx-orders__muted"),
+               rx.button(rx.icon("refresh-cw", size=16, aria_hidden=True), "Atualizar histórico", on_click=on_refresh,
+                         disabled=busy, class_name="vx-orders__refresh"), class_name="vx-orders__toolbar"),
+        rx.cond(view.orders_message != "", rx.box(rx.text(view.orders_message), role="status", aria_live="polite", class_name="vx-orders__message"), rx.fragment()),
+        rx.cond(view.orders_loading | view.order_loading,
+                rx.box(rx.spinner(size="1"), rx.text(rx.cond(view.order_loading,
+                    "Carregando resumo do pedido. Os dados exibidos são os últimos confirmados.", "Carregando pedidos...")),
+                    role="status", class_name="vx-orders__message"), rx.fragment()),
+        rx.box(
+            rx.el.section(
+                rx.el.h2("Histórico de pedidos", class_name="vx-orders__section-title"),
+                rx.cond(view.orders.length() > 0, rx.foreach(view.orders, card_renderer),
+                    rx.cond((view.orders_loading == False) & (view.orders_message == ""),
+                        rx.box(rx.icon("package", size=30, aria_hidden=True), rx.el.h3("Você ainda não possui pedidos."),
+                               rx.link("Explorar produtos", href="/catalogo"), class_name="vx-orders__empty"), rx.fragment())),
+                aria_label="Histórico de pedidos", class_name="vx-orders__history"),
+            rx.cond(view.selected_order_present,
+                rx.el.section(
+                    rx.box(rx.el.h2("Pedido " + view.selected_order_code, class_name="vx-orders__detail-title"),
+                           rx.text(_order_display_label(view.selected_order_status), class_name="vx-orders__status"),
+                           class_name="vx-orders__detail-heading"),
+                    rx.el.h3("Itens do pedido", class_name="vx-orders__section-title"),
+                    rx.foreach(view.selected_order_items, summary_item),
+                    rx.box(
+                        rx.box(rx.el.h3("Entrega registrada", class_name="vx-orders__section-title"),
+                               rx.text(view.selected_order_delivery_label),
+                               rx.text(view.selected_order_delivery_street + ", " + view.selected_order_delivery_number),
+                               rx.text(view.selected_order_delivery_neighborhood + " — " + view.selected_order_delivery_city + "/" + view.selected_order_delivery_state),
+                               rx.text("CEP: " + view.selected_order_delivery_cep), class_name="vx-orders__delivery"),
+                        rx.box(rx.el.h3("Pagamento", class_name="vx-orders__section-title"),
+                               rx.text(_order_display_label(view.selected_order_payment_method) + " — " + _order_display_label(view.selected_order_payment_status)),
+                               rx.text(simulation_notice, class_name="vx-orders__notice"),
+                               rx.cond(can_simulate,
+                                   rx.button("Simular pagamento", on_click=on_simulate, disabled=busy, class_name="vx-orders__simulate"), rx.fragment()),
+                               rx.cond(view.payment_simulating, rx.text("Simulando pagamento...", role="status"), rx.fragment()),
+                               rx.cond(view.payment_message != "", rx.text(view.payment_message, role="status", aria_live="polite"), rx.fragment()),
+                               class_name="vx-orders__payment"), class_name="vx-orders__secondary"),
+                    rx.box(rx.box(rx.text("Subtotal"), rx.text(_cart_money_text(view.selected_order_subtotal)), class_name="vx-orders__amount-row"),
+                           rx.box(rx.text("Frete"), rx.text(_cart_money_text(view.selected_order_freight)), class_name="vx-orders__amount-row"),
+                           rx.box(rx.text("Total histórico"), rx.text(_cart_money_text(view.selected_order_total), class_name="vx-orders__total"), class_name="vx-orders__amount-row"),
+                           class_name="vx-orders__totals"),
+                    aria_label="Resumo do pedido selecionado", class_name="vx-orders__detail"),
+                rx.el.section(rx.icon("receipt-text", size=32, aria_hidden=True),
+                    rx.el.h2(rx.cond(view.orders.length() > 0, "Escolha um pedido", "Resumos dos seus pedidos"), class_name="vx-orders__section-title"),
+                    rx.text(rx.cond(view.orders.length() > 0, "Abra um resumo no histórico para consultar os itens, a entrega e os valores registrados.", "Os resumos ficam disponíveis quando há pedidos no histórico.")),
+                    aria_label="Selecionar pedido", class_name="vx-orders__selection")),
+            class_name="vx-orders__layout"), class_name="vx-orders")
+
+
 def customer_orders_page() -> rx.Component:
     def order_card(order: OrderSummary) -> rx.Component:
-        return surface_card(
-            rx.vstack(
-                section_heading("Pedido " + order.code, size="4"),
-                rx.text("Data: " + order.order_date, color=COLOR_TEXT_MUTED),
-                                status_badge(order.status),
-                rx.text(
-                    "Itens: " + order.order_items.length().to_string(),
-                    color=COLOR_TEXT_MUTED,
-                ),
-                rx.text("Total: R$ " + order.total),
-                secondary_button(
-                    "Ver resumo",
-                    on_click=State.load_customer_order(order.id),
-                    disabled=State.order_loading,
-                ),
-                align="stretch",
-                spacing="2",
-                width="100%",
-            ),
-        )
-
-    def order_item(item: OrderItemSummary) -> rx.Component:
-        return rx.box(
-            rx.vstack(
-                rx.text(
-                    rx.cond(
-                        item.variation_name != "",
-                        item.variation_name,
-                        item.sku,
-                    ),
-                    weight="bold",
-                    color=COLOR_NAVY,
-                ),
-                rx.text("SKU: " + item.sku),
-                rx.text("Quantidade: " + item.quantity.to_string()),
-                rx.text("Preço unitário: R$ " + item.unit_price),
-                rx.text("Subtotal: R$ " + item.subtotal),
-                align="stretch",
-                spacing="2",
-            ),
-            border=f"1px solid {COLOR_BORDER}",
-            border_radius=RADIUS,
-            padding="3",
-            width="100%",
-            background=COLOR_SURFACE,
-        )
-
-    order_details = rx.cond(
-        State.selected_order_present,
-        surface_card(
-            rx.vstack(
-                rx.hstack(
-                    section_heading(
-                        "Pedido " + State.selected_order_code,
-                        size="5",
-                    ),
-                            status_badge(State.selected_order_status),
-                    justify="between",
-                    width="100%",
-                    wrap="wrap",
-                ),
-                section_heading("Entrega", size="4"),
-                rx.text(State.selected_order_delivery_label),
-                rx.text(
-                    State.selected_order_delivery_street
-                    + ", "
-                    + State.selected_order_delivery_number
-                ),
-                rx.text(
-                    State.selected_order_delivery_neighborhood
-                    + " - "
-                    + State.selected_order_delivery_city
-                    + "/"
-                    + State.selected_order_delivery_state
-                ),
-                rx.text("CEP: " + State.selected_order_delivery_cep),
-                section_heading("Itens", size="4"),
-                rx.foreach(State.selected_order_items, order_item),
-                rx.text(
-                    "Subtotal: R$ " + State.selected_order_subtotal,
-                    color=COLOR_TEXT_MUTED,
-                ),
-                rx.text(
-                    "Frete: R$ " + State.selected_order_freight,
-                    color=COLOR_TEXT_MUTED,
-                ),
-                section_heading("Total: R$ " + State.selected_order_total, size="5"),
-                rx.text(
-                    "Pagamento: "
-                    + State.selected_order_payment_method
-                    + " — "
-                    + State.selected_order_payment_status,
-                    color=COLOR_TEXT_MUTED,
-                ),
-                rx.text(
-                    "Aprovação simulada: nenhum valor será cobrado.",
-                    color=COLOR_TEXT_MUTED,
-                    font_size="0.85rem",
-                ),
-                rx.cond(
-                    (State.selected_order_status == "AGUARDANDO_PAGAMENTO")
-                    & (State.selected_order_payment_status == "PENDENTE"),
-                    primary_button(
-                        "Simular pagamento",
-                        on_click=State.simulate_order_payment,
-                        disabled=State.payment_simulating,
-                    ),
-                    rx.fragment(),
-                ),
-                rx.cond(
-                    State.payment_simulating,
-                    loading_text("Simulando pagamento..."),
-                    rx.fragment(),
-                ),
-                feedback_text(State.payment_message),
-                align="stretch",
-                spacing="3",
-                width="100%",
-            ),
-        ),
-        rx.fragment(),
-    )
-
+        return _order_card_view(order, busy=State.orders_loading | State.order_loading | State.payment_simulating,
+                                on_summary=State.load_customer_order(order.id))
     return page_shell(
+        rx.el.link(rel="stylesheet", href="/voltix-orders.css"),
         section_heading("Meus pedidos"),
-        rx.cond(
-            State.customer_authenticated,
-            rx.vstack(
-                feedback_text(State.orders_message, tone="error"),
-                secondary_button(
-                    "Atualizar histórico",
-                    on_click=State.load_customer_orders,
-                    disabled=State.orders_loading,
-                ),
-                rx.cond(
-                    State.orders_loading,
-                    loading_text("Carregando pedidos..."),
-                    rx.fragment(),
-                ),
-                rx.cond(
-                    State.orders.length() == 0,
-                    empty_state("Você ainda não possui pedidos."),
-                    rx.foreach(State.orders, order_card),
-                ),
-                order_details,
-                align="stretch",
-                spacing="4",
-                width="100%",
-            ),
-            rx.vstack(
-                rx.text(
-                    "Entre como Cliente para consultar seus pedidos.",
-                    color=COLOR_TEXT_MUTED,
-                ),
-                rx.link("Acessar conta de Cliente", href="/cliente"),
-                align="stretch",
-                spacing="3",
-            ),
-        ),
-        header=site_header(
-            [
-                ("Catálogo público", "/catalogo"),
-                ("Carrinho", "/carrinho"),
-                ("Minha conta", "/cliente"),
-                ("Acesso interno", "/interno"),
-            ],
-            active="/pedidos",
-            badge="Meus pedidos",
-        ),
-        max_width="48rem",
-        public_footer=True,
-    )
+        rx.text("Consulte o histórico e os valores registrados em cada compra.", class_name="vx-orders__intro"),
+        rx.cond(State.customer_authenticated,
+            _orders_contents(State, on_refresh=State.load_customer_orders, card_renderer=order_card,
+                on_simulate=State.simulate_order_payment,
+                can_simulate=(State.selected_order_status == "AGUARDANDO_PAGAMENTO") & (State.selected_order_payment_status == "PENDENTE"),
+                simulation_notice="Aprovação simulada: nenhum valor será cobrado."),
+            rx.el.section(rx.el.h2("Seu histórico fica na sua conta", class_name="vx-orders__section-title"),
+                rx.text("Entre como Cliente para consultar seus pedidos."),
+                rx.link("Acessar conta de Cliente", href="/cliente"), class_name="vx-orders vx-orders__selection")),
+        header=site_header([("Catálogo público", "/catalogo"), ("Carrinho", "/carrinho"), ("Minha conta", "/cliente"), ("Acesso interno", "/interno")],
+                           active="/pedidos", badge="Meus pedidos"), max_width="72rem", public_footer=True)
 
 
 app = rx.App(
