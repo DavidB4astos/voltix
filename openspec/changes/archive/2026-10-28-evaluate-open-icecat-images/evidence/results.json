@@ -1,0 +1,32 @@
+[
+  {
+    "code": "910-006559",
+    "message": "Product has brand restrictions or access is limited",
+    "status_code": 14,
+    "title": null,
+    "demo": null,
+    "gallery_count": 0,
+    "width": null,
+    "height": null
+  },
+  {
+    "code": "960-000767",
+    "message": "Product has brand restrictions or access is limited",
+    "status_code": 14,
+    "title": null,
+    "demo": null,
+    "gallery_count": 0,
+    "width": null,
+    "height": null
+  },
+  {
+    "code": "KHX-HSCP-RD",
+    "message": "OK",
+    "status_code": null,
+    "title": "HyperX Cloud II Headset Wired Head-band Gaming Black, Red",
+    "demo": true,
+    "gallery_count": 3,
+    "width": "2073",
+    "height": "2379"
+  }
+]
