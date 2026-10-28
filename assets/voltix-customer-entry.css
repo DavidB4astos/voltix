@@ -1,0 +1,3 @@
+.vx-checkout .vx-access-cta,.vx-orders .vx-access-cta{display:inline-flex;align-items:center;justify-content:center;min-height:48px;min-width:190px;padding:12px 20px;box-sizing:border-box;border-radius:999px;background:#0866d9;color:#fff;font-size:14px;font-weight:650;line-height:1.5;text-decoration:none;margin-top:16px}
+.vx-checkout .vx-access-cta:hover,.vx-orders .vx-access-cta:hover{background:#0758bc;color:#fff;text-decoration:none}
+.vx-checkout .vx-access-cta:focus-visible,.vx-orders .vx-access-cta:focus-visible{outline:3px solid #0866d9;outline-offset:3px}

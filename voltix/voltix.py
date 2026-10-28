@@ -7275,7 +7275,18 @@ def customer_account_page() -> rx.Component:
     return page_shell(
         rx.box(
             rx.el.link(rel="stylesheet", href="/voltix-account.css"),
-            rx.cond(State.customer_authenticated, authenticated_customer, public_forms),
+            rx.cond(
+                State.customer_authenticated,
+                authenticated_customer,
+                rx.vstack(
+                    rx.el.h1("Minha conta", class_name="vx-account__title"),
+                    rx.text("Entre na sua conta ou cadastre-se para continuar.", class_name="vx-account__intro"),
+                    public_forms,
+                    align="stretch",
+                    spacing="5",
+                    width="100%",
+                ),
+            ),
             class_name="vx-account",
         ),
         header=site_header(
@@ -7503,6 +7514,7 @@ def customer_cart_page() -> rx.Component:
 
 def customer_checkout_page() -> rx.Component:
     return page_shell(
+        rx.el.link(rel="stylesheet", href="/voltix-customer-entry.css"),
         rx.el.link(rel="stylesheet", href="/voltix-checkout.css"),
         rx.box(section_heading("Checkout"), rx.text("Escolha a entrega, revise os valores e confirme seu pedido.", class_name="vx-checkout__intro"),
                rx.link(rx.icon("arrow-left", size=16, aria_hidden=True), "Voltar ao carrinho", href="/carrinho", class_name="vx-checkout__back")),
@@ -7511,7 +7523,7 @@ def customer_checkout_page() -> rx.Component:
                                on_method=State.set_checkout_method, on_confirm=State.confirm_checkout),
             rx.el.section(rx.el.h2("Entre na sua conta para continuar", class_name="vx-checkout__section-title"),
                           rx.text("Entre como Cliente para finalizar o pedido."),
-                          rx.link("Acessar conta de Cliente", href="/cliente"),
+                          rx.link("Acessar conta de Cliente", href="/cliente", class_name="vx-access-cta"),
                           class_name="vx-checkout vx-checkout__panel")),
         header=site_header([("Catálogo público", "/catalogo"), ("Carrinho", "/carrinho"),
                             ("Minha conta", "/cliente"), ("Acesso interno", "/interno")],
@@ -7604,6 +7616,7 @@ def customer_orders_page() -> rx.Component:
         return _order_card_view(order, busy=State.orders_loading | State.order_loading | State.payment_simulating,
                                 on_summary=State.load_customer_order(order.id))
     return page_shell(
+        rx.el.link(rel="stylesheet", href="/voltix-customer-entry.css"),
         rx.el.link(rel="stylesheet", href="/voltix-orders.css"),
         section_heading("Meus pedidos"),
         rx.text("Consulte o histórico e os valores registrados em cada compra.", class_name="vx-orders__intro"),
@@ -7614,7 +7627,7 @@ def customer_orders_page() -> rx.Component:
                 simulation_notice="Aprovação simulada: nenhum valor será cobrado."),
             rx.el.section(rx.el.h2("Seu histórico fica na sua conta", class_name="vx-orders__section-title"),
                 rx.text("Entre como Cliente para consultar seus pedidos."),
-                rx.link("Acessar conta de Cliente", href="/cliente"), class_name="vx-orders vx-orders__selection")),
+                rx.link("Acessar conta de Cliente", href="/cliente", class_name="vx-access-cta"), class_name="vx-orders vx-orders__selection")),
         header=site_header([("Catálogo público", "/catalogo"), ("Carrinho", "/carrinho"), ("Minha conta", "/cliente"), ("Acesso interno", "/interno")],
                            active="/pedidos", badge="Meus pedidos"), max_width="72rem", public_footer=True)
 
