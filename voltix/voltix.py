@@ -6469,6 +6469,8 @@ def public_catalog_page() -> rx.Component:
             rx.link("Fonte", href=credit["source_url"], is_external=True,
                     title=credit["attribution"], aria_label="Fonte da imagem: " + credit["attribution"]),
             rx.link(credit["license"], href=credit["license_url"], is_external=True),
+            rx.text(credit["notice"], as_="span", class_name="vx-catalog-card__credit-notice")
+            if credit.get("notice") else rx.fragment(),
             class_name="vx-catalog-card__credit")
 
     def product_card(product: PublicProductEntry) -> rx.Component:

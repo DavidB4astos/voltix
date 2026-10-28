@@ -1,5 +1,6 @@
+import json
 import unittest
-from unittest.mock import patch
+from unittest.mock import mock_open, patch
 
 from voltix import demo_images
 
@@ -27,6 +28,17 @@ class CatalogCardCreditTests(unittest.TestCase):
             second = demo_images.demo_image_credits()
         self.assertEqual(second['/demo/valid.jpg']['author'], 'Author')
         self.assertEqual(cache['valid.jpg']['author'], 'Author')
+
+
+    def test_optional_provider_notice_survives_without_excluding_existing_credits(self):
+        supplied = self.credit() | {'status': 'approved', 'file': 'provider.jpg', 'notice': 'Provider copyright and no-warranty notice'}
+        existing = self.credit() | {'status': 'approved', 'file': 'existing.jpg'}
+        data = json.dumps({'products': [supplied, existing]})
+        with patch.object(demo_images, '_credit_by_filename', None), patch('builtins.open', mock_open(read_data=data)), patch.object(demo_images.os.path, 'isfile', return_value=True):
+            credits = demo_images.demo_image_credits()
+        self.assertEqual(credits['/demo/provider.jpg']['notice'], supplied['notice'])
+        self.assertEqual(credits['/demo/existing.jpg']['notice'], '')
+        self.assertEqual(credits['/demo/existing.jpg']['author'], 'Author')
 
 
 if __name__ == '__main__':

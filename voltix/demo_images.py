@@ -102,6 +102,7 @@ def _load_credits_by_filename() -> dict[str, dict[str, str]]:
                 field: str(product.get(field) or "")
                 for field in _CREDIT_FIELDS
             }
+            credits[filename]["notice"] = str(product.get("notice") or "")
     _credit_by_filename = credits
     return credits
 

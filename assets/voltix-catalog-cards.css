@@ -17,3 +17,5 @@
 .vx-catalog-card .vx-catalog-card__action:hover { background: #e7f0fb; }
 .vx-catalog-card .vx-catalog-card__action:disabled { opacity: .55; cursor: default; }
 .vx-catalog-card a:focus-visible, .vx-catalog-card button:focus-visible { outline: 2px solid #0086a3; outline-offset: 3px; }
+
+.vx-catalog-card__credit .vx-catalog-card__credit-notice{display:block;flex-basis:100%;font-size:11px;line-height:1.6;color:#526579}

@@ -2,9 +2,9 @@
     "updated": "2026-10-28",
     "criteria": "Exact model match (variant/capacity/version). Sources: manufacturers, distributors, specialty retailers, marketplaces. No AI images, similar products, or different versions. Public accessibility does not equal authorization. Download only authorized or properly licensed images; in doubt, keep placeholder and record pending.",
     "summary": {
-        "verified": 4,
-        "usable": 4,
-        "pending": 16
+        "verified": 5,
+        "usable": 5,
+        "pending": 15
     },
     "editorial_images": [
         {
@@ -86,12 +86,23 @@
         {
             "sku": "VTX-DEMO-005",
             "product": "Headset HyperX Cloud II",
-            "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons. HP/HyperX public terms cover user-submitted content only; no public license found granting use of HyperX press product images.",
+            "status": "approved",
             "researched_sources": [
-                "https://commons.wikimedia.org/ (intitle:Cloud intitle:HyperX - no results; Category:HyperX headsets - only event photos)",
-                "https://hyperx.com/pages/hp-hyperx-visual-content-terms-of-use"
-            ]
+                "https://iceclog.com/open-content-license/",
+                "https://iceclog.com/manual-for-icecat-json-product-requests/"
+            ],
+            "file": "vtx-demo-005.jpg",
+            "source_url": "https://images.icecat.biz/img/gallery/3fc42bf952996041880d9518003e6243c776b336.jpg",
+            "author": "Conteúdo HyperX via Icecat",
+            "license": "OCL 1.4",
+            "license_url": "https://iceclog.com/open-content-license/",
+            "attribution": "HyperX Cloud II KHX-HSCP-RD, preto/vermelho, fornecido via Open Icecat, produto 26030190.",
+            "notice": "Database Right data-sheet 2026 Icecat. All rights reserved. Conteúdo fornecido no estado em que se encontra, sem garantia. Consulte a licença.",
+            "manufacturer_product_code": "KHX-HSCP-RD",
+            "icecat_id": 26030190,
+            "reviewed": "2026-10-28",
+            "sha256": "bd554aac8ebeb8847ae9ca917cda028eca37d3e38abd1b786862bb0823644a49",
+            "note": "Account access verified: HTTP 200, DemoAccount=false. Real catalog variation Preto e vermelho, VTX-DEMO-005. Original 2073x2379 JPG preserved byte-for-byte; no cropping, conversion or generative editing. Provider credit does not assert photographic authorship."
         },
         {
             "sku": "VTX-DEMO-006",
