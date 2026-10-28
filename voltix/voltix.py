@@ -7310,6 +7310,93 @@ def _cart_contents(*, items, total, customer_name, loading, message, item_render
         class_name="vx-cart")
 
 
+def _checkout_item_view(item: CheckoutItemEntry) -> rx.Component:
+    return rx.el.article(
+        rx.box(rx.el.h3(rx.cond(item.product_name != "", item.product_name, item.sku), class_name="vx-checkout__item-title"),
+               rx.cond(item.variation_name != "", rx.text(item.variation_name, class_name="vx-checkout__muted"), rx.fragment()),
+               rx.text("SKU: " + item.sku, class_name="vx-checkout__sku"),
+               rx.text(rx.cond(item.available, "Disponível", "Indisponível — revise no carrinho"),
+                       class_name=rx.cond(item.available, "vx-checkout__availability", "vx-checkout__unavailable"))),
+        rx.box(rx.text("Quantidade: " + item.quantity.to_string(), class_name="vx-checkout__muted"),
+               rx.text("Preço unitário: " + _cart_money_text(item.unit_price), class_name="vx-checkout__muted"),
+               rx.text(_cart_money_text(item.subtotal), class_name="vx-checkout__item-subtotal"),
+               class_name="vx-checkout__item-values"),
+        class_name="vx-checkout__item")
+
+
+def _checkout_contents(view, *, on_address, on_review, on_method, on_confirm) -> rx.Component:
+    addresses = view.customer_addresses.filter(lambda address: address.status == "ATIVO")
+    has_items = view.checkout_review_items.length() > 0
+    unavailable = view.checkout_review_items.filter(lambda item: item.available == False).length() > 0
+    blocked = view.checkout_loading | (view.checkout_review_ready == False) | (has_items == False) | unavailable
+    return rx.box(
+        rx.text("Cliente: " + view.customer_name, class_name="vx-checkout__customer"),
+        rx.cond(view.checkout_message != "", rx.box(rx.icon("info", size=18, aria_hidden=True),
+                rx.text(view.checkout_message), role="status", aria_live="polite", class_name="vx-checkout__message"), rx.fragment()),
+        rx.cond(view.checkout_loading, rx.box(rx.spinner(size="1"), rx.text("Validando itens e valores. Aguarde antes de confirmar."),
+                role="status", aria_live="polite", class_name="vx-checkout__message"), rx.fragment()),
+        rx.box(
+            rx.box(
+                rx.el.section(
+                    rx.el.h2("1. Endereço de entrega", class_name="vx-checkout__section-title"),
+                    rx.text("Selecione um endereço ativo da sua conta e revise o carrinho.", class_name="vx-checkout__muted"),
+                    rx.cond(addresses.length() == 0,
+                        rx.box(rx.text("Cadastre um Endereço ativo antes de continuar o checkout."),
+                               rx.link("Gerenciar endereços", href="/cliente"), class_name="vx-checkout__notice"), rx.fragment()),
+                    rx.el.label("Endereço de entrega", html_for="checkout-address", class_name="vx-checkout__label"),
+                    rx.select.root(
+                        rx.select.trigger(id="checkout-address", placeholder="Selecione o endereço de entrega", class_name="vx-checkout__select"),
+                        rx.select.content(rx.foreach(addresses, lambda address: rx.select.item(
+                            address.label + " — " + address.street + ", " + address.number,
+                            value=address.id.to_string()))),
+                        value=view.checkout_address_id, on_change=on_address,
+                        disabled=view.checkout_loading | (addresses.length() == 0), width="100%"),
+                    rx.button("Revisar carrinho", rx.icon("arrow-right", size=16, aria_hidden=True),
+                              on_click=on_review,
+                              disabled=view.checkout_loading | (view.checkout_address_id == "") | (addresses.length() == 0),
+                              class_name="vx-checkout__review"),
+                    rx.cond(view.checkout_review_ready,
+                        rx.box(rx.el.h3("Endereço confirmado na revisão", class_name="vx-checkout__minor-title"),
+                               rx.text(view.checkout_address_label),
+                               rx.text(view.checkout_address_street + ", " + view.checkout_address_number),
+                               rx.text(view.checkout_address_neighborhood + " — " + view.checkout_address_city + "/" + view.checkout_address_state),
+                               rx.text("CEP: " + view.checkout_address_cep), class_name="vx-checkout__address"), rx.fragment()),
+                    class_name="vx-checkout__panel", aria_label="Selecionar entrega"),
+                rx.el.section(
+                    rx.el.h2("2. Revise os itens", class_name="vx-checkout__section-title"),
+                    rx.cond(view.checkout_review_ready,
+                        rx.cond(has_items, rx.foreach(view.checkout_review_items, _checkout_item_view),
+                                rx.text("Não há itens para confirmar. Volte ao carrinho.", class_name="vx-checkout__muted")),
+                        rx.text("Os itens e valores aparecerão após revisar o carrinho com o endereço selecionado.", class_name="vx-checkout__muted")),
+                    rx.link("Voltar ao carrinho", href="/carrinho", class_name="vx-checkout__back"),
+                    class_name="vx-checkout__panel", aria_label="Itens da revisão"),
+                class_name="vx-checkout__main"),
+            rx.el.aside(
+                rx.el.h2("Resumo do pedido", class_name="vx-checkout__section-title"),
+                rx.cond(view.checkout_review_ready,
+                    rx.box(
+                        rx.box(rx.text("Subtotal"), rx.text(_cart_money_text(view.checkout_subtotal)), class_name="vx-checkout__amount-row"),
+                        rx.box(rx.text("Frete"), rx.text(_cart_money_text(view.checkout_freight)), class_name="vx-checkout__amount-row"),
+                        rx.box(rx.text("Total"), rx.text(_cart_money_text(view.checkout_total), class_name="vx-checkout__total"), class_name="vx-checkout__total-row")),
+                    rx.text("O total será apresentado após a revisão.", class_name="vx-checkout__muted")),
+                rx.cond(view.checkout_review_ready & has_items,
+                    rx.form(
+                        rx.el.label("Forma de pagamento", html_for="checkout-method", class_name="vx-checkout__label"),
+                        rx.select.root(
+                            rx.select.trigger(id="checkout-method", class_name="vx-checkout__select"),
+                            rx.select.content(rx.select.item("PIX", value="PIX"), rx.select.item("Cartão", value="CARTAO"), rx.select.item("Boleto", value="BOLETO")),
+                            name="metodo_pagamento", value=view.checkout_method, on_change=on_method,
+                            disabled=view.checkout_loading, width="100%"),
+                        rx.text("O pagamento ficará pendente. Nenhuma cobrança será processada nesta etapa.", class_name="vx-checkout__payment-note"),
+                        rx.cond(unavailable, rx.text("Revise os itens indisponíveis no carrinho antes de confirmar.", class_name="vx-checkout__unavailable"), rx.fragment()),
+                        rx.button("Confirmar pedido", type="submit", disabled=blocked, class_name="vx-checkout__confirm"),
+                        on_submit=on_confirm, class_name="vx-checkout__form"),
+                    rx.fragment()),
+                class_name="vx-checkout__panel vx-checkout__summary", aria_label="Resumo e confirmação"),
+            class_name="vx-checkout__layout"),
+        class_name="vx-checkout")
+
+
 def customer_cart_page() -> rx.Component:
     def cart_item_card(item: CartItemEntry) -> rx.Component:
         return _cart_item_view(item, loading=State.cart_loading,
@@ -7341,202 +7428,21 @@ def customer_cart_page() -> rx.Component:
 
 
 def customer_checkout_page() -> rx.Component:
-    def review_item(item: CheckoutItemEntry) -> rx.Component:
-        return surface_card(
-            rx.vstack(
-                section_heading(
-                    rx.cond(item.product_name != "", item.product_name, item.sku),
-                    size="4",
-                ),
-                rx.text("Variação: " + item.variation_name),
-                rx.text("SKU: " + item.sku),
-                rx.text("Quantidade: " + item.quantity.to_string()),
-                rx.text("Preço unitário atual: R$ " + item.unit_price),
-                rx.text("Subtotal: R$ " + item.subtotal),
-                rx.cond(
-                    item.available,
-                    rx.badge("Disponível", color_scheme="cyan"),
-                    rx.badge("Indisponível", color_scheme="red"),
-                ),
-                align="stretch",
-                spacing="2",
-            ),
-        )
-
-    delivery_address = rx.cond(
-        State.checkout_review_ready,
-        surface_card(
-            rx.vstack(
-                section_heading("Endereço de entrega", size="4"),
-            rx.text(State.checkout_address_label),
-            rx.text(
-                State.checkout_address_street
-                + ", "
-                + State.checkout_address_number
-            ),
-            rx.text(
-                State.checkout_address_neighborhood
-                + " - "
-                + State.checkout_address_city
-                + "/"
-                + State.checkout_address_state
-            ),
-            rx.text("CEP: " + State.checkout_address_cep),
-            align="stretch",
-            spacing="2",
-            width="100%",
-        ),
-        ),
-        rx.fragment(),
-    )
-
-    checkout_review_section = rx.cond(
-        State.checkout_review_ready,
-        surface_card(
-            rx.vstack(
-                section_heading("Revise seu pedido", size="5"),
-                rx.foreach(State.checkout_review_items, review_item),
-                delivery_address,
-                rx.text(
-                    "Subtotal: R$ " + State.checkout_subtotal,
-                    color=COLOR_TEXT_MUTED,
-                ),
-                rx.text("Frete: R$ " + State.checkout_freight, color=COLOR_TEXT_MUTED),
-                section_heading("Total: R$ " + State.checkout_total, size="5"),
-            rx.cond(
-                State.checkout_review_items.length() > 0,
-                rx.form(
-                    rx.vstack(
-                        rx.select.root(
-                            rx.select.trigger(),
-                            rx.select.content(
-                                rx.select.item("PIX", value="PIX"),
-                                rx.select.item("Cartão", value="CARTAO"),
-                                rx.select.item("Boleto", value="BOLETO"),
-                            ),
-                            name="metodo_pagamento",
-                            value=State.checkout_method,
-                            on_change=State.set_checkout_method,
-                            width="100%",
-                        ),
-                        rx.text(
-                            "O pagamento ficará pendente. Nenhuma cobrança será "
-                            "processada nesta etapa."
-                        ),
-                        primary_button(
-                            "Confirmar pedido",
-                            type="submit",
-                            disabled=(
-                                State.checkout_loading
-                                | (State.checkout_review_items.length() == 0)
-                            ),
-                        ),
-                        align="stretch",
-                        spacing="3",
-                        width="100%",
-                    ),
-                    on_submit=State.confirm_checkout,
-                ),
-                rx.fragment(),
-            ),
-            align="stretch",
-                spacing="3",
-                width="100%",
-            ),
-        ),
-        rx.fragment(),
-    )
-
-    authenticated_checkout = rx.vstack(
-        rx.text(
-            "Cliente: " + State.customer_name,
-            weight="bold",
-            color=COLOR_NAVY,
-        ),
-        feedback_text(State.checkout_message, tone="error"),
-        rx.cond(
-            State.customer_addresses.length() == 0,
-            rx.vstack(
-                rx.text(
-                    "Cadastre um Endereço ativo antes de continuar o checkout."
-                ),
-                rx.link("Gerenciar endereços", href="/cliente"),
-                align="stretch",
-                spacing="2",
-            ),
-            rx.fragment(),
-        ),
-        rx.select.root(
-            rx.select.trigger(placeholder="Selecione o endereço de entrega"),
-            rx.select.content(
-                rx.foreach(
-                    State.customer_addresses,
-                    lambda address: rx.cond(
-                        address.status == "ATIVO",
-                        rx.select.item(
-                            address.label
-                            + " - "
-                            + address.street
-                            + ", "
-                            + address.number,
-                            value=address.id.to_string(),
-                        ),
-                        rx.fragment(),
-                    ),
-                )
-            ),
-            value=State.checkout_address_id,
-            on_change=State.set_checkout_address,
-            width="100%",
-        ),
-        primary_button(
-            "Revisar carrinho",
-            on_click=State.load_checkout_review,
-            disabled=(
-                State.checkout_loading
-                | (State.checkout_address_id == "")
-                | (State.customer_addresses.length() == 0)
-            ),
-        ),
-        rx.cond(
-            State.checkout_loading,
-            loading_text("Validando itens e valores..."),
-            rx.fragment(),
-        ),
-        checkout_review_section,
-        align="stretch",
-        spacing="4",
-        width="100%",
-    )
-
     return page_shell(
-        section_heading("Checkout"),
-        rx.cond(
-            State.customer_authenticated,
-            authenticated_checkout,
-            rx.vstack(
-                rx.text(
-                    "Entre como Cliente para finalizar o pedido.",
-                    color=COLOR_TEXT_MUTED,
-                ),
-                rx.link("Acessar conta de Cliente", href="/cliente"),
-                align="stretch",
-                spacing="3",
-            ),
-        ),
-        header=site_header(
-            [
-                ("Catálogo público", "/catalogo"),
-                ("Carrinho", "/carrinho"),
-                ("Minha conta", "/cliente"),
-                ("Acesso interno", "/interno"),
-            ],
-            active="/checkout",
-            badge="Checkout",
-        ),
-        max_width="48rem",
-        public_footer=True,
-    )
+        rx.el.link(rel="stylesheet", href="/voltix-checkout.css"),
+        rx.box(section_heading("Checkout"), rx.text("Escolha a entrega, revise os valores e confirme seu pedido.", class_name="vx-checkout__intro"),
+               rx.link(rx.icon("arrow-left", size=16, aria_hidden=True), "Voltar ao carrinho", href="/carrinho", class_name="vx-checkout__back")),
+        rx.cond(State.customer_authenticated,
+            _checkout_contents(State, on_address=State.set_checkout_address, on_review=State.load_checkout_review,
+                               on_method=State.set_checkout_method, on_confirm=State.confirm_checkout),
+            rx.el.section(rx.el.h2("Entre na sua conta para continuar", class_name="vx-checkout__section-title"),
+                          rx.text("Entre como Cliente para finalizar o pedido."),
+                          rx.link("Acessar conta de Cliente", href="/cliente"),
+                          class_name="vx-checkout vx-checkout__panel")),
+        header=site_header([("Catálogo público", "/catalogo"), ("Carrinho", "/carrinho"),
+                            ("Minha conta", "/cliente"), ("Acesso interno", "/interno")],
+                           active="/checkout", badge="Checkout"),
+        max_width="72rem", public_footer=True)
 
 
 def customer_orders_page() -> rx.Component:

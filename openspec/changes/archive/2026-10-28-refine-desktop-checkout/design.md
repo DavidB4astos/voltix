@@ -1,0 +1,5 @@
+## Decisions
+Componentes puros recebem view e callbacks, com a página real vinculando State. Reutilizar _cart_money_text sem modificar cálculos. Filtrar endereços ATIVO apenas para a interface; backend continua validando propriedade/status. Desabilitar confirmação se qualquer item estiver indisponível, refletindo a rejeição já existente em confirm_checkout. Manter os nomes de formulário e valores de método existentes. Não exibir total fictício antes de revisão pronta. Header/footer/conta/carrinho/eventos não são redesenhados.
+
+## Verification
+Suíte existente, compilação e comparação AST de State/handlers e demais páginas. Prévia isolada autorizada usa somente DTOs e componentes puros extraídos do código, com callbacks inertes e sem importar App/State. Conferir revisão pronta, pendente, ausência de endereço ativo, indisponível, loading e erro, seleção/labels/foco, precisão dos valores e 1440/1024px. Controle estreito sem overflow. Nenhuma confirmação real de pedido ou autenticação será executada; registrar limites.

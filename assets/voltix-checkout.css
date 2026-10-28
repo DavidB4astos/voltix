@@ -1,0 +1,40 @@
+/* Checkout-only composition; confirmation and commercial rules remain in State/Xano. */
+.vx-checkout{color:#071525;overflow-wrap:anywhere;min-width:0}
+.vx-checkout__intro{color:#526579;font-size:15px;line-height:1.7;margin:8px 0 4px}
+.vx-checkout__back{display:inline-flex;align-items:center;gap:8px;min-height:44px;color:#0866d9;font-size:13px;text-decoration:none}
+.vx-checkout__customer{font-size:13px;color:#526579;margin:0 0 18px}
+.vx-checkout__layout{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start}
+.vx-checkout__main{display:flex;flex-direction:column;gap:24px;min-width:0}
+.vx-checkout__panel{background:#fff;border:1px solid #dce3eb;border-radius:16px;padding:24px;min-width:0}
+.vx-checkout__section-title{font-size:21px;letter-spacing:-.025em;line-height:1.3;font-weight:650;margin:0 0 14px}
+.vx-checkout__minor-title{font-size:13px;font-weight:650;margin:0 0 8px;color:#071525}
+.vx-checkout__muted{font-size:13px;line-height:1.7;color:#526579;margin:4px 0}
+.vx-checkout__label{display:block;font-size:13px;line-height:1.5;font-weight:600;margin:18px 0 8px}
+.vx-checkout__select{min-height:46px;width:100%;text-align:left;font-size:14px}
+.vx-checkout__review{display:inline-flex;align-items:center;justify-content:center;gap:10px;min-height:46px;padding:10px 18px;margin-top:16px;background:#edf4fb;color:#075abc;border:1px solid #cfdfee;border-radius:9px;cursor:pointer;font:inherit;font-size:13px;font-weight:600}
+.vx-checkout__address{border-top:1px solid #e3e9ef;margin-top:22px;padding-top:18px;font-size:13px;line-height:1.65;color:#405569}
+.vx-checkout__address p{margin:3px 0}
+.vx-checkout__notice{font-size:13px;line-height:1.7;background:#f5f7fa;padding:14px;border-radius:9px;margin:12px 0}
+.vx-checkout__notice p{margin:0 0 4px}
+.vx-checkout__notice a{color:#0866d9;display:inline-flex;align-items:center;min-height:36px}
+.vx-checkout__item{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr);gap:18px;border-top:1px solid #e3e9ef;padding:20px 0}
+.vx-checkout__item-title{font-size:16px;line-height:1.4;font-weight:650;margin:0 0 6px}
+.vx-checkout__sku{font-size:11px;color:#526579;margin:7px 0;line-height:1.5}
+.vx-checkout__availability{color:#245e52;font-size:12px;line-height:1.6;margin:7px 0 0}
+.vx-checkout__unavailable{color:#9b3d29;font-size:12px;line-height:1.7;margin:10px 0}
+.vx-checkout__item-values{text-align:right;min-width:0}
+.vx-checkout__item-subtotal{font-size:19px;font-weight:650;margin:10px 0 0;font-variant-numeric:tabular-nums}
+.vx-checkout__amount-row,.vx-checkout__total-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:14px;font-variant-numeric:tabular-nums}
+.vx-checkout__amount-row p{margin:8px 0;color:#405569}
+.vx-checkout__total-row{border-top:1px solid #e3e9ef;margin:16px 0;padding-top:16px}
+.vx-checkout__total-row p{margin:0}
+.vx-checkout__total{font-size:28px;font-weight:650;letter-spacing:-.035em}
+.vx-checkout__payment-note{font-size:12px;line-height:1.7;color:#526579;margin:16px 0}
+.vx-checkout__confirm{display:flex;align-items:center;justify-content:center;min-height:48px;width:100%;padding:12px 18px;background:#0866d9;color:#fff;border:0;border-radius:999px;font:inherit;font-size:14px;font-weight:650;cursor:pointer}
+.vx-checkout__confirm:hover:not(:disabled){background:#0758bc}
+.vx-checkout button:disabled{background:#e8edf2;color:#617286;cursor:not-allowed;opacity:.8}
+.vx-checkout__message{display:flex;align-items:flex-start;gap:10px;background:#edf4fb;border:1px solid #d4e1ee;border-radius:10px;padding:16px;margin-bottom:18px;font-size:13px;line-height:1.7;color:#294c68}
+.vx-checkout__message p{margin:0}.vx-checkout__message svg{flex-shrink:0;margin-top:3px}
+.vx-checkout button:focus-visible,.vx-checkout a:focus-visible,.vx-checkout__back:focus-visible{outline:3px solid #0866d9;outline-offset:3px}
+@media(min-width:1024px){.vx-checkout__layout{grid-template-columns:minmax(0,1.65fr) minmax(300px,1fr);gap:28px}.vx-checkout__summary{position:sticky;top:24px}}
+@media(max-width:480px){.vx-checkout__panel{padding:18px}.vx-checkout__item{grid-template-columns:minmax(0,1fr);gap:8px}.vx-checkout__item-values{text-align:left}}
