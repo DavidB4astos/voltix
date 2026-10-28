@@ -6732,24 +6732,26 @@ def public_catalog_page() -> rx.Component:
 
 
 def customer_account_page() -> rx.Component:
+
     def address_card(address: CustomerAddressEntry) -> rx.Component:
         return surface_card(
             rx.vstack(
                 rx.hstack(
-                    section_heading(
+                    rx.heading(
                         rx.cond(
                             address.label != "",
                             address.label,
                             "Endereço #" + address.id.to_string(),
                         ),
                         size="4",
+                        as_="h3",
                     ),
                     rx.cond(
                         address.is_primary,
                         rx.badge("Principal", color_scheme="cyan"),
                         rx.fragment(),
                     ),
-                            status_badge(address.status),
+                    status_badge(address.status),
                     justify="between",
                     width="100%",
                     wrap="wrap",
@@ -6785,14 +6787,11 @@ def customer_account_page() -> rx.Component:
                     rx.fragment(),
                 ),
                 rx.cond(
-                    address.cep != "",
-                    rx.text("CEP: " + address.cep),
-                    rx.fragment(),
+                    address.cep != "", rx.text("CEP: " + address.cep), rx.fragment()
                 ),
                 rx.hstack(
                     secondary_button(
-                        "Editar",
-                        on_click=State.edit_customer_address(address.id),
+                        "Editar", on_click=State.edit_customer_address(address.id)
                     ),
                     rx.cond(
                         (address.status == "ATIVO") & (address.is_primary == False),
@@ -6807,27 +6806,27 @@ def customer_account_page() -> rx.Component:
                         secondary_button(
                             "Inativar",
                             on_click=State.set_customer_address_status(
-                                address.id,
-                                "INATIVO",
+                                address.id, "INATIVO"
                             ),
                         ),
                         secondary_button(
                             "Reativar",
                             on_click=State.set_customer_address_status(
-                                address.id,
-                                "ATIVO",
+                                address.id, "ATIVO"
                             ),
                         ),
                     ),
                     danger_button(
-                        "Remover",
-                        on_click=State.delete_customer_address(address.id),
+                        "Remover", on_click=State.delete_customer_address(address.id)
                     ),
                     wrap="wrap",
                 ),
                 align="stretch",
                 spacing="3",
             ),
+            class_name="vx-account__card",
+            box_shadow="none",
+            padding="24px",
         )
 
     public_forms = rx.grid(
@@ -6841,7 +6840,7 @@ def customer_account_page() -> rx.Component:
                     border_radius="9999px",
                 ),
                 rx.vstack(
-                    section_heading("Criar conta de Cliente", size="5"),
+                    rx.heading("Criar conta de Cliente", size="5", as_="h2"),
                     rx.text(
                         "Cadastre-se para comprar e acompanhar seus pedidos.",
                         color=COLOR_TEXT_MUTED,
@@ -6860,6 +6859,7 @@ def customer_account_page() -> rx.Component:
                                 placeholder="Ex.: Maria Silva",
                                 required=True,
                                 width="100%",
+                                aria_label="Nome completo",
                             ),
                         ),
                         form_field(
@@ -6869,6 +6869,7 @@ def customer_account_page() -> rx.Component:
                                 placeholder="000.000.000-00",
                                 required=True,
                                 width="100%",
+                                aria_label="CPF",
                             ),
                         ),
                         form_field(
@@ -6879,6 +6880,7 @@ def customer_account_page() -> rx.Component:
                                 placeholder="voce@email.com",
                                 required=True,
                                 width="100%",
+                                aria_label="E-mail",
                             ),
                         ),
                         form_field(
@@ -6888,6 +6890,7 @@ def customer_account_page() -> rx.Component:
                                 type="tel",
                                 placeholder="(11) 99999-9999",
                                 width="100%",
+                                aria_label="Telefone",
                             ),
                         ),
                         form_field(
@@ -6898,6 +6901,7 @@ def customer_account_page() -> rx.Component:
                                 placeholder="Crie uma senha",
                                 required=True,
                                 width="100%",
+                                aria_label="Senha",
                             ),
                         ),
                         primary_button(
@@ -6917,6 +6921,9 @@ def customer_account_page() -> rx.Component:
                 spacing="3",
                 width="100%",
             ),
+            class_name="vx-account__card",
+            box_shadow="none",
+            padding="24px",
         ),
         surface_card(
             rx.vstack(
@@ -6927,7 +6934,7 @@ def customer_account_page() -> rx.Component:
                     border_radius="9999px",
                 ),
                 rx.vstack(
-                    section_heading("Entrar como Cliente", size="5"),
+                    rx.heading("Entrar como Cliente", size="5", as_="h2"),
                     rx.text(
                         "Acesse sua conta para continuar suas compras.",
                         color=COLOR_TEXT_MUTED,
@@ -6947,6 +6954,7 @@ def customer_account_page() -> rx.Component:
                                 placeholder="voce@email.com",
                                 required=True,
                                 width="100%",
+                                aria_label="E-mail",
                             ),
                         ),
                         form_field(
@@ -6957,6 +6965,7 @@ def customer_account_page() -> rx.Component:
                                 placeholder="Sua senha",
                                 required=True,
                                 width="100%",
+                                aria_label="Senha",
                             ),
                         ),
                         primary_button(
@@ -6980,16 +6989,19 @@ def customer_account_page() -> rx.Component:
                 spacing="3",
                 width="100%",
             ),
+            class_name="vx-account__card",
+            box_shadow="none",
+            padding="24px",
         ),
         columns={"initial": "1", "lg": "2"},
         spacing="5",
         align="stretch",
         width="100%",
+        class_name="vx-account__public",
     )
-
     authenticated_customer = rx.vstack(
         rx.hstack(
-            section_heading("Minha conta"),
+            rx.el.h1("Minha conta", class_name="vx-account__title"),
             rx.hstack(
                 rx.link(
                     "Carrinho",
@@ -7011,198 +7023,260 @@ def customer_account_page() -> rx.Component:
             width="100%",
             wrap="wrap",
         ),
-        surface_card(
-            rx.vstack(
-                rx.text(
-                    "Cliente: " + State.customer_name,
-                    weight="bold",
-                    color=COLOR_NAVY,
-                ),
-                rx.text("CPF: " + State.customer_cpf, color=COLOR_TEXT_MUTED),
-                rx.form(
+        rx.box(
+            rx.el.section(
+                surface_card(
+                    rx.el.h2("Seu perfil", class_name="vx-account__section-title"),
                     rx.vstack(
-                        form_field(
-                            "Nome completo",
-                            rx.input(
-                                name="nome_completo",
-                                default_value=State.customer_name,
-                                placeholder="Nome completo",
-                                required=True,
-                                width="100%",
-                            ),
+                        rx.text(
+                            "Cliente: " + State.customer_name,
+                            weight="bold",
+                            color=COLOR_NAVY,
                         ),
-                        form_field(
-                            "E-mail",
-                            rx.input(
-                                name="email",
-                                type="email",
-                                default_value=State.customer_email,
-                                placeholder="E-mail",
-                                required=True,
+                        rx.text("CPF: " + State.customer_cpf, color=COLOR_TEXT_MUTED),
+                        rx.form(
+                            rx.vstack(
+                                form_field(
+                                    "Nome completo",
+                                    rx.input(
+                                        name="nome_completo",
+                                        default_value=State.customer_name,
+                                        placeholder="Nome completo",
+                                        required=True,
+                                        width="100%",
+                                        aria_label="Nome completo",
+                                    ),
+                                ),
+                                form_field(
+                                    "E-mail",
+                                    rx.input(
+                                        name="email",
+                                        type="email",
+                                        default_value=State.customer_email,
+                                        placeholder="E-mail",
+                                        required=True,
+                                        width="100%",
+                                        aria_label="E-mail",
+                                    ),
+                                ),
+                                form_field(
+                                    "Telefone",
+                                    rx.input(
+                                        name="telefone",
+                                        type="tel",
+                                        default_value=State.customer_phone,
+                                        placeholder="Telefone",
+                                        width="100%",
+                                        aria_label="Telefone",
+                                    ),
+                                ),
+                                primary_button("Salvar perfil", type="submit"),
                                 width="100%",
+                                align="stretch",
+                                spacing="3",
                             ),
+                            on_submit=State.update_customer_profile,
+                            width="100%",
+                            max_width="24rem",
                         ),
-                        form_field(
-                            "Telefone",
-                            rx.input(
-                                name="telefone",
-                                type="tel",
-                                default_value=State.customer_phone,
-                                placeholder="Telefone",
-                                width="100%",
-                            ),
-                        ),
-                        primary_button("Salvar perfil", type="submit"),
-                        width="100%",
+                        feedback_text(State.customer_profile_message),
                         align="stretch",
                         spacing="3",
+                        width="100%",
                     ),
-                    on_submit=State.update_customer_profile,
-                    width="100%",
-                    max_width="24rem",
+                    class_name="vx-account__card",
+                    box_shadow="none",
+                    padding="24px",
                 ),
-                feedback_text(State.customer_profile_message),
-                align="stretch",
-                spacing="3",
-                width="100%",
+                aria_label="Seu perfil",
             ),
-        ),
-        section_heading("Meus endereços", size="5"),
-        rx.hstack(
-            primary_button(
-                "Novo endereço",
-                on_click=State.start_new_customer_address,
-            ),
-            secondary_button(
-                "Atualizar endereços",
-                on_click=State.load_customer_addresses,
-                disabled=State.customer_addresses_loading,
-            ),
-            wrap="wrap",
-        ),
-        feedback_text(State.customer_addresses_message, tone="error"),
-        rx.cond(
-            State.customer_addresses_loading,
-            loading_text("Carregando endereços..."),
-            rx.fragment(),
-        ),
-        rx.cond(
-            State.customer_address_editing_id != None,
-            section_heading("Editar endereço", size="4"),
-            section_heading("Novo endereço", size="4"),
-        ),
-        surface_card(
-            rx.form(
-                rx.vstack(
+            rx.el.section(
+                rx.heading("Meus endereços", size="5", as_="h2"),
+                rx.hstack(
+                    primary_button(
+                        "Novo endereço", on_click=State.start_new_customer_address
+                    ),
+                    secondary_button(
+                        "Atualizar endereços",
+                        on_click=State.load_customer_addresses,
+                        disabled=State.customer_addresses_loading,
+                    ),
+                    wrap="wrap",
+                ),
+                feedback_text(State.customer_addresses_message, tone="error"),
+                rx.cond(
+                    State.customer_addresses_loading,
+                    loading_text("Carregando endereços..."),
+                    rx.fragment(),
+                ),
+                rx.cond(
+                    State.customer_address_editing_id != None,
+                    rx.heading("Editar endereço", size="4", as_="h3"),
+                    rx.heading("Novo endereço", size="4", as_="h3"),
+                ),
+                surface_card(
+                    rx.form(
+                        rx.vstack(
+                            rx.grid(
+                                rx.el.label(
+                                    rx.el.span("CEP"),
+                                    rx.input(
+                                        name="cep",
+                                        value=State.customer_address_form_cep,
+                                        on_change=State.set_customer_address_form_cep,
+                                        placeholder="CEP",
+                                        width="100%",
+                                        aria_label="CEP",
+                                    ),
+                                    class_name="vx-account__field",
+                                ),
+                                rx.el.label(
+                                    rx.el.span("Logradouro"),
+                                    rx.input(
+                                        name="logradouro",
+                                        value=State.customer_address_form_street,
+                                        on_change=State.set_customer_address_form_street,
+                                        placeholder="Logradouro",
+                                        width="100%",
+                                        aria_label="Logradouro",
+                                    ),
+                                    class_name="vx-account__field",
+                                ),
+                                rx.el.label(
+                                    rx.el.span("Número"),
+                                    rx.input(
+                                        name="numero",
+                                        value=State.customer_address_form_number,
+                                        on_change=State.set_customer_address_form_number,
+                                        placeholder="Número",
+                                        width="100%",
+                                        aria_label="Número",
+                                    ),
+                                    class_name="vx-account__field",
+                                ),
+                                rx.el.label(
+                                    rx.el.span("Complemento"),
+                                    rx.input(
+                                        name="complemento",
+                                        value=State.customer_address_form_complement,
+                                        on_change=State.set_customer_address_form_complement,
+                                        placeholder="Complemento",
+                                        width="100%",
+                                        aria_label="Complemento",
+                                    ),
+                                    class_name="vx-account__field",
+                                ),
+                                rx.el.label(
+                                    rx.el.span("Bairro"),
+                                    rx.input(
+                                        name="bairro",
+                                        value=State.customer_address_form_neighborhood,
+                                        on_change=State.set_customer_address_form_neighborhood,
+                                        placeholder="Bairro",
+                                        width="100%",
+                                        aria_label="Bairro",
+                                    ),
+                                    class_name="vx-account__field",
+                                ),
+                                rx.el.label(
+                                    rx.el.span("Cidade"),
+                                    rx.input(
+                                        name="cidade",
+                                        value=State.customer_address_form_city,
+                                        on_change=State.set_customer_address_form_city,
+                                        placeholder="Cidade",
+                                        width="100%",
+                                        aria_label="Cidade",
+                                    ),
+                                    class_name="vx-account__field",
+                                ),
+                                rx.el.label(
+                                    rx.el.span("Estado"),
+                                    rx.input(
+                                        name="estado",
+                                        value=State.customer_address_form_state,
+                                        on_change=State.set_customer_address_form_state,
+                                        placeholder="Estado",
+                                        width="100%",
+                                        aria_label="Estado",
+                                    ),
+                                    class_name="vx-account__field",
+                                ),
+                                rx.el.label(
+                                    rx.el.span("Identificação (ex.: Casa)"),
+                                    rx.input(
+                                        name="identificacao",
+                                        value=State.customer_address_form_label,
+                                        on_change=State.set_customer_address_form_label,
+                                        placeholder="Identificação (ex.: Casa)",
+                                        width="100%",
+                                        aria_label="Identificação (ex.: Casa)",
+                                    ),
+                                    class_name="vx-account__field",
+                                ),
+                                columns={"initial": "1", "sm": "2"},
+                                spacing="3",
+                                align="start",
+                                width="100%",
+                            ),
+                            rx.hstack(
+                                primary_button(
+                                    rx.cond(
+                                        State.customer_address_editing_id != None,
+                                        "Salvar endereço",
+                                        "Cadastrar endereço",
+                                    ),
+                                    type="submit",
+                                ),
+                                rx.cond(
+                                    State.customer_address_editing_id != None,
+                                    secondary_button(
+                                        "Cancelar edição",
+                                        type="button",
+                                        on_click=State.start_new_customer_address,
+                                    ),
+                                    rx.fragment(),
+                                ),
+                                wrap="wrap",
+                            ),
+                            width="100%",
+                            align="stretch",
+                            spacing="3",
+                        ),
+                        on_submit=State.save_customer_address,
+                        width="100%",
+                    ),
+                    class_name="vx-account__card",
+                    box_shadow="none",
+                    padding="24px",
+                ),
+                rx.cond(
+                    (State.customer_addresses.length() == 0)
+                    & (State.customer_addresses_loading == False)
+                    & (State.customer_addresses_message == ""),
+                    empty_state("Nenhum endereço cadastrado."),
                     rx.grid(
-                    rx.input(
-                        name="cep",
-                        value=State.customer_address_form_cep,
-                        on_change=State.set_customer_address_form_cep,
-                        placeholder="CEP",
+                        rx.foreach(State.customer_addresses, address_card),
+                        columns={"initial": "1", "md": "2"},
+                        spacing="4",
+                        align="start",
                         width="100%",
                     ),
-                    rx.input(
-                        name="logradouro",
-                        value=State.customer_address_form_street,
-                        on_change=State.set_customer_address_form_street,
-                        placeholder="Logradouro",
-                        width="100%",
-                    ),
-                    rx.input(
-                        name="numero",
-                        value=State.customer_address_form_number,
-                        on_change=State.set_customer_address_form_number,
-                        placeholder="Número",
-                        width="100%",
-                    ),
-                    rx.input(
-                        name="complemento",
-                        value=State.customer_address_form_complement,
-                        on_change=State.set_customer_address_form_complement,
-                        placeholder="Complemento",
-                        width="100%",
-                    ),
-                    rx.input(
-                        name="bairro",
-                        value=State.customer_address_form_neighborhood,
-                        on_change=State.set_customer_address_form_neighborhood,
-                        placeholder="Bairro",
-                        width="100%",
-                    ),
-                    rx.input(
-                        name="cidade",
-                        value=State.customer_address_form_city,
-                        on_change=State.set_customer_address_form_city,
-                        placeholder="Cidade",
-                        width="100%",
-                    ),
-                    rx.input(
-                        name="estado",
-                        value=State.customer_address_form_state,
-                        on_change=State.set_customer_address_form_state,
-                        placeholder="Estado",
-                        width="100%",
-                    ),
-                    rx.input(
-                        name="identificacao",
-                        value=State.customer_address_form_label,
-                        on_change=State.set_customer_address_form_label,
-                        placeholder="Identificação (ex.: Casa)",
-                        width="100%",
-                    ),
-                    columns={"initial": "1", "sm": "2"},
-                    spacing="3",
-                    align="start",
-                    width="100%",
                 ),
-                    rx.hstack(
-                        primary_button(
-                            rx.cond(
-                                State.customer_address_editing_id != None,
-                                "Salvar endereço",
-                                "Cadastrar endereço",
-                            ),
-                            type="submit",
-                        ),
-                        rx.cond(
-                            State.customer_address_editing_id != None,
-                            secondary_button(
-                                "Cancelar edição",
-                                type="button",
-                                on_click=State.start_new_customer_address,
-                            ),
-                            rx.fragment(),
-                        ),
-                        wrap="wrap",
-                    ),
-                    width="100%",
-                    align="stretch",
-                    spacing="3",
-                ),
-                on_submit=State.save_customer_address,
-                width="100%",
+                rx.fragment(),
+                class_name="vx-account__addresses",
+                aria_label="Meus endereços",
             ),
+            class_name="vx-account__layout",
         ),
-        rx.cond(
-            State.customer_addresses.length() == 0,
-            empty_state("Nenhum endereço cadastrado."),
-            rx.grid(
-                rx.foreach(State.customer_addresses, address_card),
-columns={"initial": "1", "md": "2"},
-                spacing="4",
-                align="start",
-                width="100%",
-            ),
-        ),
-        rx.fragment(),
+        align="stretch",
+        spacing="6",
     )
-
     return page_shell(
-        rx.cond(
-            State.customer_authenticated,
-            authenticated_customer,
-            public_forms,
+        rx.box(
+            rx.el.link(rel="stylesheet", href="/voltix-account.css"),
+            rx.cond(State.customer_authenticated, authenticated_customer, public_forms),
+            class_name="vx-account",
         ),
         header=site_header(
             [
@@ -7214,8 +7288,8 @@ columns={"initial": "1", "md": "2"},
             active="/cliente",
             badge="Área do cliente",
         ),
-        max_width="56rem",
         public_footer=True,
+        max_width="72rem",
     )
 
 
