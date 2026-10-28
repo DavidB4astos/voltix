@@ -7219,135 +7219,125 @@ columns={"initial": "1", "md": "2"},
     )
 
 
+def _cart_money_text(value) -> rx.Var[str]:
+    """Present backend decimal text without float conversion or recalculation."""
+    value = rx.Var.create(value)
+    whole = value.split(".")[0]
+    fraction = (value + ".").split(".")[1]
+    digits = rx.cond(fraction.length() == 0, "00",
+                     rx.cond(fraction.length() == 1, fraction + "0", fraction))
+    return "R$ " + whole + "," + digits
+
+
+def _cart_item_view(item, *, loading, on_update, on_remove) -> rx.Component:
+    name = rx.cond(item.product_name != "", item.product_name, item.sku)
+    quantity_id = "cart-quantity-" + item.id.to_string()
+    return rx.el.article(
+        rx.box(rx.icon("package", size=22, aria_hidden=True), class_name="vx-cart__item-icon"),
+        rx.box(
+            rx.el.h2(name, class_name="vx-cart__item-title"),
+            rx.cond(item.variation_name != "", rx.text(item.variation_name, class_name="vx-cart__variation"), rx.fragment()),
+            rx.text("SKU: " + item.sku, class_name="vx-cart__sku"),
+            rx.text(rx.cond(item.available, "Disponível", "Indisponível — revise a quantidade ou remova o item"),
+                    class_name=rx.cond(item.available, "vx-cart__availability", "vx-cart__availability vx-cart__availability--unavailable")),
+            rx.box(
+                rx.box(rx.text("Preço unitário", class_name="vx-cart__label"),
+                       rx.text(_cart_money_text(item.price), class_name="vx-cart__unit-price")),
+                rx.box(rx.text("Subtotal", class_name="vx-cart__label"),
+                       rx.text(_cart_money_text(item.subtotal), class_name="vx-cart__subtotal")),
+                class_name="vx-cart__prices"),
+            rx.form(
+                rx.box(
+                    rx.el.label("Quantidade", html_for=quantity_id, class_name="vx-cart__label"),
+                    rx.input(id=quantity_id, name="quantidade", type="number", min="0", step="1",
+                             default_value=item.quantity.to_string(), disabled=loading,
+                             aria_label="Quantidade de " + name + " — SKU " + item.sku,
+                             class_name="vx-cart__quantity"),
+                    class_name="vx-cart__quantity-field"),
+                rx.button("Atualizar", type="submit", disabled=loading,
+                          aria_label="Atualizar quantidade de " + name + " — SKU " + item.sku,
+                          class_name="vx-cart__update"),
+                on_submit=on_update, class_name="vx-cart__form"),
+            rx.box(
+                rx.text("Quantidade confirmada: " + item.quantity.to_string(), class_name="vx-cart__confirmed"),
+                rx.button(rx.icon("trash-2", size=15, aria_hidden=True), "Remover",
+                          on_click=on_remove, disabled=loading,
+                          aria_label="Remover " + name + " — SKU " + item.sku,
+                          class_name="vx-cart__remove"),
+                class_name="vx-cart__item-bottom"),
+            class_name="vx-cart__item-content"),
+        class_name="vx-cart__item")
+
+
+def _cart_contents(*, items, total, customer_name, loading, message, item_renderer,
+                   on_refresh, href) -> rx.Component:
+    """Pure cart composition, also usable by isolated, inert visual fixtures."""
+    return rx.box(
+        rx.box(
+            rx.text("Cliente: " + customer_name, class_name="vx-cart__customer"),
+            rx.button(rx.icon("refresh-cw", size=16, aria_hidden=True), "Atualizar carrinho",
+                      on_click=on_refresh, disabled=loading, class_name="vx-cart__refresh"),
+            class_name="vx-cart__toolbar"),
+        rx.cond(message != "", rx.box(rx.icon("info", size=18, aria_hidden=True),
+                rx.text(message), role="status", aria_live="polite", class_name="vx-cart__message"), rx.fragment()),
+        rx.cond(loading, rx.box(rx.spinner(size="1"),
+                rx.text("Atualizando carrinho. Os valores exibidos são os últimos confirmados."),
+                role="status", aria_live="polite", class_name="vx-cart__loading"), rx.fragment()),
+        rx.cond(items.length() > 0,
+            rx.box(
+                rx.el.section(rx.foreach(items, item_renderer),
+                              aria_label="Itens do carrinho", aria_busy=loading, class_name="vx-cart__items"),
+                rx.el.aside(
+                    rx.el.h2("Resumo do carrinho", class_name="vx-cart__summary-title"),
+                    rx.text("Valores dos itens confirmados", class_name="vx-cart__summary-note"),
+                    rx.box(rx.text("Total dos itens"), rx.text(_cart_money_text(total), class_name="vx-cart__total"),
+                           class_name="vx-cart__total-row"),
+                    rx.cond(loading,
+                        rx.button("Aguarde a atualização", disabled=True, class_name="vx-cart__checkout"),
+                        rx.link("Continuar para checkout", rx.icon("arrow-right", size=17, aria_hidden=True),
+                                href=href, class_name="vx-cart__checkout")),
+                    rx.text("Adicionar ao carrinho não reserva estoque. A disponibilidade será verificada novamente.",
+                            class_name="vx-cart__summary-note"),
+                    aria_label="Resumo do carrinho", class_name="vx-cart__summary"),
+                class_name="vx-cart__layout"),
+            rx.cond((loading == False) & (message == ""),
+                rx.el.section(rx.icon("shopping-bag", size=34, aria_hidden=True),
+                    rx.el.h2("Seu carrinho está vazio.", class_name="vx-cart__empty-title"),
+                    rx.text("Explore o catálogo e escolha os produtos para o seu setup."),
+                    rx.link("Explorar produtos", href="/catalogo", class_name="vx-cart__empty-link"),
+                    class_name="vx-cart__empty", aria_label="Carrinho vazio"), rx.fragment())),
+        rx.text("Para remover pela quantidade, informe zero e clique em Atualizar.", class_name="vx-cart__hint"),
+        class_name="vx-cart")
+
+
 def customer_cart_page() -> rx.Component:
     def cart_item_card(item: CartItemEntry) -> rx.Component:
-        return surface_card(
-            rx.vstack(
-                section_heading(
-                    rx.cond(item.product_name != "", item.product_name, item.sku),
-                    size="4",
-                ),
-                rx.cond(
-                    item.variation_name != "",
-                    rx.text("Variação: " + item.variation_name),
-                    rx.fragment(),
-                ),
-                rx.text("SKU: " + item.sku),
-                rx.cond(
-                    item.available,
-                    rx.badge("Disponível", color_scheme="cyan"),
-                    rx.badge("Indisponível", color_scheme="red"),
-                ),
-                rx.text("Preço atual: R$ " + item.price),
-                rx.text("Subtotal: R$ " + item.subtotal),
-                rx.form(
-                    rx.hstack(
-                        rx.input(
-                            name="quantidade",
-                            type="number",
-                            min="0",
-                            step="1",
-                            default_value=item.quantity.to_string(),
-                            width="8rem",
-                        ),
-                        secondary_button(
-                            "Atualizar quantidade",
-                            type="submit",
-                            disabled=State.cart_loading,
-                        ),
-                        wrap="wrap",
-                    ),
-                    on_submit=State.update_cart_item(item.id),
-                ),
-                danger_button(
-                    "Remover item",
-                    on_click=State.remove_cart_item(item.id),
-                    disabled=State.cart_loading,
-                ),
-                align="stretch",
-                spacing="2",
-                width="100%",
-            ),
-        )
-
-    authenticated_cart = rx.vstack(
-        rx.hstack(
-            rx.text(
-                "Cliente: " + State.customer_name,
-                weight="bold",
-                color=COLOR_NAVY,
-            ),
-            secondary_button(
-                "Atualizar carrinho",
-                on_click=State.load_cart,
-                disabled=State.cart_loading,
-            ),
-            justify="between",
-            width="100%",
-            wrap="wrap",
-        ),
-        feedback_text(State.cart_message),
-        rx.cond(
-            State.cart_loading,
-            loading_text("Carregando carrinho..."),
-            rx.fragment(),
-        ),
-        rx.cond(
-            State.cart_items.length() == 0,
-            empty_state("Seu carrinho está vazio."),
-            rx.foreach(State.cart_items, cart_item_card),
-        ),
-        surface_card(
-            rx.hstack(
-                section_heading("Total:", size="5"),
-                rx.heading("R$ " + State.cart_total, size="5", color=COLOR_NAVY),
-                justify="between",
-                width="100%",
-            ),
-        ),
-        rx.cond(
-            State.cart_items.length() > 0,
-            rx.link(
-                primary_button("Continuar para checkout", width="100%"),
-                href="/checkout",
-                text_decoration="none",
-                width="100%",
-            ),
-            rx.fragment(),
-        ),
-        align="stretch",
-        spacing="3",
-        width="100%",
-    )
+        return _cart_item_view(item, loading=State.cart_loading,
+                               on_update=State.update_cart_item(item.id),
+                               on_remove=State.remove_cart_item(item.id))
 
     return page_shell(
-        section_heading("Seu carrinho"),
-        rx.cond(
-            State.customer_authenticated,
-            authenticated_cart,
-            rx.vstack(
-                rx.text(
-                    "Entre como Cliente para acessar seu carrinho.",
-                    color=COLOR_TEXT_MUTED,
-                ),
-                rx.link("Acessar conta de Cliente", href="/cliente"),
-                align="stretch",
-                spacing="3",
-            ),
-        ),
-        header=site_header(
-            [
-                ("Catálogo público", "/catalogo"),
-                ("Carrinho", "/carrinho"),
-                ("Minha conta", "/cliente"),
-                ("Acesso interno", "/interno"),
-            ],
-            active="/carrinho",
-            badge="Carrinho",
-        ),
-        max_width="48rem",
-        public_footer=True,
-    )
+        rx.el.link(rel="stylesheet", href="/voltix-cart.css"),
+        rx.box(section_heading("Seu carrinho"),
+               rx.text("Confira os itens e as quantidades antes de continuar.", class_name="vx-cart__intro"),
+               rx.link(rx.icon("arrow-left", size=16, aria_hidden=True), "Continuar explorando",
+                       href="/catalogo", class_name="vx-cart__back"), class_name="vx-cart__heading"),
+        rx.cond(State.customer_authenticated,
+            _cart_contents(items=State.cart_items, total=State.cart_total,
+                           customer_name=State.customer_name, loading=State.cart_loading,
+                           message=State.cart_message, item_renderer=cart_item_card,
+                           on_refresh=State.load_cart, href="/checkout"),
+            rx.el.section(
+                rx.icon("user-round", size=30, aria_hidden=True),
+                rx.el.h2("Seu carrinho começa na sua conta", class_name="vx-cart__empty-title"),
+                rx.text("Entre como Cliente para acessar seu carrinho."),
+                rx.link("Acessar conta de Cliente", href="/cliente", class_name="vx-cart__empty-link"),
+                class_name="vx-cart vx-cart__empty", aria_label="Acesso ao carrinho")),
+        header=site_header([
+            ("Catálogo público", "/catalogo"), ("Carrinho", "/carrinho"),
+            ("Minha conta", "/cliente"), ("Acesso interno", "/interno")],
+            active="/carrinho", badge="Carrinho"),
+        max_width="72rem", public_footer=True)
 
 
 def customer_checkout_page() -> rx.Component:
