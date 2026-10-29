@@ -5,6 +5,7 @@ import math
 import re
 import urllib.error
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Awaitable, Callable
 
 
@@ -17,6 +18,22 @@ class InternalCustomer:
     status: str
     created_at: str
     cpf_masked: str = ""
+    created_at_display: str = ""
+
+
+def customer_date_display(value: str | int | float) -> str:
+    """Render Xano milliseconds or an ISO date with an explicit timezone."""
+    try:
+        if isinstance(value, (int, float)) or re.fullmatch(r"-?\d+(?:\.\d+)?", value):
+            date = datetime.fromtimestamp(float(value) / 1000, tz=timezone.utc)
+        else:
+            date = datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if date.tzinfo is None:
+                date = date.replace(tzinfo=timezone.utc)
+            date = date.astimezone(timezone.utc)
+        return date.strftime("%d/%m/%Y às %H:%M (UTC)")
+    except (ValueError, OverflowError, OSError):
+        return "Data indisponível"
 
 
 def positive_int(value: Any, maximum: int | None = None) -> int:
@@ -63,7 +80,8 @@ def customer_record(value: Any, *, detail: bool = False) -> InternalCustomer:
     if isinstance(created, (int, float)) and not math.isfinite(created):
         raise ValueError("Invalid customer timestamp.")
     return InternalCustomer(record_id, name.strip(), masks["email_masked"],
-                            masks["telefone_masked"], value["status"], str(created), masks["cpf_masked"])
+                            masks["telefone_masked"], value["status"], str(created), masks["cpf_masked"],
+                            customer_date_display(created))
 
 
 def customer_page(value: Any, *, page: int, per_page: int = 20) -> tuple[list[InternalCustomer], int, int]:

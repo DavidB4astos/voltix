@@ -5463,11 +5463,11 @@ def internal_customer_panel() -> rx.Component:
             rx.hstack(rx.heading(customer.nome_completo, size="5", as_="h3"),
                       rx.button("Fechar detalhes do cliente", on_click=State.close_internal_customer, variant="soft"),
                       justify="between", width="100%"),
-            rx.text("E-mail: " + customer.email_masked),
-            rx.text("Telefone: " + customer.telefone_masked),
-            rx.text("CPF: " + customer.cpf_masked),
+            rx.text("E-mail: ", rx.cond(customer.email_masked != "", customer.email_masked, "Não informado")),
+            rx.text("Telefone: ", rx.cond(customer.telefone_masked != "", customer.telefone_masked, "Não informado")),
+            rx.text("CPF: ", rx.cond(customer.cpf_masked != "", customer.cpf_masked, "Não informado")),
             rx.text("Status: " + customer.status),
-            rx.text("Cadastro: " + customer.created_at),
+            rx.text("Cadastro: " + customer.created_at_display),
             align="stretch", spacing="3"))
 
     return surface_card(rx.vstack(

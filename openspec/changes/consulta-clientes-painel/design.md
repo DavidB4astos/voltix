@@ -35,3 +35,6 @@ Busca submetida por botão/Enter, sem chamada a cada tecla. Status, limpar filtr
 
 ## Plano de entrega
 Preparação OpenSpec → revisão do contrato → implementação isolada e testes → validação Xano em contexto autorizado → desktop com fixtures sem dados reais → evidências, archive e commit. Se houver bloqueio externo, registrar trabalho pendente; não arquivar como concluído.
+
+## Apresentação do detalhe — refinamento verificado
+Datas de cadastro mantêm o valor original no modelo e ganham um campo derivado de apresentação. Timestamps Xano em milissegundos e datas ISO são exibidos em dd/mm/aaaa às HH:MM (UTC), com fuso explícito para evitar dependência do relógio do servidor. Data não interpretável mostra Data indisponível. Contatos ausentes mostram Não informado; máscaras existentes permanecem intactas. Nenhuma alteração de contrato ou escrita no Xano.

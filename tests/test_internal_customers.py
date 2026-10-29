@@ -5,7 +5,7 @@ import urllib.error
 from types import SimpleNamespace, MethodType
 from unittest.mock import AsyncMock, patch
 
-from voltix.internal_customers import customer_record, customer_page, query_parameters, bounded_read
+from voltix.internal_customers import customer_record, customer_page, query_parameters, bounded_read, customer_date_display
 import voltix.voltix as app
 
 
@@ -15,6 +15,15 @@ def record(**extra):
 
 
 class CustomerContractTests(unittest.TestCase):
+    def test_customer_date_has_explicit_timezone_and_accepts_iso(self):
+        expected = "01/01/2024 às 00:00 (UTC)"
+        for value in [1704067200000, "1704067200000", "2023-12-31T21:00:00-03:00"]:
+            self.assertEqual(customer_date_display(value), expected)
+
+    def test_unusable_date_does_not_break_customer_detail(self):
+        for value in ["", "invalid", 10**100]:
+            self.assertEqual(customer_date_display(value), "Data indisponível")
+
     def test_rejects_raw_and_unexpected_sensitive_fields(self):
         for extra in [{"email": "private@example.test"}, {"password": "secret"}, {"USER_ID": 2}]:
             with self.assertRaises(ValueError): customer_record(record(**extra))

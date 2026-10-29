@@ -35,3 +35,10 @@
 - Fechar detalhes funcionou. Busca DAVID manteve dois resultados, verificando insensibilidade a maiúsculas para esse termo.
 - Limite: telefone longo e CPF válido não foram comprovados nesse cadastro; paginação com mais de uma página e permissões negativas autenticadas continuam pendentes.
 - Pendências visuais identificadas no detalhe: CPF ausente fica em branco; created_at é exibido como timestamp numérico, sem formatação amigável. Não tratar a change como encerrada antes de revisar esses pontos.
+
+## Refinamento do detalhe concluído
+- Campos de contato ausentes agora mostram Não informado; máscaras de valores presentes foram preservadas.
+- Cadastro formatado a partir do timestamp Xano em milissegundos, com fuso UTC explícito; datas ISO com offset também são normalizadas. Valor bruto preservado no DTO, apresentação em campo separado.
+- 182 testes Python passaram, incluindo equivalência entre timestamp/ISO e fallback de datas inutilizáveis. Aplicação compilou 100%.
+- Verificação na sessão de Administrador com David fictício confirmou CPF: Não informado e Cadastro: 15/10/2026 às 12:33 (UTC).
+- Mantidas as pendências de permissões negativas autenticadas, paginação multipágina e máscaras com telefone longo/CPF válido; não arquivar prematuramente.
