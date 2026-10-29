@@ -2,9 +2,9 @@
     "updated": "2026-10-29",
     "criteria": "Exact model match (variant/capacity/version). Sources: manufacturers, distributors, specialty retailers, marketplaces. No AI images, similar products, or different versions. Public accessibility does not equal authorization. Download only authorized or properly licensed images; in doubt, keep placeholder and record pending.",
     "summary": {
-        "verified": 11,
-        "usable": 11,
-        "pending": 9
+        "verified": 12,
+        "usable": 12,
+        "pending": 8
     },
     "editorial_images": [
         {
@@ -209,22 +209,35 @@
         {
             "sku": "VTX-DEMO-011",
             "product": "SSD Samsung 870 EVO 500GB",
-            "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons. Samsung Newsroom terms restrict materials to personal, informational and non-commercial use.",
+            "status": "approved",
             "researched_sources": [
-                "https://commons.wikimedia.org/ (intitle:870 EVO - no results)",
-                "https://news.samsung.com/global/terms-of-use"
-            ]
+                "https://download.semiconductor.samsung.com/resources/data-sheet/Samsung_SSD_870_EVO_Data_Sheet_Rev1.1_230509.pdf",
+                "https://iceclog.com/open-content-license/"
+            ],
+            "file": "vtx-demo-011.jpg",
+            "source_url": "https://images.icecat.biz/img/gallery/18e32315dff6e923f0f1039ee2a1d43e26fec184.jpg",
+            "author": "Conteúdo Samsung via Icecat",
+            "license": "OCL 1.4",
+            "license_url": "https://iceclog.com/open-content-license/",
+            "attribution": "Samsung 870 EVO 500 GB, MPN MZ-77E500B/EU, fornecido via Open Icecat, produto 87569418.",
+            "notice": "Database Right data-sheet 2026 Icecat. All rights reserved. Conteúdo fornecido no estado em que se encontra, sem garantia. Consulte a licença.",
+            "manufacturer_product_code": "MZ-77E500B/EU",
+            "icecat_id": 87569418,
+            "reviewed": "2026-10-29",
+            "sha256": "45e26cfd66bc4da015c4f2832c5b36d6f37fd14cdacf0324db2eff05415e5169",
+            "note": "Own-account access verified, DemoAccount=false. 500GB SATA 2.5-inch matches public catalog. Original 800x600 JPG unchanged, adequate for current display but not a high-resolution zoom asset. Packaging suffix EU is not added as a catalog claim. Provider credit does not assert photographic authorship."
         },
         {
             "sku": "VTX-DEMO-012",
             "product": "SSD WD Blue SN580 1TB",
             "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons. WD media kits are labeled for press/media use; no explicit public license found for commercial store use.",
+            "reason": "Own-account Icecat queries for WDS100T3B0E returned HTTP 404; no usable content retrieved in this attempt. This does not prove universal unavailability or paid-only access. Existing manufacturer media terms do not establish store republication rights; keep placeholder.",
             "researched_sources": [
                 "https://commons.wikimedia.org/ (intitle:SN580 - no results)",
-                "https://www.westerndigital.com/company/newsroom/media-kits"
-            ]
+                "https://www.westerndigital.com/company/newsroom/media-kits",
+                "https://documents.westerndigital.com/content/dam/doc-library/en_us/assets/public/western-digital/product/internal-drives/wd-blue-ssd/product-brief-wd-blue-sn580-nvme-ssd.pdf"
+            ],
+            "reviewed": "2026-10-29"
         },
         {
             "sku": "VTX-DEMO-013",
