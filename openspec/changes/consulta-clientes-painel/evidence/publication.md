@@ -42,3 +42,11 @@
 - 182 testes Python passaram, incluindo equivalência entre timestamp/ISO e fallback de datas inutilizáveis. Aplicação compilou 100%.
 - Verificação na sessão de Administrador com David fictício confirmou CPF: Não informado e Cadastro: 15/10/2026 às 12:33 (UTC).
 - Mantidas as pendências de permissões negativas autenticadas, paginação multipágina e máscaras com telefone longo/CPF válido; não arquivar prematuramente.
+
+## Paginação real e limites de autorização
+- Sessão Administrador ativa confirmada pelo usuário e pela UI. Verificação temporária local, fora do repositório, enviou GETs ao Xano com a sessão server-side existente, sem registrar credenciais nem payloads.
+- Busca david, status ATIVO, per_page=1, páginas 1/2/3/1: tamanhos 1/1/0/1, total_items=2 e total_pages=2 em todas. Primeiras duas páginas com IDs distintos e primeira página repetida estável. Contrato estrito validado em cada retorno. Evidência sanitizada pagination-runtime.json, sem IDs/contatos.
+- Na interface padrão de 20 itens, os dois resultados aparecem sem erro, detalhe anterior limpo e botões anterior/próxima desabilitados corretamente por haver apenas uma página. A navegação visual multipágina com mais de 20 registros não foi exercitada.
+- Observados retornos 403 no login interno na tentativa que o usuário identificou como conta inativa; não houve token para validar autorização dos dois GETs nesse contexto. Não confundir recusa no login com comprovação do bloqueio em endpoint.
+- Login interno ativo subsequente: GET de lista 200 e detalhe de ID inexistente 404. Nenhum registro alterado.
+- Usuário informou que a conta de Cliente está indisponível agora; suas tentativas de login deram 403 e não produziram sessão para o teste de token de Cliente. Permanecem pendentes Cliente autenticado/ID coincidente e sessão interna inativa nos dois endpoints. Change continua aberta.

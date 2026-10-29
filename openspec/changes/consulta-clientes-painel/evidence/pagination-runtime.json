@@ -1,0 +1,24 @@
+{
+  "check": "pagination",
+  "page_sizes": [
+    1,
+    1,
+    0,
+    1
+  ],
+  "totals": [
+    2,
+    2,
+    2,
+    2
+  ],
+  "total_pages": [
+    2,
+    2,
+    2,
+    2
+  ],
+  "different_first_two": true,
+  "stable_first_page": true,
+  "contract_valid": true
+}
