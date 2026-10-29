@@ -24,6 +24,7 @@ import reflex as rx
 from dotenv import load_dotenv
 
 from rxconfig import config
+from .internal_customers import InternalCustomer, query_parameters, customer_page, customer_record, bounded_read
 
 try:
     from .demo_images import (
@@ -1902,6 +1903,154 @@ def _bulk_import_error_body(error: urllib.error.HTTPError) -> str:
 
 
 class State(rx.State):
+    internal_customers: list[InternalCustomer] = []
+    internal_customer_detail: list[InternalCustomer] = []
+    internal_customers_search: str = ""
+    internal_customers_status: str = "ATIVO"
+    internal_customers_search_input: str = ""
+    internal_customers_status_input: str = "ATIVO"
+    internal_customers_page: int = 1
+    internal_customers_total: int = 0
+    internal_customers_pages: int = 0
+    internal_customers_loading: bool = False
+    internal_customer_loading: bool = False
+    internal_customers_message: str = ""
+    _internal_customers_generation: int = 0
+    _internal_detail_generation: int = 0
+
+    def _internal_customer_allowed(self) -> bool:
+        return bool(self._auth_token and self.is_authenticated and self.session_status == "success"
+                    and self.user_status == "ATIVO" and self.user_role in {"FUNCIONARIO", "ADMINISTRADOR"})
+
+    def _clear_internal_customers(self):
+        self._internal_customers_generation += 1
+        self._internal_detail_generation += 1
+        self.internal_customers = []
+        self.internal_customer_detail = []
+        self.internal_customers_total = 0
+        self.internal_customers_pages = 0
+        self.internal_customers_page = 1
+        self.internal_customers_search = ""
+        self.internal_customers_status = "ATIVO"
+        self.internal_customers_search_input = ""
+        self.internal_customers_status_input = "ATIVO"
+        self.internal_customers_loading = False
+        self.internal_customer_loading = False
+        self.internal_customers_message = ""
+
+    @rx.event
+    def close_internal_customer(self):
+        self._internal_detail_generation += 1
+        self.internal_customer_detail = []
+        self.internal_customer_loading = False
+
+    @rx.event
+    def set_internal_customers_search_input(self, value: str):
+        self.internal_customers_search_input = value
+
+    @rx.event
+    def set_internal_customers_status_input(self, value: str):
+        self.internal_customers_status_input = value
+
+    @rx.event
+    def search_internal_customers(self, form_data: dict):
+        self.internal_customers_search = str(form_data.get("q", "")).strip()
+        self.internal_customers_status = str(form_data.get("status", "ATIVO"))
+        self.internal_customers_page = 1
+        return State.load_internal_customers
+
+    @rx.event
+    def clear_internal_customer_filters(self):
+        self._clear_internal_customers()
+        return State.load_internal_customers
+
+    @rx.event
+    def internal_customers_previous(self):
+        if self.internal_customers_page > 1 and not self.internal_customers_loading:
+            self.internal_customers_page -= 1
+            return State.load_internal_customers
+
+    @rx.event
+    def internal_customers_next(self):
+        if self.internal_customers_page < self.internal_customers_pages and not self.internal_customers_loading:
+            self.internal_customers_page += 1
+            return State.load_internal_customers
+
+    @rx.event
+    async def load_internal_customers(self):
+        if not self._internal_customer_allowed():
+            self._clear_internal_customers()
+            return
+        self._internal_customers_generation += 1
+        generation = self._internal_customers_generation
+        token, user_id = self._auth_token, self.user_id
+        self.close_internal_customer()
+        self.internal_customers = []
+        self.internal_customers_total = 0
+        self.internal_customers_pages = 0
+        self.internal_customers_message = ""
+        self.internal_customers_loading = True
+        try:
+            params = query_parameters(self.internal_customers_search, self.internal_customers_status, self.internal_customers_page)
+            url = _required_environment_url("XANO_INTERNAL_CUSTOMERS_URL")
+            url += ("&" if "?" in url else "?") + urlencode(params)
+            async def request():
+                return await _server_side_xano_request(url, authorization="Bearer " + token, retry_rate_limit=False)
+            result = await bounded_read(request)
+            items, total, pages = customer_page(result, page=params["page"])
+            if generation == self._internal_customers_generation and token == self._auth_token and user_id == self.user_id and self._internal_customer_allowed():
+                self.internal_customers, self.internal_customers_total, self.internal_customers_pages = items, total, pages
+                if not items:
+                    self.internal_customers_message = "Nenhum cliente nesta página. Ajuste os filtros ou volte à página anterior."
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if generation == self._internal_customers_generation and token == self._auth_token and user_id == self.user_id:
+                if isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                    self._clear_authentication_state("Acesso interno não autorizado. Entre novamente.")
+                    return
+                self.internal_customers_message = "Consulta indisponível. Verifique o acesso e tente novamente."
+        finally:
+            if generation == self._internal_customers_generation:
+                self.internal_customers_loading = False
+
+    @rx.event
+    async def show_internal_customer(self, customer_id: int):
+        if not self._internal_customer_allowed():
+            self._clear_internal_customers()
+            return
+        self.close_internal_customer()
+        self._internal_detail_generation += 1
+        generation = self._internal_detail_generation
+        list_generation, token, user_id = self._internal_customers_generation, self._auth_token, self.user_id
+        self.internal_customer_loading = True
+        self.internal_customers_message = ""
+        try:
+            if type(customer_id) is not int or customer_id < 1:
+                raise ValueError("Invalid id")
+            url = _required_environment_url("XANO_INTERNAL_CUSTOMER_DETAILS_URL")
+            if "{customer_id}" not in url:
+                raise ValueError("Missing customer placeholder")
+            url = url.replace("{customer_id}", str(customer_id))
+            async def request():
+                return await _server_side_xano_request(url, authorization="Bearer " + token, retry_rate_limit=False)
+            record = customer_record(await bounded_read(request), detail=True)
+            if record.id != customer_id:
+                raise ValueError("Unexpected customer")
+            if generation == self._internal_detail_generation and list_generation == self._internal_customers_generation and token == self._auth_token and user_id == self.user_id and self._internal_customer_allowed():
+                self.internal_customer_detail = [record]
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if generation == self._internal_detail_generation and token == self._auth_token and user_id == self.user_id:
+                if isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                    self._clear_authentication_state("Acesso interno não autorizado. Entre novamente.")
+                    return
+                self.internal_customers_message = "Não foi possível consultar este cliente. Verifique o acesso e tente novamente."
+        finally:
+            if generation == self._internal_detail_generation:
+                self.internal_customer_loading = False
+
     integration_loading: bool = False
     integration_status: str = "idle"
     integration_message: str = "Integration check has not run."
@@ -2086,6 +2235,7 @@ class State(rx.State):
         *,
         session_status: str = "error",
     ):
+        self._clear_internal_customers()
         self._auth_token = ""
         self.is_authenticated = False
         self.user_id = None
@@ -3558,6 +3708,8 @@ class State(rx.State):
             )
             return
 
+        if self.user_id != identity_id or self.user_role != identity_role:
+            self._clear_internal_customers()
         self.user_id = identity_id
         self.user_name = identity_name
         self.user_email = identity_email
@@ -5294,6 +5446,69 @@ def page_shell(
     )
 
 
+def internal_customer_panel() -> rx.Component:
+    def customer_row(customer):
+        return rx.table.row(
+            rx.table.cell(customer.nome_completo),
+            rx.table.cell(customer.email_masked),
+            rx.table.cell(customer.telefone_masked),
+            rx.table.cell(customer.status),
+            rx.table.cell(rx.button("Ver detalhes", on_click=State.show_internal_customer(customer.id),
+                                    variant="soft",
+                                    disabled=State.internal_customers_loading | State.internal_customer_loading)),
+        )
+
+    def detail(customer):
+        return surface_card(rx.vstack(
+            rx.hstack(rx.heading(customer.nome_completo, size="5", as_="h3"),
+                      rx.button("Fechar detalhes do cliente", on_click=State.close_internal_customer, variant="soft"),
+                      justify="between", width="100%"),
+            rx.text("E-mail: " + customer.email_masked),
+            rx.text("Telefone: " + customer.telefone_masked),
+            rx.text("CPF: " + customer.cpf_masked),
+            rx.text("Status: " + customer.status),
+            rx.text("Cadastro: " + customer.created_at),
+            align="stretch", spacing="3"))
+
+    return surface_card(rx.vstack(
+        rx.heading("Clientes", size="6", as_="h2"),
+        rx.text("Consulte clientes e seus dados protegidos. Acesso somente para leitura."),
+        rx.form(rx.flex(
+            rx.vstack(rx.el.label("Nome ou e-mail", html_for="internal-customer-query"),
+                rx.input(id="internal-customer-query", name="q", value=State.internal_customers_search_input,
+                         on_change=State.set_internal_customers_search_input,
+                         max_length=100, placeholder="Buscar cliente", disabled=State.internal_customers_loading, width="100%"),
+                spacing="1", flex="1", align="stretch"),
+            rx.vstack(rx.el.label("Status", html_for="internal-customer-status"),
+                rx.el.select(rx.el.option("Ativos", value="ATIVO"), rx.el.option("Inativos", value="INATIVO"),
+                             rx.el.option("Todos", value="TODOS"), id="internal-customer-status", name="status",
+                             value=State.internal_customers_status_input, on_change=State.set_internal_customers_status_input,
+                             disabled=State.internal_customers_loading,
+                             padding="0.6rem", border_radius="8px"), spacing="1"),
+            rx.button("Buscar clientes", type="submit", disabled=State.internal_customers_loading),
+            rx.button("Limpar filtros", type="button", on_click=State.clear_internal_customer_filters,
+                      disabled=State.internal_customers_loading, variant="soft"),
+            gap="12px", align="end", wrap="wrap", width="100%"), on_submit=State.search_internal_customers,
+            reset_on_submit=False, width="100%"),
+        rx.button("Carregar / atualizar clientes", on_click=State.load_internal_customers,
+                  disabled=State.internal_customers_loading, variant="outline", align_self="start"),
+        rx.cond(State.internal_customers_loading, rx.text("Carregando clientes…", role="status")),
+        rx.cond(State.internal_customers_message != "", rx.text(State.internal_customers_message, role="status")),
+        rx.cond(State.internal_customers.length() > 0,
+            rx.box(rx.table.root(rx.table.header(rx.table.row(*[rx.table.column_header_cell(label)
+                for label in ["Cliente", "E-mail protegido", "Telefone protegido", "Status", "Consulta"]])),
+                rx.table.body(rx.foreach(State.internal_customers, customer_row))), overflow_x="auto", width="100%")),
+        rx.hstack(rx.button("Página anterior", on_click=State.internal_customers_previous,
+                            disabled=(State.internal_customers_page <= 1) | State.internal_customers_loading),
+                  rx.text("Página ", State.internal_customers_page, " · ", State.internal_customers_total, " clientes"),
+                  rx.button("Próxima página", on_click=State.internal_customers_next,
+                            disabled=(State.internal_customers_page >= State.internal_customers_pages) | State.internal_customers_loading),
+                  wrap="wrap", align="center", spacing="3"),
+        rx.cond(State.internal_customer_loading, rx.text("Carregando detalhe…", role="status")),
+        rx.foreach(State.internal_customer_detail, detail),
+        spacing="4", width="100%", align="stretch"))
+
+
 def index() -> rx.Component:
     def catalog_section(
         title: str,
@@ -6063,6 +6278,7 @@ State.toggle_brand_status,
                     spacing="2",
                 ),
             ),
+            internal_customer_panel(),
             catalog_management,
             product_management,
             bulk_import_management,
