@@ -1,0 +1,24 @@
+[
+  {
+    "sku": "VTX-DEMO-019",
+    "mpn": "24MP400-B",
+    "icecat_id": 89731590,
+    "demo": false,
+    "width": "1600",
+    "height": "1062",
+    "sha256": "9c34fb4ad62075993f721b915530af35ea2c0f4157be8796818ca5952c2e858a",
+    "catalog_variation": "23,8 polegadas",
+    "catalog_specifications": "Tela 23,8 polegadas; resolução Full HD; painel IPS"
+  },
+  {
+    "sku": "VTX-DEMO-020",
+    "mpn": "LF24T350FHNXZA",
+    "icecat_id": 85817765,
+    "demo": false,
+    "width": "1600",
+    "height": "1200",
+    "sha256": "bde644aa69725dcdaeb38b6380b6afc0baad7db3b4e4b3bbf1db7f6b3241a2fa",
+    "catalog_variation": "24 polegadas",
+    "catalog_specifications": "Tela 24 polegadas (classe comercial); resolução Full HD; painel IPS"
+  }
+]

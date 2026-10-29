@@ -2,9 +2,9 @@
     "updated": "2026-10-29",
     "criteria": "Exact model match (variant/capacity/version). Sources: manufacturers, distributors, specialty retailers, marketplaces. No AI images, similar products, or different versions. Public accessibility does not equal authorization. Download only authorized or properly licensed images; in doubt, keep placeholder and record pending.",
     "summary": {
-        "verified": 12,
-        "usable": 12,
-        "pending": 8
+        "verified": 14,
+        "usable": 14,
+        "pending": 6
     },
     "editorial_images": [
         {
@@ -327,22 +327,44 @@
         {
             "sku": "VTX-DEMO-019",
             "product": "Monitor LG 24MP400-B",
-            "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons. LG legal terms: materials may not be copied, distributed or transmitted for commercial use without express written consent of LG Electronics.",
+            "status": "approved",
             "researched_sources": [
-                "https://commons.wikimedia.org/ (intitle:24MP400 - no results)",
-                "https://lgusnewsroom.com/legal/"
-            ]
+                "https://www.lg.com/uk/monitors/ips-monitor/24mp400-b/",
+                "https://iceclog.com/open-content-license/"
+            ],
+            "file": "vtx-demo-019.jpg",
+            "source_url": "https://images.icecat.biz/img/gallery/83bb825bd22a5d069cfebc8442ada28dfe3c549e.jpg",
+            "author": "Conteúdo LG via Icecat",
+            "license": "OCL 1.4",
+            "license_url": "https://iceclog.com/open-content-license/",
+            "attribution": "LG 24MP400-B computer monitor 61 cm (24\") 1920 x 1080 pixels Full HD LED Black, MPN 24MP400-B, fornecido via Open Icecat, produto 89731590.",
+            "notice": "Database Right data-sheet 2026 Icecat. All rights reserved. Conteúdo fornecido no estado em que se encontra, sem garantia. Consulte a licença.",
+            "manufacturer_product_code": "24MP400-B",
+            "icecat_id": 89731590,
+            "reviewed": "2026-10-29",
+            "sha256": "9c34fb4ad62075993f721b915530af35ea2c0f4157be8796818ca5952c2e858a",
+            "note": "Own-account access verified, DemoAccount=false. Exact model/size checked against real public catalog and manufacturer. Black monitor with included stand; original JPG unchanged, no cropping, conversion or generative editing. Regional suffix not added as a catalog claim. Provider credit does not assert photographic authorship."
         },
         {
             "sku": "VTX-DEMO-020",
             "product": "Monitor Samsung T350 24 polegadas",
-            "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons. Samsung Newsroom terms restrict materials to personal, informational and non-commercial use.",
+            "status": "approved",
             "researched_sources": [
-                "https://commons.wikimedia.org/ (intitle:T350 intitle:Samsung - no results)",
-                "https://news.samsung.com/global/terms-of-use"
-            ]
+                "https://www.samsung.com/us/monitors/flat/24-led-monitor-with-borderless-design-sku-lf24t350fhnxza/",
+                "https://iceclog.com/open-content-license/"
+            ],
+            "file": "vtx-demo-020.jpg",
+            "source_url": "https://images.icecat.biz/img/gallery/a290f179eda9cc2d5f32316489e1ff5bd154d5d0.jpg",
+            "author": "Conteúdo Samsung via Icecat",
+            "license": "OCL 1.4",
+            "license_url": "https://iceclog.com/open-content-license/",
+            "attribution": "Samsung LF24T350FHNXZA computer monitor 61 cm (24\") 1920 x 1080 pixels Full HD LED Black, MPN LF24T350FHNXZA, fornecido via Open Icecat, produto 85817765.",
+            "notice": "Database Right data-sheet 2026 Icecat. All rights reserved. Conteúdo fornecido no estado em que se encontra, sem garantia. Consulte a licença.",
+            "manufacturer_product_code": "LF24T350FHNXZA",
+            "icecat_id": 85817765,
+            "reviewed": "2026-10-29",
+            "sha256": "bde644aa69725dcdaeb38b6380b6afc0baad7db3b4e4b3bbf1db7f6b3241a2fa",
+            "note": "Own-account access verified, DemoAccount=false. Exact model/size checked against real public catalog and manufacturer. Black monitor with included stand; original JPG unchanged, no cropping, conversion or generative editing. Regional suffix not added as a catalog claim. Provider credit does not assert photographic authorship."
         }
     ]
 }
