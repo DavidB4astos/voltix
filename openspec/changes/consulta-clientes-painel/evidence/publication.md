@@ -27,3 +27,11 @@
 - Usuário realizou logout de Funcionário e login com Administrador de teste. A UI confirmou ADMINISTRADOR; painel iniciou sem estado vazio herdado da conta anterior.
 - Busca pelo mesmo termo sintético sem correspondência retornou estado vazio correto, sem Consulta indisponível.
 - Evidência administrador-busca-vazia.png contém somente o painel de consulta. Permissões positivas de lista confirmadas para os dois perfis; testes com registros fictícios/detalhe e permissões negativas autenticadas continuam pendentes.
+
+## Cliente fictício confirmado pelo usuário
+- Usuário confirmou explicitamente David como cadastro fictício autorizado para a validação.
+- Na sessão ADMINISTRADOR, busca david já apresentava dois resultados; seleção do registro correspondente a David abriu detalhe com sucesso.
+- E-mail tes***** e telefone ***** apresentados protegidos; CPF sem valor. Não houve exposição de contatos completos, token ou credenciais no painel.
+- Fechar detalhes funcionou. Busca DAVID manteve dois resultados, verificando insensibilidade a maiúsculas para esse termo.
+- Limite: telefone longo e CPF válido não foram comprovados nesse cadastro; paginação com mais de uma página e permissões negativas autenticadas continuam pendentes.
+- Pendências visuais identificadas no detalhe: CPF ausente fica em branco; created_at é exibido como timestamp numérico, sem formatação amigável. Não tratar a change como encerrada antes de revisar esses pontos.
