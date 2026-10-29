@@ -50,3 +50,9 @@
 - Observados retornos 403 no login interno na tentativa que o usuário identificou como conta inativa; não houve token para validar autorização dos dois GETs nesse contexto. Não confundir recusa no login com comprovação do bloqueio em endpoint.
 - Login interno ativo subsequente: GET de lista 200 e detalhe de ID inexistente 404. Nenhum registro alterado.
 - Usuário informou que a conta de Cliente está indisponível agora; suas tentativas de login deram 403 e não produziram sessão para o teste de token de Cliente. Permanecem pendentes Cliente autenticado/ID coincidente e sessão interna inativa nos dois endpoints. Change continua aberta.
+
+## Cliente autenticado negado — confirmado
+- Usuário informou login de Cliente concluído. O verificador temporário recebeu a resposta de login com authToken em memória e usou essa sessão somente nos dois GETs internos aprovados.
+- GET lista: 401. GET detalhe de ID inexistente: 401, sem revelar existência de registro. Nenhum token, senha, identificador de sessão ou corpo de cliente foi persistido na evidência.
+- Evidência sanitizada customer-session-denied.json. Esse teste comprova a rejeição da sessão de Cliente utilizada; não foi verificada coincidência de ID com usuário interno nem foi criada/alterada conta para produzir essa condição.
+- Não houve alteração de código, backend ou registros nesta etapa. Continua pendente a validação com sessão interna inativa e o cenário específico de ID coincidente; change permanece aberta.

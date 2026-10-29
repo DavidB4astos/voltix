@@ -1,0 +1,12 @@
+[
+  {
+    "login_kind": "customer",
+    "endpoint": "list",
+    "status": 401
+  },
+  {
+    "login_kind": "customer",
+    "endpoint": "detail",
+    "status": 401
+  }
+]
