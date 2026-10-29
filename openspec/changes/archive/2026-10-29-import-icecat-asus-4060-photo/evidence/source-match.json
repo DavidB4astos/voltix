@@ -1,0 +1,16 @@
+{
+  "sku": "VTX-DEMO-016",
+  "queried_model": "DUAL-RTX4060-8G",
+  "returned_model": "DUAL-RTX4060-8G",
+  "canonical_mpn": "90YV0JC1-M0NA00",
+  "icecat_id": 112548707,
+  "demo": false,
+  "width": 2400,
+  "height": 2400,
+  "sha256": "4473d5e30975cd57c40c03acf0e030783d049a13ae390963aab56087dc298a2f",
+  "catalog_variation": "8 GB",
+  "deferred": {
+    "ryzen_5600": "HTTP 403, Full Icecat app_key required",
+    "archer_c6": "HTTP 200, metadata/image/catalog conflict; revision unconfirmed"
+  }
+}

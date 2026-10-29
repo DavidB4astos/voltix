@@ -2,9 +2,9 @@
     "updated": "2026-10-29",
     "criteria": "Exact model match (variant/capacity/version). Sources: manufacturers, distributors, specialty retailers, marketplaces. No AI images, similar products, or different versions. Public accessibility does not equal authorization. Download only authorized or properly licensed images; in doubt, keep placeholder and record pending.",
     "summary": {
-        "verified": 14,
-        "usable": 14,
-        "pending": 6
+        "verified": 15,
+        "usable": 15,
+        "pending": 5
     },
     "editorial_images": [
         {
@@ -264,11 +264,12 @@
             "sku": "VTX-DEMO-014",
             "product": "Processador AMD Ryzen 5 5600",
             "status": "pending",
-            "reason": "Commons Category:AMD Ryzen 5 5600 contains only benchmark screenshots, not product photos. AMD marketing materials require an AMD Amplify account.",
+            "reason": "Own-account Icecat query 100-100000927BOX returned HTTP 403 requiring an app_key for Full Icecat content. No authorized image obtained; keep placeholder. No credentials requested or bypass attempted.",
             "researched_sources": [
                 "https://commons.wikimedia.org/wiki/Category:AMD_Ryzen_5_5600",
                 "https://www.amd.com/en/newsroom.html"
-            ]
+            ],
+            "reviewed": "2026-10-29"
         },
         {
             "sku": "VTX-DEMO-015",
@@ -285,23 +286,37 @@
         {
             "sku": "VTX-DEMO-016",
             "product": "Placa de video ASUS Dual GeForce RTX 4060 8GB",
-            "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons. ASUS Copyright Usage Guidelines restrict ASUS Resource use to licensees/dealers/resellers with agreements with ASUSTeK, require 'Used with permission from ASUS' and prior marketing review.",
+            "status": "approved",
             "researched_sources": [
-                "https://commons.wikimedia.org/ (intitle:4060 intitle:Dual - no results)",
-                "https://channel.asus.com/guideline/inner?index=asusCopyright_en"
-            ]
+                "https://www.asus.com/motherboards-components/graphics-cards/dual/dual-rtx4060-8g/techspec/",
+                "https://iceclog.com/open-content-license/"
+            ],
+            "file": "vtx-demo-016.jpg",
+            "source_url": "https://images.icecat.biz/img/gallery/a24cc4b14fb2495e817200beda10349ed0434c89.jpg",
+            "author": "Conteúdo ASUS via Icecat",
+            "license": "OCL 1.4",
+            "license_url": "https://iceclog.com/open-content-license/",
+            "attribution": "ASUS DUAL-RTX4060-8G, MPN 90YV0JC1-M0NA00, fornecido via Open Icecat, produto 112548707.",
+            "notice": "Database Right data-sheet 2026 Icecat. All rights reserved. Conteúdo fornecido no estado em que se encontra, sem garantia. Consulte a licença.",
+            "manufacturer_product_code": "90YV0JC1-M0NA00",
+            "manufacturer_model": "DUAL-RTX4060-8G",
+            "icecat_id": 112548707,
+            "reviewed": "2026-10-29",
+            "sha256": "4473d5e30975cd57c40c03acf0e030783d049a13ae390963aab56087dc298a2f",
+            "note": "Own-account access verified, DemoAccount=false. DUAL-RTX4060-8G non-OC black/grey 8GB GDDR6 matches catalog; not EVO/WHITE/Ti. Original 2400x2400 JPG unchanged. No generative editing. Provider credit does not assert photographic authorship."
         },
         {
             "sku": "VTX-DEMO-017",
             "product": "Roteador TP-Link Archer C6",
             "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons. TP-Link Terms of Use prohibit commercial use of site content without prior written consent or a reseller/distribution license; official assets require Brandfolder access request.",
+            "reason": "Icecat ARCHER C6 returned HTTP 200, DemoAccount=false (79344005), but title describes White/Fast Ethernet while the image is black and catalog requires Gigabit. Hardware revision is unspecified; exact-version correspondence not established. Keep placeholder pending reliable matching evidence.",
             "researched_sources": [
                 "https://commons.wikimedia.org/ (intitle:Archer C6 - no results)",
                 "https://www.tp-link.com/us/about-us/privacy/",
-                "https://brandfolder.com/demo-tplinkusa"
-            ]
+                "https://brandfolder.com/demo-tplinkusa",
+                "https://www.tp-link.com/us/home-networking/wifi-router/archer-c6/"
+            ],
+            "reviewed": "2026-10-29"
         },
         {
             "sku": "VTX-DEMO-018",
