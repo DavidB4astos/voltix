@@ -1,0 +1,35 @@
+[
+  {
+    "sku": "VTX-DEMO-009",
+    "mpn": "SA400S37/480G",
+    "icecat_id": 108209269,
+    "title": "Kingston Technology A400 480 GB 2.5\" Serial ATA III TLC",
+    "demo": false,
+    "width": "2400",
+    "height": "1681",
+    "sha256": "6483530f0914e54896beb923ea310bbd813a4f50d53c67eda7f0092fb8e32177",
+    "catalog_variation": "480 GB"
+  },
+  {
+    "sku": "VTX-DEMO-010",
+    "mpn": "SNV2S/1000G",
+    "icecat_id": 101710640,
+    "title": "Kingston Technology 1000G NV2 M.2 2280 PCIe 4.0 NVMe SSD",
+    "demo": false,
+    "width": "2400",
+    "height": "1500",
+    "sha256": "1e007e0303a9563b92af4f2edeeaed9d625127b093df521eacfae894271ff7c0",
+    "catalog_variation": "1 TB"
+  },
+  {
+    "sku": "VTX-DEMO-013",
+    "mpn": "KF432C16BB/16",
+    "icecat_id": 92995617,
+    "title": "Kingston Technology FURY Beast 16GB 3200MT/s DDR4 CL16 DIMM Black",
+    "demo": false,
+    "width": "2045",
+    "height": "642",
+    "sha256": "7d1c9e3666aee96ca5e0588fa2638a9f125d3070377923dd26720aff522adaf4",
+    "catalog_variation": "16 GB"
+  }
+]

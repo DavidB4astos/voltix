@@ -2,9 +2,9 @@
     "updated": "2026-10-29",
     "criteria": "Exact model match (variant/capacity/version). Sources: manufacturers, distributors, specialty retailers, marketplaces. No AI images, similar products, or different versions. Public accessibility does not equal authorization. Download only authorized or properly licensed images; in doubt, keep placeholder and record pending.",
     "summary": {
-        "verified": 8,
-        "usable": 8,
-        "pending": 12
+        "verified": 11,
+        "usable": 11,
+        "pending": 9
     },
     "editorial_images": [
         {
@@ -167,22 +167,44 @@
         {
             "sku": "VTX-DEMO-009",
             "product": "SSD Kingston A400 480GB",
-            "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons. Kingston LoDA content license limits use to legitimate business purposes relating to a potential/current Kingston business partner role; Voltix is not a Kingston partner.",
+            "status": "approved",
             "researched_sources": [
-                "https://commons.wikimedia.org/ (intitle:Kingston intitle:A400 - no results)",
-                "https://www.kingstonloda.com/ (LoDA Terms of Use)"
-            ]
+                "https://www.kingston.com/datasheets/SA400_us.pdf",
+                "https://iceclog.com/open-content-license/"
+            ],
+            "file": "vtx-demo-009.jpg",
+            "source_url": "https://images.icecat.biz/img/gallery/9148614c384f2cf258135ec0898032b4706f5c7f.jpg",
+            "author": "Conteúdo Kingston via Icecat",
+            "license": "OCL 1.4",
+            "license_url": "https://iceclog.com/open-content-license/",
+            "attribution": "Kingston Technology A400 480 GB 2.5\" Serial ATA III TLC, MPN SA400S37/480G, fornecido via Open Icecat, produto 108209269.",
+            "notice": "Database Right data-sheet 2026 Icecat. All rights reserved. Conteúdo fornecido no estado em que se encontra, sem garantia. Consulte a licença.",
+            "manufacturer_product_code": "SA400S37/480G",
+            "icecat_id": 108209269,
+            "reviewed": "2026-10-29",
+            "sha256": "6483530f0914e54896beb923ea310bbd813a4f50d53c67eda7f0092fb8e32177",
+            "note": "Own-account access verified, DemoAccount=false. Exact model/capacity checked against real public catalog and manufacturer documentation. Original JPG unchanged; no generative editing. Provider credit does not assert photographic authorship."
         },
         {
             "sku": "VTX-DEMO-010",
             "product": "SSD Kingston NV2 1TB",
-            "status": "pending",
-            "reason": "Commons has '2023 Dysk SSD Kingston NV2 2TB.jpg' (CC BY-SA 4.0) but it is the 2TB variant, not 1TB; exact-capacity rule forbids use. Kingston LoDA not authorized for Voltix.",
+            "status": "approved",
             "researched_sources": [
-                "https://commons.wikimedia.org/wiki/File:2023_Dysk_SSD_Kingston_NV2_2TB.jpg",
-                "https://www.kingstonloda.com/ (LoDA Terms of Use)"
-            ]
+                "https://www.kingston.com/datasheets/snv2s_en.pdf",
+                "https://iceclog.com/open-content-license/"
+            ],
+            "file": "vtx-demo-010.jpg",
+            "source_url": "https://images.icecat.biz/img/gallery/3f12c455553cf47744134d98855a6dc6c4d77b74.jpg",
+            "author": "Conteúdo Kingston via Icecat",
+            "license": "OCL 1.4",
+            "license_url": "https://iceclog.com/open-content-license/",
+            "attribution": "Kingston Technology 1000G NV2 M.2 2280 PCIe 4.0 NVMe SSD, MPN SNV2S/1000G, fornecido via Open Icecat, produto 101710640.",
+            "notice": "Database Right data-sheet 2026 Icecat. All rights reserved. Conteúdo fornecido no estado em que se encontra, sem garantia. Consulte a licença.",
+            "manufacturer_product_code": "SNV2S/1000G",
+            "icecat_id": 101710640,
+            "reviewed": "2026-10-29",
+            "sha256": "1e007e0303a9563b92af4f2edeeaed9d625127b093df521eacfae894271ff7c0",
+            "note": "Own-account access verified, DemoAccount=false. Exact model/capacity checked against real public catalog and manufacturer documentation. Original JPG unchanged; no generative editing. Provider credit does not assert photographic authorship."
         },
         {
             "sku": "VTX-DEMO-011",
@@ -207,12 +229,23 @@
         {
             "sku": "VTX-DEMO-013",
             "product": "Memoria Kingston FURY Beast DDR4 16GB 3200MHz",
-            "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons. Kingston LoDA not authorized for Voltix.",
+            "status": "approved",
             "researched_sources": [
-                "https://commons.wikimedia.org/ (intitle:FURY Beast - no results)",
-                "https://www.kingstonloda.com/ (LoDA Terms of Use)"
-            ]
+                "https://www.kingston.com/dataSheets/KF432C16BB_16.pdf",
+                "https://iceclog.com/open-content-license/"
+            ],
+            "file": "vtx-demo-013.jpg",
+            "source_url": "https://images.icecat.biz/img/gallery/7d12906b625b228f02f9435afc2253a18ca44287.jpg",
+            "author": "Conteúdo Kingston via Icecat",
+            "license": "OCL 1.4",
+            "license_url": "https://iceclog.com/open-content-license/",
+            "attribution": "Kingston Technology FURY Beast 16GB 3200MT/s DDR4 CL16 DIMM Black, MPN KF432C16BB/16, fornecido via Open Icecat, produto 92995617.",
+            "notice": "Database Right data-sheet 2026 Icecat. All rights reserved. Conteúdo fornecido no estado em que se encontra, sem garantia. Consulte a licença.",
+            "manufacturer_product_code": "KF432C16BB/16",
+            "icecat_id": 92995617,
+            "reviewed": "2026-10-29",
+            "sha256": "7d1c9e3666aee96ca5e0588fa2638a9f125d3070377923dd26720aff522adaf4",
+            "note": "Own-account access verified, DemoAccount=false. Exact model/capacity checked against real public catalog and manufacturer documentation. Original JPG unchanged; no generative editing. Provider credit does not assert photographic authorship."
         },
         {
             "sku": "VTX-DEMO-014",
