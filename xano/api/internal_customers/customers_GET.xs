@@ -38,7 +38,7 @@ query customers verb=GET {
         }
       }
     
-      output = ["id", "nome_completo", "email", "telefone", "status", "created_at"]
+      output = ["items.id", "items.nome_completo", "items.email", "items.telefone", "items.status", "items.created_at", "itemsTotal", "pageTotal"]
     } as $page
   
     var $items {

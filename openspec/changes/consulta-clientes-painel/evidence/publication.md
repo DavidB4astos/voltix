@@ -15,3 +15,10 @@
 - Sessão real de Funcionário confirmou acesso ao painel; diagnóstico local confirmou execução de search_internal_customers e load_internal_customers, com guarda de autorização positiva.
 - Busca sem correspondência exibiu Consulta indisponível. Portanto o fluxo autenticado de consulta ainda não foi aprovado; investigação em andamento, sem registrar token, senha ou corpo de clientes.
 - Diagnóstico executado fora do repositório, sem mudar comportamento de negócio; nenhuma evidência de erro foi tratada como sucesso.
+
+## Correção e primeira validação autenticada
+- Diagnóstico sanitizado identificou HTTP 500 ERROR_FATAL: Unable to locate var: page.items.
+- Causa: output da db.query paginada selecionava campos no nível raiz; ajustado para items.id/items.nome_completo/items.email/items.telefone/items.status/items.created_at, preservando itemsTotal e pageTotal.
+- Dry-run limitado a customers_GET.xs mostrou somente um UPDATE; publicação do único documento concluída com sucesso.
+- Funcionário ATIVO: busca por termo sintético sem correspondência retornou objeto com os cinco campos do contrato e a UI exibiu estado vazio, sem erro. Repetido com status ATIVO, TODOS e INATIVO.
+- Evidência recortada somente no painel, sem identidade da conta, senha, token ou clientes. Essa busca vazia não comprova máscaras de registros, paginação com resultados, detalhe nem permissão de Administrador/Cliente/inativo; continuam pendentes.
