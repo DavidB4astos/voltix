@@ -1,0 +1,17 @@
+[
+  {
+    "check": "customer-id-collision",
+    "same_numeric_id_exists": true,
+    "internal_role_valid": true
+  },
+  {
+    "check": "customer-id-collision",
+    "endpoint": "list",
+    "status": 401
+  },
+  {
+    "check": "customer-id-collision",
+    "endpoint": "detail",
+    "status": 401
+  }
+]

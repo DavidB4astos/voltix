@@ -6,6 +6,6 @@ Prévia e publicação restritas a três documentos, com confirmação interativ
 
 Primeiras tentativas foram rejeitadas por sintaxe; corrigidas preconditions compactas e posição de else em blocos multiline. O push posterior confirmou sucesso. Rejeições anteriores não mudaram os documentos existentes, conforme auditoria.
 
-Ambos os endpoints retornam 401 para anônimo e token inválido. Isso não comprova autorização por perfil com tokens reais, filtros, máscaras ou paginação em execução autenticada. Essas verificações continuam pendentes e impedem arquivar a change como concluída.
+Verificação concluída: anônimo/token inválido e Cliente (inclusive ID coincidente) negados com 401; sessão interna já emitida negada com 403 após inativação; conta de teste restaurada ATIVO sem outras alterações. Leituras autorizadas, detalhe fictício e paginação real confirmados. Ver ../evidence/final-review.md e as evidências sanitizadas; limites de fixtures estão explicitados. A change foi arquivada após a validação.
 
 As duas URLs estão configuradas somente no .env local; não versionar credenciais ou lista de clientes. Antes de qualquer futura alteração/publicação, executar dry-run restrito ao grupo e revisar a prévia.

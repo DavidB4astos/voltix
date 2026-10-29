@@ -21,13 +21,13 @@ Atualizado em 29/10/2026 por conferência do repositório local. Fontes: [AGENTS
 | Imagens locais dos produtos demo | 15 fotos aprovadas de 20, cinco pendentes. Infraestrutura existente; pendência atual é de conteúdo e direitos/modelo. | `assets/demo/manifest.json`; lotes Icecat e pesquisa arquivados em 29/10 |
 | Gestão de produtos e importação em massa | Changes arquivadas. Upload de imagem no Xano Free permanece com limitação histórica documentada, não declarado operacional nesta revisão. | Specs `product-management`, `product-bulk-import` |
 | Estoque C1 | Adiado/bloqueado; checkout valida disponibilidade, mas não baixa nem reserva estoque. | Spec `checkout-orders`; [README do adiamento](deferred-changes/2026-10-23-baixa-estoque-checkout/README.md) |
-| Consulta interna de clientes C4 | Não concluída. Rascunho preservado, com inconsistências de contrato, permissão e schema. | [Revisão do rascunho](deferred-changes/2026-10-27-consulta-clientes-admin/README.md) |
-| CRM, cancelamento e gestão operacional | Planejados abaixo; não há comprovação local de entrega completa dessas capabilities. | C2, C3, C4, C6, C7 e C10 |
+| Consulta interna de clientes C4 | Concluída: leitura para Funcionário/Administrador, filtros, paginação, máscaras e detalhe. Acesso de Cliente e interno inativo negado; teste de ID coincidente aprovado. | [Revisão final](../openspec/changes/archive/2026-10-29-consulta-clientes-painel/evidence/final-review.md) |
+| CRM, cancelamento e gestão operacional | Consulta C4 entregue. Histórico, atendimentos, cancelamento e gestão de pedidos continuam planejados, sem entrega completa dessas capabilities. | C2, C3, C6, C7 e C10 |
 | E2E existente | Spec cobre login e navegação com leituras; não confirma compra nem simula pagamento. | `openspec/specs/e2e-playwright/spec.md` |
 
 Os lotes de fotos até ASUS estão nos commits `18e7919`, `d215ce8`, `b4dfb46`, `ef0b6c7`, `f41ef3f` e `064e66b`; a pesquisa sem foto nova é `1f29f3b`. Preservam arquivos originais, fontes, licenças, avisos e evidências. Cinco pendentes: G203 LIGHTSYNC, M90, WD SN580 1TB, Ryzen 5 5600 e Archer C6. Não usar modelos parecidos, imagens geradas por IA para SKU ou conteúdo sem direitos demonstrados.
 
-**Change ativa em preparação:** [consulta-clientes-painel](../openspec/changes/consulta-clientes-painel/proposal.md), aberta após autorização do usuário. Contrato aprovado; implementação local e testes com fixtures disponíveis. Grupo e dois GETs publicados no Xano, com rejeição anônima/token inválido confirmada. Validação autenticada por perfil e de dados ainda pendente; não declarar feature concluída. A atualização documental `atualizar-roadmap-projeto` está arquivada. Consultar `openspec list` para o estado corrente.
+**C4 concluída e arquivada:** [consulta-clientes-painel](../openspec/changes/archive/2026-10-29-consulta-clientes-painel/proposal.md). Spec internal-customers consolidada após publicação restrita, validação autenticada e restauração da conta fictícia usada no teste de status. Limites das verificações registrados na revisão final. Consultar `openspec list` para o estado corrente; nenhuma próxima change foi iniciada neste encerramento.
 
 ## Decisões aprovadas E1–E7
 
@@ -72,7 +72,7 @@ O rascunho `consulta-clientes-admin` restringe a ADMINISTRADOR e diverge de E2; 
 
 ## Ordem recomendada para propostas futuras
 
-1. Propor C4 (consulta de clientes **somente leitura**) como próxima funcionalidade sem dependência da baixa de estoque; corrigir rascunho, autorização E2, minimização, filtros e paginação antes de implementar. Requer aprovação própria.
+1. C4 concluída e arquivada em 29/10/2026. Consulta de clientes somente leitura entregue; o rascunho admin-only adiado foi preservado como referência histórica e não publicado.
 2. Avaliar viabilidade de C1 no plano gratuito em proposta específica. Se não houver solução comprovada, manter bloqueada; não implementar baixa insegura.
 3. Resolvida C1: C2 → C3 → C10, preservando ordem estoque, devolução, transições e agregados.
 4. Resolvidas consultas C4/C3: C6 → C7, medindo capacidade antes de criar atendimentos.

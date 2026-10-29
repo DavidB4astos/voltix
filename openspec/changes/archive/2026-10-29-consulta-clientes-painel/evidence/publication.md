@@ -64,3 +64,10 @@
 - Bloco finally restaurou ATIVO; releitura e impressão dos demais campos confirmaram restauração e ausência de outras alterações. Diário local marcou needs_restore=false. Proteção independente de restauração também estava preparada.
 - Evidência inactive-session-denied.json contém apenas códigos de status e confirmações; nenhum token, senha ou conteúdo privado.
 - Pendência específica de autorização ainda não comprovada: Cliente com ID coincidente ao de usuário interno. A rejeição da sessão de Cliente disponível já foi comprovada, mas a coincidência dos IDs não foi medida. Não marcar 2.3 como integralmente concluída nem arquivar por inferência.
+
+## Cenário de ID coincidente — aprovado
+- Sessão existente de Cliente revalidada pelo endpoint de identidade, sem novo cadastro ou mudança de status.
+- O ID retornado foi comparado em memória com o registro de mesmo número na tabela interna user via Metadata API somente leitura. Confirmada existência e perfil interno válido; somente booleanos persistidos.
+- A mesma sessão de Cliente recebeu 401 nos GETs de lista e detalhe. Nenhum token ou ID foi persistido nessa evidência.
+- customer-id-collision.json encerra a pendência específica dos relatórios anteriores.
+- Revisão final: 182 testes passaram em 29/10/2026; conta temporariamente inativada está restaurada ATIVO e sem outros campos alterados. A execução temporária de alterações de status foi desativada no verificador após aprovação do teste, evitando repetição em novo login.

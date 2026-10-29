@@ -6,7 +6,7 @@
 ## 2. Backend e contrato
 - [x] 2.1 Confirmar schema real e sintaxe suportada por metadados, sem dados pessoais reais.
 - [x] 2.2 Implementar dois endpoints com autorização e whitelist/máscaras no Xano, filtros combinados e paginação real; não publicar draft antigo.
-- [ ] 2.3 Validar sintaxe e permissões negativas/positivas dos dois endpoints em contexto autorizado, incluindo Cliente com id coincidente.
+- [x] 2.3 Validar sintaxe e permissões negativas/positivas dos dois endpoints em contexto autorizado, incluindo Cliente com id coincidente.
 
 ## 3. Integração e desktop
 - [x] 3.1 Implementar modelos/normalização e chamadas State server-side com sessão interna privada e configuração documentada sem segredos.
@@ -15,6 +15,6 @@
 
 ## 4. Verificação e encerramento
 - [x] 4.1 Testar autorização, filtros combinados, máscaras curtas/inválidas, paginação, payload inesperado, erro/429 e corrida de respostas com fixtures isoladas.
-- [x] 4.2 Verificar desktop com fixtures sem PII real e preservar evidências sanitizadas; não fazer mutações Xano para criar cenário.
-- [ ] 4.3 Rodar verificações apropriadas e OpenSpec, documentar limites; só declarar funcional após validação Xano.
-- [ ] 4.4 Revisar diff, arquivar somente quando tudo concluído e criar commit separado.
+- [x] 4.2 Verificar desktop com fixtures sem PII real e preservar evidências sanitizadas; não fazer mutações Xano para criar cenário, exceto teste de status da conta interna fictícia expressamente autorizado e restaurado (ver evidence/inactive-session-test-plan.md).
+- [x] 4.3 Rodar verificações apropriadas e OpenSpec, documentar limites; só declarar funcional após validação Xano.
+- [x] 4.4 Revisar diff, arquivar somente quando tudo concluído e criar commit separado.
