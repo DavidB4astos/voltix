@@ -43,21 +43,25 @@
             "sku": "VTX-DEMO-001",
             "product": "Mouse Logitech G203 LIGHTSYNC",
             "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons. Logitech Assets License restricts Logitech-provided assets to use in regions where the party has been formally granted rights by Logitech; Voltix has no such grant.",
+            "reason": "Own-account Icecat query 910-005790 returned HTTP 403 requiring a Full Icecat app_key. Commons File:G203.jpg is unrelated (description: CC na casa g20), not a mouse. No exact-model freely licensed photo confirmed in this review. Logitech-provided assets require an applicable rights grant; keep placeholder.",
             "researched_sources": [
                 "https://commons.wikimedia.org/ (intitle:G203 - no Logitech product photos)",
-                "https://www.logitech.com/en-us/tos/logitech-assets-license"
-            ]
+                "https://www.logitech.com/en-us/tos/logitech-assets-license",
+                "https://commons.wikimedia.org/wiki/File:G203.jpg"
+            ],
+            "reviewed": "2026-10-29"
         },
         {
             "sku": "VTX-DEMO-002",
             "product": "Mouse Logitech M90",
             "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons. Logitech Assets License requires formal grant of rights; not authorized.",
+            "reason": "Own-account Icecat query 910-001793 returned HTTP 404 StatusCode 14: brand restrictions or limited access. Commons File:עכבר מחשב.jpg is CC BY-SA 4.0 but its description identifies M90 or M100 and mentions visible wear; exact M90 is unconfirmed. Keep placeholder, do not substitute M100.",
             "researched_sources": [
                 "https://commons.wikimedia.org/ (intitle:M90 intitle:Logitech - no results)",
-                "https://www.logitech.com/en-us/tos/logitech-assets-license"
-            ]
+                "https://www.logitech.com/en-us/tos/logitech-assets-license",
+                "https://commons.wikimedia.org/wiki/File:עכבר_מחשב.jpg"
+            ],
+            "reviewed": "2026-10-29"
         },
         {
             "sku": "VTX-DEMO-003",
@@ -231,11 +235,12 @@
             "sku": "VTX-DEMO-012",
             "product": "SSD WD Blue SN580 1TB",
             "status": "pending",
-            "reason": "Own-account Icecat queries for WDS100T3B0E returned HTTP 404; no usable content retrieved in this attempt. This does not prove universal unavailability or paid-only access. Existing manufacturer media terms do not establish store republication rights; keep placeholder.",
+            "reason": "Own-account Icecat MPN queries under Western Digital, WD and SanDisk returned HTTP 404; GTIN 718037887340 query returned HTTP 403. No authorized image retrieved. Commons search WD SN580 returned PC-build videos, not a confirmed isolated 1TB product photo. This does not establish universal unavailability or paid-only access; keep placeholder.",
             "researched_sources": [
                 "https://commons.wikimedia.org/ (intitle:SN580 - no results)",
                 "https://www.westerndigital.com/company/newsroom/media-kits",
-                "https://documents.westerndigital.com/content/dam/doc-library/en_us/assets/public/western-digital/product/internal-drives/wd-blue-ssd/product-brief-wd-blue-sn580-nvme-ssd.pdf"
+                "https://documents.westerndigital.com/content/dam/doc-library/en_us/assets/public/western-digital/product/internal-drives/wd-blue-ssd/product-brief-wd-blue-sn580-nvme-ssd.pdf",
+                "https://commons.wikimedia.org/w/index.php?search=WD+SN580&title=Special:MediaSearch&type=image"
             ],
             "reviewed": "2026-10-29"
         },

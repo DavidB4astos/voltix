@@ -1,0 +1,77 @@
+[
+  {
+    "brand": "Logitech",
+    "mpn": "910-005790",
+    "http": 403,
+    "message": "{\"StatusCode\":9,\"Code\":403,\"Error\":\"Forbidden\",\"Message\":\"To access Full Icecat content, an app_key is required. Full Icecat users can find it on their My Profile page.\"}"
+  },
+  {
+    "brand": "Logitech",
+    "mpn": "910-001793",
+    "http": 404,
+    "message": "{\"StatusCode\":14,\"Code\":404,\"Error\":\"Not Found\",\"Message\":\"Product has brand restrictions or access is limited\"}"
+  },
+  {
+    "brand": "SanDisk",
+    "mpn": "WDS100T3B0E",
+    "http": 404,
+    "message": "{\"StatusCode\":8,\"Code\":404,\"Error\":\"Not Found\",\"Message\":\"The requested product is not present in the Icecat database\"}"
+  },
+  {
+    "query": "Logitech G203",
+    "total": 58,
+    "titles": [
+      "File:G203.jpg",
+      "File:G203-路线图.svg",
+      "File:Estonian Museum of Natural History Specimen No 176968 photo (g203 g203-12 jpg).jpg",
+      "File:Estonian Museum of Natural History Specimen No 176269 photo (g203 g203-1 jpg).jpg",
+      "File:Estonian Museum of Natural History Specimen No 176270 photo (g203 g203-2 jpg).jpg",
+      "File:Estonian Museum of Natural History Specimen No 176866 photo (g203 g203-11 jpg).jpg",
+      "File:Female nude G203.jpg",
+      "File:Estonian Museum of Natural History Specimen No 176864 photo (g203 g203-10 jpg).jpg"
+    ]
+  },
+  {
+    "query": "Logitech M90",
+    "total": 1,
+    "titles": [
+      "File:עכבר מחשב.jpg"
+    ]
+  },
+  {
+    "query": "Ryzen 5 5600",
+    "total": 49,
+    "titles": [
+      "File:Выбираем лучший Ryzen Тест процессоров на AM4 и AM5-00.03.56.400 (Мой Компьютер).png",
+      "File:Выбираем лучший Ryzen Тест процессоров на AM4 и AM5-00.02.05.200 (Мой Компьютер).png",
+      "File:Выбираем лучший Ryzen Тест процессоров на AM4 и AM5-00.19.31.600 (Мой Компьютер).png",
+      "File:Выбираем лучший Ryzen Тест процессоров на AM4 и AM5-00.06.30.800 (Мой Компьютер).png",
+      "File:Выбираем лучший Ryzen Тест процессоров на AM4 и AM5-00.00.01.200 (Мой Компьютер).png",
+      "File:Выбираем лучший Ryzen Тест процессоров на AM4 и AM5-00.02.17.200 (Мой Компьютер).png",
+      "File:Выбираем лучший Ryzen Тест процессоров на AM4 и AM5-00.01.24.800 (Мой Компьютер).png",
+      "File:Выбираем лучший Ryzen Тест процессоров на AM4 и AM5-00.01.36.800 (Мой Компьютер).png"
+    ]
+  },
+  {
+    "query": "WD SN580",
+    "total": 2,
+    "titles": [
+      "File:Thermtaltake Tower 300 PC Build (RTX 4070 Super - Ryzen 7 7800X3D).webm",
+      "File:Yin Yang HYTE Y70 Touch PC Build (RTX 4070 super - Ryzen 5 7600X).webm"
+    ]
+  },
+  {
+    "query": "Archer C6",
+    "total": 338,
+    "titles": [
+      "File:Wallachian mounted archer in the late 16th century.jpg",
+      "File:Faience vase from Erivan Khanate in Museum of History of Azerbaijan.jpg",
+      "File:Black Sting1.jpg",
+      "File:Blood telegram.djvu",
+      "File:WW1; field ambulance at Gallipoli, 1915 Wellcome L0024989.jpg",
+      "File:Catalogue of publications (IA catalogueofpubli00hisp).pdf",
+      "File:The twenty-third annual report of the Committee of Visitors of the Cambridgeshire, Isle of Ely and Borough of Cambridge Pauper Lunatic Asylum for the year ending the thirty-first day of December (IA b30306334).pdf",
+      "File:Silvia de Lysardo (IA silviadelysardo00brit).pdf"
+    ]
+  }
+]
