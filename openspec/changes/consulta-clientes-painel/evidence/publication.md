@@ -22,3 +22,8 @@
 - Dry-run limitado a customers_GET.xs mostrou somente um UPDATE; publicação do único documento concluída com sucesso.
 - Funcionário ATIVO: busca por termo sintético sem correspondência retornou objeto com os cinco campos do contrato e a UI exibiu estado vazio, sem erro. Repetido com status ATIVO, TODOS e INATIVO.
 - Evidência recortada somente no painel, sem identidade da conta, senha, token ou clientes. Essa busca vazia não comprova máscaras de registros, paginação com resultados, detalhe nem permissão de Administrador/Cliente/inativo; continuam pendentes.
+
+## Administrador
+- Usuário realizou logout de Funcionário e login com Administrador de teste. A UI confirmou ADMINISTRADOR; painel iniciou sem estado vazio herdado da conta anterior.
+- Busca pelo mesmo termo sintético sem correspondência retornou estado vazio correto, sem Consulta indisponível.
+- Evidência administrador-busca-vazia.png contém somente o painel de consulta. Permissões positivas de lista confirmadas para os dois perfis; testes com registros fictícios/detalhe e permissões negativas autenticadas continuam pendentes.
