@@ -1,0 +1,22 @@
+[
+  {
+    "check": "inactive-session",
+    "status_change_confirmed": true
+  },
+  {
+    "check": "inactive-session",
+    "endpoint": "list",
+    "status": 403
+  },
+  {
+    "check": "inactive-session",
+    "endpoint": "detail",
+    "status": 403
+  },
+  {
+    "check": "inactive-session",
+    "restored": true,
+    "status": "ATIVO",
+    "other_fields_unchanged": true
+  }
+]

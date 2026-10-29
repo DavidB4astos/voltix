@@ -19,3 +19,6 @@ Em 29/10/2026, o usuário aprovou explicitamente emitir sessão de uma conta int
 
 ## Situação
 Preparado; aguarda login da conta de teste. Nenhuma inativação executada na preparação. O cenário de Cliente com ID coincidente continua separado e não será presumido a partir deste teste.
+
+## Resultado
+Executado após login confirmado pelo usuário: lista/detalhe negados com 403 enquanto INATIVO. Restaurado ATIVO; demais campos inalterados; diário sem restauração pendente. Ver inactive-session-denied.json e publication.md.

@@ -56,3 +56,11 @@
 - GET lista: 401. GET detalhe de ID inexistente: 401, sem revelar existência de registro. Nenhum token, senha, identificador de sessão ou corpo de cliente foi persistido na evidência.
 - Evidência sanitizada customer-session-denied.json. Esse teste comprova a rejeição da sessão de Cliente utilizada; não foi verificada coincidência de ID com usuário interno nem foi criada/alterada conta para produzir essa condição.
 - Não houve alteração de código, backend ou registros nesta etapa. Continua pendente a validação com sessão interna inativa e o cenário específico de ID coincidente; change permanece aberta.
+
+## Sessão interna inativa — teste automático aprovado
+- Usuário confirmou autenticação da conta fictícia autorizada. Sessão inicialmente ativa: lista sem correspondência 200 e detalhe de ID inexistente 404.
+- Atualização parcial limitada ao status de user registro 5, Usuario Funcionario Teste; INATIVO confirmado por releitura.
+- A mesma sessão já emitida recebeu 403 na lista e 403 no detalhe. Isso verifica o bloqueio no endpoint após inativação, independentemente do login.
+- Bloco finally restaurou ATIVO; releitura e impressão dos demais campos confirmaram restauração e ausência de outras alterações. Diário local marcou needs_restore=false. Proteção independente de restauração também estava preparada.
+- Evidência inactive-session-denied.json contém apenas códigos de status e confirmações; nenhum token, senha ou conteúdo privado.
+- Pendência específica de autorização ainda não comprovada: Cliente com ID coincidente ao de usuário interno. A rejeição da sessão de Cliente disponível já foi comprovada, mas a coincidência dos IDs não foi medida. Não marcar 2.3 como integralmente concluída nem arquivar por inferência.
