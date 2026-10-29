@@ -1,15 +1,11 @@
-# Candidatos de backend — ainda não publicados
+# Backend publicado — 29/10/2026
 
-O diretório `api/` contém somente um grupo novo e dois endpoints GET. Fica fora de `xano/api/` para não entrar em um push geral acidental. Não copiar nem executar o draft antigo adiado.
+O grupo Voltix Internal Customers e seus dois GETs foram publicados após aprovação específica do usuário. Fontes canônicas, com GUIDs e formatação retornados pelo Xano: `xano/api/internal_customers/` (na raiz do projeto). Os candidatos foram retirados deste diretório para evitar cópias executáveis duplicadas.
 
-A prévia `xano workspace push -p voltix -d openspec/changes/consulta-clientes-painel/backend --dry-run` indicou:
+Prévia e publicação restritas a três documentos, com confirmação interativa e transação padrão. Não foram usados force, sync, delete, records, env ou truncate. A comparação dos pulls antes/depois confirma três arquivos novos, nenhum arquivo existente alterado/removido. Nenhum registro ou variável de ambiente foi importado.
 
-- CREATE API group: Voltix Internal Customers.
-- CREATE customers GET.
-- CREATE customers/{customer_id} GET.
+Primeiras tentativas foram rejeitadas por sintaxe; corrigidas preconditions compactas e posição de else em blocos multiline. O push posterior confirmou sucesso. Rejeições anteriores não mudaram os documentos existentes, conforme auditoria.
 
-Nenhuma tabela, registro, variável de ambiente, endpoint existente ou operação de escrita é incluída. Não usar `--sync`, `--delete`, `--records`, `--env`, `--truncate` ou `--force`.
+Ambos os endpoints retornam 401 para anônimo e token inválido. Isso não comprova autorização por perfil com tokens reais, filtros, máscaras ou paginação em execução autenticada. Essas verificações continuam pendentes e impedem arquivar a change como concluída.
 
-O dry-run é uma prévia de importação, **não prova execução de filtros, máscaras, paginação ou autorização no Xano**. Após revisão específica da publicação, usar push restrito a este diretório, preservando confirmação interativa e transação padrão. Registrar erros sem dados pessoais. Após publicação, obter URLs reais e configurar apenas localmente `XANO_INTERNAL_CUSTOMERS_URL` e `XANO_INTERNAL_CUSTOMER_DETAILS_URL` (esta com `{customer_id}`).
-
-Validar rejeição de anônimo, Cliente e interno inativo e aceitação de FUNCIONARIO/ADMINISTRADOR em contexto autorizado, sem expor registros reais em relatórios. A conferência visual com fixtures e os testes Python não substituem esse gate. Não arquivar como feature concluída antes disso.
+As duas URLs estão configuradas somente no .env local; não versionar credenciais ou lista de clientes. Antes de qualquer futura alteração/publicação, executar dry-run restrito ao grupo e revisar a prévia.

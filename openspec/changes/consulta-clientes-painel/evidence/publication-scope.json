@@ -1,0 +1,19 @@
+{
+  "metadata_before": 95,
+  "metadata_after": 98,
+  "added": [
+    "api/voltix_internal_customers/customers/customer_id_GET.xs",
+    "api/voltix_internal_customers/customers_GET.xs",
+    "api/voltix_internal_customers/voltix_internal_customers.xs"
+  ],
+  "changed_existing": [],
+  "removed": [],
+  "records_included": false,
+  "environment_included": false,
+  "transaction_default": true,
+  "published_files": {
+    "api_group.xs": "111ba6c2b585ac5be42a867d2c3156a8887bc636ffc5e0195e50bc682ff9d280",
+    "customers_GET.xs": "e29c619598ed15bae663ea0a4432c85b89acf745573f4d00c53303d1909b06e0",
+    "customer_id_GET.xs": "abe921b7cfa41ac18aa5e27aea5103defbfd9e5b923efa6d6f159d5eb9bb4833"
+  }
+}

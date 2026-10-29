@@ -27,7 +27,7 @@ Atualizado em 29/10/2026 por conferência do repositório local. Fontes: [AGENTS
 
 Os lotes de fotos até ASUS estão nos commits `18e7919`, `d215ce8`, `b4dfb46`, `ef0b6c7`, `f41ef3f` e `064e66b`; a pesquisa sem foto nova é `1f29f3b`. Preservam arquivos originais, fontes, licenças, avisos e evidências. Cinco pendentes: G203 LIGHTSYNC, M90, WD SN580 1TB, Ryzen 5 5600 e Archer C6. Não usar modelos parecidos, imagens geradas por IA para SKU ou conteúdo sem direitos demonstrados.
 
-**Change ativa em preparação:** [consulta-clientes-painel](../openspec/changes/consulta-clientes-painel/proposal.md), aberta após autorização do usuário. Contrato aprovado; implementação local e testes com fixtures disponíveis. Publicação e validação real no Xano ainda pendentes; não declarar feature concluída. A atualização documental `atualizar-roadmap-projeto` está arquivada. Consultar `openspec list` para o estado corrente.
+**Change ativa em preparação:** [consulta-clientes-painel](../openspec/changes/consulta-clientes-painel/proposal.md), aberta após autorização do usuário. Contrato aprovado; implementação local e testes com fixtures disponíveis. Grupo e dois GETs publicados no Xano, com rejeição anônima/token inválido confirmada. Validação autenticada por perfil e de dados ainda pendente; não declarar feature concluída. A atualização documental `atualizar-roadmap-projeto` está arquivada. Consultar `openspec list` para o estado corrente.
 
 ## Decisões aprovadas E1–E7
 

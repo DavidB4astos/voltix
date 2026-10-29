@@ -1,0 +1,26 @@
+[
+  {
+    "endpoint": "list",
+    "session": "anonymous",
+    "http": 401,
+    "denied": true
+  },
+  {
+    "endpoint": "list",
+    "session": "invalid-token",
+    "http": 401,
+    "denied": true
+  },
+  {
+    "endpoint": "detail",
+    "session": "anonymous",
+    "http": 401,
+    "denied": true
+  },
+  {
+    "endpoint": "detail",
+    "session": "invalid-token",
+    "http": 401,
+    "denied": true
+  }
+]

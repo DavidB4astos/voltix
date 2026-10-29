@@ -4,8 +4,8 @@
 - [x] 1.3 Revisar/aprovar o contrato proposto antes de implementar, incluindo máscaras de contatos e detalhe.
 
 ## 2. Backend e contrato
-- [ ] 2.1 Confirmar schema real e sintaxe suportada por metadados, sem dados pessoais reais.
-- [ ] 2.2 Implementar dois endpoints com autorização e whitelist/máscaras no Xano, filtros combinados e paginação real; não publicar draft antigo.
+- [x] 2.1 Confirmar schema real e sintaxe suportada por metadados, sem dados pessoais reais.
+- [x] 2.2 Implementar dois endpoints com autorização e whitelist/máscaras no Xano, filtros combinados e paginação real; não publicar draft antigo.
 - [ ] 2.3 Validar sintaxe e permissões negativas/positivas dos dois endpoints em contexto autorizado, incluindo Cliente com id coincidente.
 
 ## 3. Integração e desktop
