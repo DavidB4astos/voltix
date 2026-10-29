@@ -1,0 +1,35 @@
+[
+  {
+    "sku": "VTX-DEMO-006",
+    "mpn": "519T1AA",
+    "icecat_id": 95717517,
+    "title": "HyperX Cloud Stinger 2 - Gaming Headset (Black)",
+    "demo": false,
+    "width": "4000",
+    "height": "4000",
+    "sha256": "cb86bfd5d6729aadba8b9f923536195e6363ed4ccc9e954e5c1f78f68d4f5691",
+    "variant": "Preto"
+  },
+  {
+    "sku": "VTX-DEMO-008",
+    "mpn": "4P5P8AA",
+    "icecat_id": 94377174,
+    "title": "HyperX SoloCast - USB Microphone (Black)",
+    "demo": false,
+    "width": "1448",
+    "height": "3310",
+    "sha256": "7e9318cb2b92a51641e343bafe748e91f77085f56a467e7010d401879f6ab29d",
+    "variant": "Preto"
+  },
+  {
+    "sku": "VTX-DEMO-018",
+    "mpn": "ARCHER T3U",
+    "icecat_id": 79344020,
+    "title": "TP-Link Archer T3U WLAN 867 Mbit/s",
+    "demo": false,
+    "width": "1000",
+    "height": "1000",
+    "sha256": "f813d321d07869f8d9dfff06eb3089db01fc8c235b53dbfae31d60306dbf095b",
+    "variant": "Archer T3U"
+  }
+]

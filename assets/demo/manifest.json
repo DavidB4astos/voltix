@@ -1,10 +1,10 @@
 {
-    "updated": "2026-10-28",
+    "updated": "2026-10-29",
     "criteria": "Exact model match (variant/capacity/version). Sources: manufacturers, distributors, specialty retailers, marketplaces. No AI images, similar products, or different versions. Public accessibility does not equal authorization. Download only authorized or properly licensed images; in doubt, keep placeholder and record pending.",
     "summary": {
-        "verified": 5,
-        "usable": 5,
-        "pending": 15
+        "verified": 8,
+        "usable": 8,
+        "pending": 12
     },
     "editorial_images": [
         {
@@ -107,11 +107,23 @@
         {
             "sku": "VTX-DEMO-006",
             "product": "Headset HyperX Cloud Stinger 2",
-            "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons. No public HyperX license for press product images.",
+            "status": "approved",
             "researched_sources": [
-                "https://commons.wikimedia.org/ (intitle:Cloud Stinger - no results)"
-            ]
+                "https://hyperx.com/products/hyperx-cloud-stinger-2-wired-gaming-headset/",
+                "https://iceclog.com/open-content-license/"
+            ],
+            "file": "vtx-demo-006.jpg",
+            "author": "Conteúdo HyperX via Icecat",
+            "source_url": "https://images.icecat.biz/img/gallery/44716d665ca196b9f300706aacabf999fcd9f821.jpg",
+            "license": "OCL 1.4",
+            "license_url": "https://iceclog.com/open-content-license/",
+            "attribution": "HyperX Cloud Stinger 2 - Gaming Headset (Black), MPN 519T1AA, fornecido via Open Icecat, produto 95717517.",
+            "notice": "Database Right data-sheet 2026 Icecat. All rights reserved. Conteúdo fornecido no estado em que se encontra, sem garantia. Consulte a licença.",
+            "manufacturer_product_code": "519T1AA",
+            "icecat_id": 95717517,
+            "reviewed": "2026-10-29",
+            "sha256": "cb86bfd5d6729aadba8b9f923536195e6363ed4ccc9e954e5c1f78f68d4f5691",
+            "note": "Own-account access verified, DemoAccount=false. Exact model and public catalog variation checked. Original JPG unchanged; no generative editing, resizing or cropping. Provider credit does not assert photographic authorship."
         },
         {
             "sku": "VTX-DEMO-007",
@@ -134,11 +146,23 @@
         {
             "sku": "VTX-DEMO-008",
             "product": "Microfone HyperX SoloCast",
-            "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons. No public HyperX license for press product images.",
+            "status": "approved",
             "researched_sources": [
-                "https://commons.wikimedia.org/ (intitle:SoloCast - no results)"
-            ]
+                "https://row.hyperx.com/products/hyperx-solocast-usb-microphone",
+                "https://iceclog.com/open-content-license/"
+            ],
+            "file": "vtx-demo-008.jpg",
+            "author": "Conteúdo HyperX via Icecat",
+            "source_url": "https://images.icecat.biz/img/gallery/13940031ed286a19f742619a5640b0dd95f822b0.jpg",
+            "license": "OCL 1.4",
+            "license_url": "https://iceclog.com/open-content-license/",
+            "attribution": "HyperX SoloCast - USB Microphone (Black), MPN 4P5P8AA, fornecido via Open Icecat, produto 94377174.",
+            "notice": "Database Right data-sheet 2026 Icecat. All rights reserved. Conteúdo fornecido no estado em que se encontra, sem garantia. Consulte a licença.",
+            "manufacturer_product_code": "4P5P8AA",
+            "icecat_id": 94377174,
+            "reviewed": "2026-10-29",
+            "sha256": "7e9318cb2b92a51641e343bafe748e91f77085f56a467e7010d401879f6ab29d",
+            "note": "Own-account access verified, DemoAccount=false. Exact model and public catalog variation checked. Original JPG unchanged; no generative editing, resizing or cropping. Provider credit does not assert photographic authorship."
         },
         {
             "sku": "VTX-DEMO-009",
@@ -236,12 +260,23 @@
         {
             "sku": "VTX-DEMO-018",
             "product": "Adaptador USB Wi-Fi TP-Link Archer T3U",
-            "status": "pending",
-            "reason": "No freely licensed exact-model photo on Wikimedia Commons. TP-Link terms not authorized for Voltix.",
+            "status": "approved",
             "researched_sources": [
-                "https://commons.wikimedia.org/ (intitle:Archer T3U - no results)",
-                "https://www.tp-link.com/us/about-us/privacy/"
-            ]
+                "https://www.tp-link.com/uk/home-networking/adapter/archer-t3u/",
+                "https://iceclog.com/open-content-license/"
+            ],
+            "file": "vtx-demo-018.jpg",
+            "author": "Conteúdo TP-Link via Icecat",
+            "source_url": "https://images.icecat.biz/img/gallery/7c043ade7b318b38aa28ee6e6961a52edc1ff0ec.jpg",
+            "license": "OCL 1.4",
+            "license_url": "https://iceclog.com/open-content-license/",
+            "attribution": "TP-Link Archer T3U WLAN 867 Mbit/s, MPN ARCHER T3U, fornecido via Open Icecat, produto 79344020.",
+            "notice": "Database Right data-sheet 2026 Icecat. All rights reserved. Conteúdo fornecido no estado em que se encontra, sem garantia. Consulte a licença.",
+            "manufacturer_product_code": "ARCHER T3U",
+            "icecat_id": 79344020,
+            "reviewed": "2026-10-29",
+            "sha256": "f813d321d07869f8d9dfff06eb3089db01fc8c235b53dbfae31d60306dbf095b",
+            "note": "Own-account access verified, DemoAccount=false. Exact model and public catalog variation checked. Original JPG unchanged; no generative editing, resizing or cropping. Provider credit does not assert photographic authorship."
         },
         {
             "sku": "VTX-DEMO-019",
