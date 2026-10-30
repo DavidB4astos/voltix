@@ -31,6 +31,27 @@ class _FakePublicState:
 
 
 class PublicCatalogTests(unittest.TestCase):
+    def test_public_ordering_keeps_active_filters_and_read_only_contract(self):
+        cases = [
+            ("categories_GET.xs", 'sort = {name: "asc"}',
+             '$db.categoria.status == "ATIVO"'),
+            ("product/product_id_GET.xs", 'sort = {sku: "asc"}',
+             '$db.variacao_produto.produto_id == $input.product_id && $db.variacao_produto.status == "ATIVO"'),
+        ]
+        for filename, ordering, active_filter in cases:
+            with self.subTest(query=filename):
+                source = (Path("xano/api/public_catalog") / filename).read_text(encoding="utf-8")
+                self.assertIn(ordering, source)
+                self.assertIn(active_filter, source)
+                self.assertNotIn("auth =", source)
+                for write_operation in ("db.add", "db.edit", "db.del", "db.bulk", "db.transaction"):
+                    self.assertNotIn(write_operation, source)
+        detail = Path("xano/api/public_catalog/product/product_id_GET.xs").read_text(encoding="utf-8")
+        self.assertIn('$product != null && $product.status == "ATIVO"', detail)
+        self.assertIn('"quantidade_disponivel"', detail)
+        self.assertIn('"preco"', detail)
+        self.assertNotIn("quantidade_disponivel >", detail)
+
     def setUp(self):
         app._reset_public_catalog_cache()
 

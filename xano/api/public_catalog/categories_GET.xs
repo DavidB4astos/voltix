@@ -1,4 +1,4 @@
-query "categories" verb=GET {
+query categories verb=GET {
   api_group = "Public Catalog"
 
   input {
@@ -8,10 +8,12 @@ query "categories" verb=GET {
     db.query categoria {
       where = $db.categoria.status == "ATIVO"
       sort = {name: "asc"}
+      return = {type: "list"}
       output = ["id", "name", "description", "status"]
     } as $categories
   }
 
   response = $categories
   tags = ["voltix:public-catalog"]
+  guid = "z1GSWyuDf-Hx_xcYyQVr3gBCOWk"
 }

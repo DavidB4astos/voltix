@@ -1,0 +1,26 @@
+{
+  "snapshot_documents": 98,
+  "package": [
+    {
+      "query": "api/public_catalog/categories_GET.xs",
+      "only_change": "ascending sort",
+      "sort": [
+        "name"
+      ],
+      "guid_preserved": true,
+      "sha256": "185f01b8361dd98bf9418f7e9b68f0fffa745f68bf25c18da552df4741454454"
+    },
+    {
+      "query": "api/public_catalog/products/product_id_GET.xs",
+      "only_change": "ascending sort",
+      "sort": [
+        "sku"
+      ],
+      "guid_preserved": true,
+      "sha256": "e5250177ed1e6d54226184367e54df8439eafca5a7e2a4c49facd90523c02b42"
+    }
+  ],
+  "product_listing_equivalent_under_documented_normalization": true,
+  "public_product_listing_published": false,
+  "records_modified": false
+}

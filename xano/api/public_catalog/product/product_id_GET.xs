@@ -10,12 +10,12 @@ query "products/{product_id}" verb=GET {
       field_name = "id"
       field_value = $input.product_id
       output = [
-        "id",
-        "nome",
-        "descricao",
-        "especificacoes_tecnicas",
-        "categoria_id",
-        "marca_id",
+        "id"
+        "nome"
+        "descricao"
+        "especificacoes_tecnicas"
+        "categoria_id"
+        "marca_id"
         "status"
       ]
     } as $product
@@ -64,23 +64,26 @@ query "products/{product_id}" verb=GET {
     db.query variacao_produto {
       where = $db.variacao_produto.produto_id == $input.product_id && $db.variacao_produto.status == "ATIVO"
       sort = {sku: "asc"}
+      return = {type: "list"}
       output = [
-        "id",
-        "produto_id",
-        "nome_ou_descricao",
-        "sku",
-        "preco",
-        "quantidade_disponivel",
+        "id"
+        "produto_id"
+        "nome_ou_descricao"
+        "sku"
+        "preco"
+        "quantidade_disponivel"
         "status"
       ]
     } as $variations
   }
 
   response = {
-    product: $product
+    product      : $product
     category_name: $public_category_name
-    brand_name: $public_brand_name
-    variations: $variations
+    brand_name   : $public_brand_name
+    variations   : $variations
   }
+
   tags = ["voltix:public-catalog"]
+  guid = "8d3ddj_I4XORchlGD0t5lv1iAdk"
 }
