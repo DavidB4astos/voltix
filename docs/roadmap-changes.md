@@ -38,6 +38,9 @@ A ordenação de categorias e variações foi publicada e verificada em [reconci
 ### Ordenação de carrinho e checkout reconciliada — 30/10/2026
 Concluída a [reconcile-cart-checkout-ordering](../openspec/changes/archive/2026-10-30-reconcile-cart-checkout-ordering/evidence/published-review.md): quatro sort id asc em três rotas, publicação restrita conferida por pull e duas negativas GET cart 401. Nenhuma compra executada. A ausência de type inner no publicado não foi tratada como bug confirmado; falta prova isolada do comportamento dos joins. Essa pendência, defaults e upload continuam em revisão futura com escopo próprio; C1 segue adiada e nenhuma regra de estoque foi ampliada.
 
+### Viabilidade de teste isolado dos joins — 30/10/2026
+A avaliação documental [evaluate-isolated-cart-join-tests](../openspec/changes/archive/2026-10-30-evaluate-isolated-cart-join-tests/evidence/feasibility-review.md) foi concluída; a prova no runtime **não foi executada**. Perfil atual lista somente o workspace do Voltix, usuário não possui outro ambiente e sandbox automático é descrito oficialmente como pago. Mantida a gratuidade e E6. [Plano de retomada](deferred-changes/2026-10-30-cart-join-runtime-tests/README.md): somente em ambiente separado gratuito e autorizado; não modificar joins por suposição. Entregas independentes, como refinamento desktop de Categorias e marcas, podem ser propostas sem esperar esse teste.
+
 ## Decisões aprovadas E1–E7
 
 | ID | Decisão preservada |
