@@ -5461,66 +5461,110 @@ def page_shell(
 
 
 def internal_customer_panel(*, show_heading: bool = True) -> rx.Component:
+    def status_badge(status):
+        return rx.el.span(rx.cond(status == "ATIVO", "Ativo", "Inativo"),
+            class_name=rx.cond(status == "ATIVO", "vx-customers__badge", "vx-customers__badge is-inactive"))
+
+    def protected_value(value):
+        return rx.cond(value != "", value, "Não informado")
+
     def customer_row(customer):
         return rx.table.row(
-            rx.table.cell(customer.nome_completo),
-            rx.table.cell(customer.email_masked),
-            rx.table.cell(customer.telefone_masked),
-            rx.table.cell(customer.status),
-            rx.table.cell(rx.button("Ver detalhes", on_click=State.show_internal_customer(customer.id),
-                                    variant="soft",
-                                    disabled=State.internal_customers_loading | State.internal_customer_loading)),
-        )
+            rx.table.cell(rx.el.span(customer.nome_completo, class_name="vx-customers__name")),
+            rx.table.cell(protected_value(customer.email_masked)),
+            rx.table.cell(protected_value(customer.telefone_masked)),
+            rx.table.cell(status_badge(customer.status)),
+            rx.table.cell(rx.el.button("Ver detalhes", rx.icon("arrow-up-right", size=15),
+                on_click=State.show_internal_customer(customer.id), type="button",
+                aria_label="Ver detalhes de " + customer.nome_completo,
+                disabled=State.internal_customers_loading | State.internal_customer_loading,
+                class_name="vx-customers__detail-action")))
+
+    def field(label, value):
+        return rx.el.div(rx.el.dt(label), rx.el.dd(value), class_name="vx-customers__field")
 
     def detail(customer):
-        return surface_card(rx.vstack(
-            rx.hstack(rx.heading(customer.nome_completo, size="5", as_="h3"),
-                      rx.button("Fechar detalhes do cliente", on_click=State.close_internal_customer, variant="soft"),
-                      justify="between", width="100%"),
-            rx.text("E-mail: ", rx.cond(customer.email_masked != "", customer.email_masked, "Não informado")),
-            rx.text("Telefone: ", rx.cond(customer.telefone_masked != "", customer.telefone_masked, "Não informado")),
-            rx.text("CPF: ", rx.cond(customer.cpf_masked != "", customer.cpf_masked, "Não informado")),
-            rx.text("Status: " + customer.status),
-            rx.text("Cadastro: " + customer.created_at_display),
-            align="stretch", spacing="3"))
+        return rx.el.section(
+            rx.el.div(rx.el.div(rx.el.p("FICHA DO CLIENTE", class_name="vx-customers__eyebrow"),
+                rx.el.h3(customer.nome_completo, class_name="vx-customers__detail-title")),
+                rx.el.button(rx.icon("x", size=18), on_click=State.close_internal_customer,
+                    type="button", aria_label="Fechar detalhes do cliente", class_name="vx-customers__close"),
+                class_name="vx-customers__detail-header"),
+            status_badge(customer.status),
+            rx.el.dl(field("E-mail protegido", protected_value(customer.email_masked)),
+                field("Telefone protegido", protected_value(customer.telefone_masked)),
+                field("CPF protegido", protected_value(customer.cpf_masked)),
+                field("Data de cadastro", customer.created_at_display)),
+            rx.el.p(rx.icon("lock-keyhole", size=15), "Dados protegidos. Consulta somente para leitura.",
+                class_name="vx-customers__privacy"),
+            aria_label="Detalhes do cliente", class_name="vx-customers__detail")
 
-    return surface_card(rx.vstack(
-        rx.heading("Clientes", size="6", as_="h2") if show_heading else rx.fragment(),
-        rx.text("Consulte clientes e seus dados protegidos. Acesso somente para leitura."),
-        rx.form(rx.flex(
-            rx.vstack(rx.el.label("Nome ou e-mail", html_for="internal-customer-query"),
+    empty_message = State.internal_customers_message == "Nenhum cliente nesta página. Ajuste os filtros ou volte à página anterior."
+    initial = ((State.internal_customers.length() == 0) & (State.internal_customers_message == "")
+               & ~State.internal_customers_loading)
+    return rx.el.section(
+        rx.el.h2("Clientes", class_name="vx-customers__heading") if show_heading else rx.fragment(),
+        rx.el.div(rx.el.p("Encontre um cliente", class_name="vx-customers__intro-title"),
+            rx.el.p("Busque por nome ou e-mail e consulte informações protegidas.", class_name="vx-customers__muted"),
+            class_name="vx-customers__intro"),
+        rx.form(rx.el.div(
+            rx.el.div(rx.el.label("Nome ou e-mail", html_for="internal-customer-query"),
                 rx.input(id="internal-customer-query", name="q", value=State.internal_customers_search_input,
-                         on_change=State.set_internal_customers_search_input,
-                         max_length=100, placeholder="Buscar cliente", disabled=State.internal_customers_loading, width="100%"),
-                spacing="1", flex="1", align="stretch"),
-            rx.vstack(rx.el.label("Status", html_for="internal-customer-status"),
+                    on_change=State.set_internal_customers_search_input, max_length=100,
+                    placeholder="Digite o nome ou e-mail", disabled=State.internal_customers_loading,
+                    width="100%", size="3"), class_name="vx-customers__search"),
+            rx.el.div(rx.el.label("Status", html_for="internal-customer-status"),
                 rx.el.select(rx.el.option("Ativos", value="ATIVO"), rx.el.option("Inativos", value="INATIVO"),
-                             rx.el.option("Todos", value="TODOS"), id="internal-customer-status", name="status",
-                             value=State.internal_customers_status_input, on_change=State.set_internal_customers_status_input,
-                             disabled=State.internal_customers_loading,
-                             padding="0.6rem", border_radius="8px"), spacing="1"),
-            rx.button("Buscar clientes", type="submit", disabled=State.internal_customers_loading),
-            rx.button("Limpar filtros", type="button", on_click=State.clear_internal_customer_filters,
-                      disabled=State.internal_customers_loading, variant="soft"),
-            gap="12px", align="end", wrap="wrap", width="100%"), on_submit=State.search_internal_customers,
+                    rx.el.option("Todos", value="TODOS"), id="internal-customer-status", name="status",
+                    value=State.internal_customers_status_input, on_change=State.set_internal_customers_status_input,
+                    disabled=State.internal_customers_loading), class_name="vx-customers__status-filter"),
+            rx.el.button(rx.icon("search", size=17), "Buscar clientes", type="submit",
+                disabled=State.internal_customers_loading, class_name="vx-customers__primary"),
+            rx.el.button("Limpar filtros", type="button", on_click=State.clear_internal_customer_filters,
+                disabled=State.internal_customers_loading, class_name="vx-customers__secondary"),
+            class_name="vx-customers__filters"), on_submit=State.search_internal_customers,
             reset_on_submit=False, width="100%"),
-        rx.button("Carregar / atualizar clientes", on_click=State.load_internal_customers,
-                  disabled=State.internal_customers_loading, variant="outline", align_self="start"),
-        rx.cond(State.internal_customers_loading, rx.text("Carregando clientes…", role="status")),
-        rx.cond(State.internal_customers_message != "", rx.text(State.internal_customers_message, role="status")),
-        rx.cond(State.internal_customers.length() > 0,
-            rx.box(rx.table.root(rx.table.header(rx.table.row(*[rx.table.column_header_cell(label)
-                for label in ["Cliente", "E-mail protegido", "Telefone protegido", "Status", "Consulta"]])),
-                rx.table.body(rx.foreach(State.internal_customers, customer_row))), overflow_x="auto", width="100%")),
-        rx.hstack(rx.button("Página anterior", on_click=State.internal_customers_previous,
-                            disabled=(State.internal_customers_page <= 1) | State.internal_customers_loading),
-                  rx.text("Página ", State.internal_customers_page, " · ", State.internal_customers_total, " clientes"),
-                  rx.button("Próxima página", on_click=State.internal_customers_next,
-                            disabled=(State.internal_customers_page >= State.internal_customers_pages) | State.internal_customers_loading),
-                  wrap="wrap", align="center", spacing="3"),
-        rx.cond(State.internal_customer_loading, rx.text("Carregando detalhe…", role="status")),
-        rx.foreach(State.internal_customer_detail, detail),
-        spacing="4", width="100%", align="stretch"))
+        rx.el.div(rx.el.p(rx.icon("shield-check", size=15), "Acesso somente para leitura", class_name="vx-customers__muted"),
+            rx.el.button(rx.icon("refresh-cw", size=15), "Carregar / atualizar clientes", type="button",
+                on_click=State.load_internal_customers, disabled=State.internal_customers_loading,
+                class_name="vx-customers__refresh"), class_name="vx-customers__toolbar"),
+        rx.cond(State.internal_customers_loading,
+            rx.el.div(rx.icon("loader-circle", size=21), rx.el.p("Carregando clientes…"), role="status",
+                class_name="vx-customers__feedback")),
+        rx.cond(State.internal_customers_message != "",
+            rx.el.div(rx.cond(empty_message, rx.icon("search", size=23), rx.icon("circle-alert", size=23)),
+                rx.el.p(rx.cond(empty_message, "Nenhum cliente encontrado", "Não foi possível concluir a consulta"),
+                    class_name="vx-customers__feedback-title"),
+                rx.el.p(State.internal_customers_message), role="status",
+                class_name=rx.cond(empty_message, "vx-customers__feedback", "vx-customers__feedback is-error"))),
+        rx.cond(initial, rx.el.div(rx.icon("users-round", size=26),
+            rx.el.p("Sua consulta começa aqui", class_name="vx-customers__feedback-title"),
+            rx.el.p("Use a busca ou carregue os clientes para começar."), class_name="vx-customers__feedback")),
+        rx.el.div(rx.el.div(
+            rx.cond(State.internal_customers.length() > 0,
+                rx.el.div(rx.el.div(rx.el.h2("Resultados da consulta"),
+                    rx.el.p(State.internal_customers_total, " clientes encontrados"), class_name="vx-customers__results-heading"),
+                    rx.box(rx.table.root(rx.table.header(rx.table.row(*[rx.table.column_header_cell(label)
+                        for label in ["Cliente", "E-mail protegido", "Telefone protegido", "Status", "Consulta"]])),
+                        rx.table.body(rx.foreach(State.internal_customers, customer_row))),
+                        overflow_x="auto", width="100%", class_name="vx-customers__table"))),
+            rx.cond(State.internal_customers_pages > 0,
+                rx.el.nav(rx.el.p("Página ", State.internal_customers_page, " de ", State.internal_customers_pages),
+                    rx.el.div(rx.el.button(rx.icon("chevron-left", size=16), "Anterior", type="button",
+                        aria_label="Página anterior", on_click=State.internal_customers_previous,
+                        disabled=(State.internal_customers_page <= 1) | State.internal_customers_loading,
+                        class_name="vx-customers__secondary"),
+                        rx.el.button("Próxima", rx.icon("chevron-right", size=16), type="button",
+                        aria_label="Próxima página", on_click=State.internal_customers_next,
+                        disabled=(State.internal_customers_page >= State.internal_customers_pages) | State.internal_customers_loading,
+                        class_name="vx-customers__secondary")), aria_label="Paginação dos clientes", class_name="vx-customers__pagination")),
+            class_name="vx-customers__list"),
+            rx.cond(State.internal_customer_loading,
+                rx.el.div(rx.icon("loader-circle", size=20), "Carregando detalhe…", role="status", class_name="vx-customers__feedback")),
+            rx.foreach(State.internal_customer_detail, detail),
+            class_name=rx.cond((State.internal_customer_detail.length() > 0) | State.internal_customer_loading,
+                "vx-customers__results has-detail", "vx-customers__results")),
+        aria_label="Consulta de clientes", class_name="vx-customers")
 
 
 def internal_workspace_shell(content: rx.Component) -> rx.Component:

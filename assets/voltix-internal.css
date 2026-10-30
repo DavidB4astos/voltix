@@ -32,3 +32,61 @@
 .vx-internal__skip:focus{top:12px}
 @media(max-width:800px){.vx-internal{grid-template-columns:1fr}.vx-internal__sidebar{position:static;height:auto;padding:20px}.vx-internal__brand{margin:0 0 20px}.vx-internal__eyebrow{display:none}.vx-internal__nav{flex-direction:row;flex-wrap:wrap}.vx-internal__nav-item{width:auto}.vx-internal__bottom{padding-top:16px;display:flex;align-items:center;flex-wrap:wrap;gap:12px}.vx-internal__identity{border:0;margin:0;padding:4px}.vx-internal__store{padding:4px}.vx-internal__main{padding:28px 18px}.vx-internal__header{flex-direction:column;gap:12px}.vx-internal__skip{left:12px}}
 @media(prefers-reduced-motion:reduce){.vx-internal__nav-item{transition:none}}
+
+/* Read-only customer consultation. */
+.vx-customers{background:#fff;border:1px solid #e3e9ef;border-radius:16px;padding:28px;min-width:0}
+.vx-customers__heading{margin:0 0 20px;font-size:24px}
+.vx-customers__intro-title{font-size:17px;font-weight:650;margin:0 0 6px;letter-spacing:-.02em}
+.vx-customers__muted{display:flex;align-items:center;gap:7px;font-size:12px;color:#637287;margin:0;line-height:1.6}
+.vx-customers__intro{margin-bottom:24px}
+.vx-customers__filters{display:flex;gap:12px;align-items:end;flex-wrap:wrap}
+.vx-customers__filters label{display:block;font-size:12px;font-weight:600;color:#40546b;margin-bottom:8px}
+.vx-customers__search{flex:1 1 260px;min-width:180px}
+.vx-customers__status-filter{flex:0 0 142px}
+.vx-customers select{height:40px;width:100%;border:1px solid #d7e1ea;border-radius:8px;padding:0 12px;background:white;color:#17314b;font:inherit;font-size:13px}
+.vx-customers :is(button){display:inline-flex;align-items:center;justify-content:center;gap:8px;font:inherit;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap}
+.vx-customers__primary{height:40px;background:#0866d9;color:white;border:1px solid #0866d9;border-radius:8px;padding:0 16px}
+.vx-customers__primary:hover{background:#0757bb}
+.vx-customers__secondary{height:40px;background:#fff;color:#40546b;border:1px solid #dce5ed;border-radius:8px;padding:0 13px}
+.vx-customers__secondary:hover{background:#f3f7fa}
+.vx-customers button:disabled{opacity:.45;cursor:default}
+.vx-customers__toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:20px 0 0;padding:16px 0;border-top:1px solid #edf1f5;flex-wrap:wrap}
+.vx-customers__refresh{border:0;background:transparent;color:#0866d9;padding:4px 0}
+.vx-customers__feedback{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;padding:46px 24px;margin-top:8px;border:1px dashed #dce5ed;border-radius:12px;background:#f9fbfd;color:#637287;font-size:13px;line-height:1.6}
+.vx-customers__feedback p{margin:0;max-width:520px}
+.vx-customers__feedback-title{font-size:16px;font-weight:600;color:#233c55}
+.vx-customers__feedback.is-error{background:#fff8f5;border-color:#efd4c7;color:#8b4b33}
+.vx-customers__results{display:grid;grid-template-columns:minmax(0,1fr);gap:24px;align-items:start}
+.vx-customers__results.has-detail{grid-template-columns:minmax(0,1fr) 300px}
+.vx-customers__list{min-width:0}
+.vx-customers__results-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 14px;flex-wrap:wrap}
+.vx-customers__results-heading h2{font-size:15px;font-weight:650;margin:0}
+.vx-customers__results-heading p{font-size:12px;color:#637287;margin:0}
+.vx-customers__table{border:1px solid #e5ebf1;border-radius:10px}
+.vx-customers__table table{width:100%;min-width:640px;border-collapse:collapse;font-size:12px}
+.vx-customers__table th{background:#f5f8fb;color:#637287;font-size:10px;letter-spacing:.025em;font-weight:600;white-space:nowrap;padding:13px 14px}
+.vx-customers__table td{padding:17px 14px;vertical-align:middle;color:#637287;border-bottom:1px solid #edf1f5}
+.vx-customers__table tr:last-child td{border-bottom:0}
+.vx-customers__table tbody tr:hover{background:#f8fbfd}
+.vx-customers__name{color:#17314b;font-weight:600}
+.vx-customers__badge{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:650;line-height:1;padding:6px 9px;border-radius:6px;background:#eaf6f1;color:#246b51}
+.vx-customers__badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.vx-customers__badge.is-inactive{background:#eef1f5;color:#65748a}
+.vx-customers__detail-action{border:0;background:transparent;color:#0866d9;padding:5px 0}
+.vx-customers__pagination{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap}
+.vx-customers__pagination p{font-size:12px;color:#637287;margin:0}
+.vx-customers__pagination>div{display:flex;gap:8px}
+.vx-customers__pagination button{height:34px;font-size:11px}
+.vx-customers__detail{background:#f8fafc;border:1px solid #e2eaf1;border-radius:12px;padding:22px;margin-top:18px;min-width:0}
+.vx-customers__detail-header{display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:16px}
+.vx-customers__eyebrow{font-size:9px;letter-spacing:.1em;font-weight:650;color:#637287;margin:0 0 10px}
+.vx-customers__detail-title{font-size:19px;line-height:1.35;letter-spacing:-.02em;overflow-wrap:anywhere;margin:0;color:#17314b}
+.vx-customers__close{flex:0 0 28px;width:28px;height:28px;background:white;border:1px solid #dce5ed;border-radius:7px;color:#637287}
+.vx-customers__detail dl{margin:22px 0 0}
+.vx-customers__field{padding:13px 0;border-top:1px solid #e2eaf1}
+.vx-customers__field dt{font-size:10px;color:#637287;margin-bottom:7px}
+.vx-customers__field dd{font-size:12px;line-height:1.7;margin:0;color:#17314b;overflow-wrap:anywhere}
+.vx-customers__privacy{display:flex;align-items:start;gap:8px;font-size:10px;line-height:1.6;color:#637287;margin:12px 0 0}
+.vx-customers :is(button,a,input,select):focus-visible{outline:3px solid #00b8d9;outline-offset:3px}
+@media(max-width:1350px){.vx-customers__results.has-detail{grid-template-columns:minmax(0,1fr)}.vx-customers__detail{max-width:none}.vx-customers__detail dl{display:grid;grid-template-columns:1fr 1fr;column-gap:28px}}
+@media(max-width:800px){.vx-customers{padding:20px}.vx-customers__detail dl{grid-template-columns:1fr}.vx-customers__status-filter{flex:1 1 140px}}
