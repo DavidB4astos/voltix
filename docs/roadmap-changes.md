@@ -31,7 +31,7 @@ Os lotes de fotos até ASUS estão nos commits `18e7919`, `d215ce8`, `b4dfb46`, 
 
 ## Prioridade após auditoria de sincronização — 30/10/2026
 
-A [auditoria somente leitura do Xano](auditorias/xano-sync-2026-10-30.md) encontrou divergências entre código local e publicado, incluindo ausência das proteções locais em quatro rotas legadas de clientes do grupo DB_XANO_BASTOS. Nenhuma correção foi publicada. Priorizar uma change própria para revisar e proteger/desativar essas rotas com compatibilidade antes de prosseguir em Categorias e marcas. Não executar push global nem interpretar este relatório como autorização para alterar/excluir dados. As queries da nova consulta interna C4 coincidiram na comparação textual normalizada; isso não torna as rotas legadas seguras.
+A [auditoria somente leitura do Xano](auditorias/xano-sync-2026-10-30.md) encontrou divergências entre código local e publicado, incluindo ausência das proteções locais em quatro rotas legadas de clientes do grupo DB_XANO_BASTOS. Nenhuma correção foi publicada. Change ativa [harden-published-legacy-customers](../openspec/changes/harden-published-legacy-customers/proposal.md): pacote restrito de quatro queries e dry-run revisados, aguardando autorização concreta de publicação. Priorizar este encerramento com compatibilidade antes de prosseguir em Categorias e marcas. Não executar push global nem interpretar este relatório como autorização para alterar/excluir dados. As queries da nova consulta interna C4 coincidiram na comparação textual normalizada; isso não torna as rotas legadas seguras.
 ## Decisões aprovadas E1–E7
 
 | ID | Decisão preservada |

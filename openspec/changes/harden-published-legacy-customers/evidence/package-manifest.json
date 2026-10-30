@@ -1,0 +1,46 @@
+{
+  "queries": [
+    {
+      "path": "api/db_xano_bastos/cliente_GET.xs",
+      "query": "cliente",
+      "verb": "GET",
+      "guid_matches": true,
+      "local_sha256": "f63cb99b7c7aec497301f3d332897f290aa5a92b79120dd16ccc6b1780a34f39",
+      "before_sha256": "16f7b35e376ab027d58f63447ea7009434c44c4753195f89c235692d3238789e",
+      "unchanged_since_audit": true
+    },
+    {
+      "path": "api/db_xano_bastos/cliente/cliente_id_GET.xs",
+      "query": "cliente/{cliente_id}",
+      "verb": "GET",
+      "guid_matches": true,
+      "local_sha256": "45de516a06a64d20d280ecb832d4cf20f98207f451cf920ad613b940870466ca",
+      "before_sha256": "c519435d1cb4287000296b0757a50626a404dc81531bf42fd581c7105eeb16ed",
+      "unchanged_since_audit": true
+    },
+    {
+      "path": "api/db_xano_bastos/cliente/cliente_id_PATCH.xs",
+      "query": "cliente/{cliente_id}",
+      "verb": "PATCH",
+      "guid_matches": true,
+      "local_sha256": "cbdedee9caa4d0ccd99a6fca9bf37e56de430f154587a5ff80496a6d7e98a0f2",
+      "before_sha256": "f5a9007256fd7cdcdb076c9eb3500e3a21b145231d7d3a805315d5e7d1520733",
+      "unchanged_since_audit": true
+    },
+    {
+      "path": "api/db_xano_bastos/cliente/cliente_id_DELETE.xs",
+      "query": "cliente/{cliente_id}",
+      "verb": "DELETE",
+      "guid_matches": true,
+      "local_sha256": "8c1983f4692fa1be2406da643ed1e14bb5741a4dfd1cbea89d4af9af0309cb39",
+      "before_sha256": "f002d608bbe934675cc75c4b514f9f78648431e5104211543f2e5d57e3e7a906",
+      "unchanged_since_audit": true
+    }
+  ],
+  "file_count": 4,
+  "tables": 0,
+  "api_groups": 0,
+  "records_included": false,
+  "env_included": false,
+  "registration_post_included": false
+}
