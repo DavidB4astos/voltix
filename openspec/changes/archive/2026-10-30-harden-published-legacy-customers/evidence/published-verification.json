@@ -1,0 +1,78 @@
+{
+  "published_queries": [
+    {
+      "path": "api/db_xano_bastos/cliente/cliente_id_DELETE.xs",
+      "published_matches": true,
+      "auth_customer": true
+    },
+    {
+      "path": "api/db_xano_bastos/cliente/cliente_id_GET.xs",
+      "published_matches": true,
+      "auth_customer": true
+    },
+    {
+      "path": "api/db_xano_bastos/cliente/cliente_id_PATCH.xs",
+      "published_matches": true,
+      "auth_customer": true
+    },
+    {
+      "path": "api/db_xano_bastos/cliente_GET.xs",
+      "published_matches": true,
+      "auth_customer": true
+    }
+  ],
+  "other_metadata_changes": [],
+  "added": [],
+  "removed": [],
+  "probes": [
+    {
+      "token": "anonymous",
+      "method": "GET",
+      "path": "/cliente",
+      "status": 401
+    },
+    {
+      "token": "anonymous",
+      "method": "GET",
+      "path": "/cliente/2147483647",
+      "status": 401
+    },
+    {
+      "token": "anonymous",
+      "method": "PATCH",
+      "path": "/cliente/2147483647",
+      "status": 401
+    },
+    {
+      "token": "anonymous",
+      "method": "DELETE",
+      "path": "/cliente/2147483647",
+      "status": 401
+    },
+    {
+      "token": "invalid_token",
+      "method": "GET",
+      "path": "/cliente",
+      "status": 401
+    },
+    {
+      "token": "invalid_token",
+      "method": "GET",
+      "path": "/cliente/2147483647",
+      "status": 401
+    },
+    {
+      "token": "invalid_token",
+      "method": "PATCH",
+      "path": "/cliente/2147483647",
+      "status": 401
+    },
+    {
+      "token": "invalid_token",
+      "method": "DELETE",
+      "path": "/cliente/2147483647",
+      "status": 401
+    }
+  ],
+  "real_customer_records_modified": false
+}

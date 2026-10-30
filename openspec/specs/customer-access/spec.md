@@ -70,6 +70,14 @@ O sistema SHALL permitir que um Cliente autenticado consulte sua própria identi
 - **WHEN** um Cliente tenta remover definitivamente a própria conta
 - **THEN** o backend rejeita a operação e preserva o registro e seu histórico
 
+#### Scenario: Published legacy aliases enforce the current customer contract
+- **WHEN** requests reach the published GET /cliente or GET, PATCH, DELETE /cliente/{cliente_id} aliases
+- **THEN** authentication is required before customer access, GET/PATCH enforce active customer ownership with explicit response fields, PATCH accepts only approved mutable profile fields, and permanent DELETE is rejected without a database deletion
+
+#### Scenario: Restricted deployment preserves registration and unrelated APIs
+- **WHEN** legacy protections are reconciled with the live backend
+- **THEN** the reviewed package updates only these four query identities and preserves POST registration, current group identifiers, schemas and records
+
 ### Requirement: Customer authentication uses the Reflex State and server-side Xano flow
 A interface SHALL encaminhar cadastro, login, consultas de sessão, alterações de perfil e logout ao State/lógica Python da aplicação; essa camada SHALL executar as chamadas HTTP ao Xano. Credenciais e tokens SHALL permanecer fora do código executado diretamente no navegador e fora das respostas destinadas à interface.
 
