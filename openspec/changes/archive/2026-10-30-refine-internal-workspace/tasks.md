@@ -6,5 +6,5 @@
 - [x] 2.2 Separar login/área autenticada e aplicar CSS escopado desktop.
 ## Verificação e encerramento
 - [x] 3.1 Executar testes apropriados e compilação.
-- [ ] 3.2 Verificar visual e navegação nos dois perfis, sem mutações.
-- [ ] 3.3 Documentar evidências/limites, validar OpenSpec, arquivar e commitar.
+- [x] 3.2 Verificar visual e navegação nos dois perfis, sem mutações.
+- [x] 3.3 Documentar evidências/limites, validar OpenSpec, arquivar e commitar.

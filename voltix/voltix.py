@@ -5540,7 +5540,7 @@ def internal_workspace_shell(content: rx.Component) -> rx.Component:
         ("importacao", "Prepare, confira e acompanhe a importação do catálogo."),
         "Uma visão clara para consultar e conhecer seus clientes.")
     return rx.el.div(
-        rx.link("Ir para o conteúdo", href="#internal-workspace-main", class_name="vx-internal__skip"),
+        rx.el.elements.a("Ir para o conteúdo", href="#internal-workspace-main", class_name="vx-internal__skip"),
         rx.el.aside(
             rx.link(brand_logo(on_dark=True), href="/catalogo", aria_label="Voltix — loja pública", class_name="vx-internal__brand"),
             rx.el.p("ESPAÇO DA EQUIPE", class_name="vx-internal__eyebrow"),
