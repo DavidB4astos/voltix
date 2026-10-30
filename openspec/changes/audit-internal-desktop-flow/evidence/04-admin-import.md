@@ -1,0 +1,2 @@
+Etapa 4 — Importação, largura 1252 px.
+Saúde: entrada clara. Guia de formatos/limites separado da área de seleção; a interface explica que a prévia não grava produtos. Nenhum arquivo selecionado, prévia/relatório/confirmar ausentes. Apenas o módulo escolhido aparece; sem overflow da página. Não executados upload, prévia, confirmar ou cancelar neste fluxo real. Estados posteriores continuam fora desta auditoria autenticada. Texto auxiliar pequeno/baixo contraste aparente requer medição específica, sem alegar falha WCAG comprovada.

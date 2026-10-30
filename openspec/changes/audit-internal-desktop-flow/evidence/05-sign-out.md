@@ -1,0 +1,2 @@
+Etapa 5 — Saída e retorno ao login, largura 1252 px.
+Saúde: sessão removida visualmente; zero workspace e formulário vazio. Teclado no painel: Tab de Clientes para Produtos com outline solid, Enter selecionou Produtos e aria-current acompanhou. Atalho Ir para o conteúdo focou internal-workspace-main. Login tem pouca respiração lateral aparente; conferir associações de rótulos e hierarquia como achado específico, sem alterar autenticação nesta auditoria. Não foi testada expiração/remotamente a invalidação do token após logout.

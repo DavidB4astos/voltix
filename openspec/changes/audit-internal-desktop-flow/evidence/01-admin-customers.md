@@ -1,0 +1,2 @@
+Etapa 1 — Clientes (Administrador), largura 1252 px.
+Saúde: adequada para iniciar consulta. Navegação selecionada clara, cabeçalho único e orientação inicial sem lista carregada. Zero linhas de clientes e nenhum campo de login. Risco: texto auxiliar pequeno e claro requer medição de contraste/zoom em verificação própria; não é declaração de WCAG. Limite: busca/detalhe de clientes não executados nesta auditoria.

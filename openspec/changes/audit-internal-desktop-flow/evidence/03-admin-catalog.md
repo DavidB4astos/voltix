@@ -1,0 +1,2 @@
+Etapa 3 — Categorias e marcas, largura 1252 px.
+Saúde: adequada. Duas seções distintas com formulário/tabela, status textual e quatro rótulos associados. A navegação continua fixa durante rolagem até Marcas (nav top 141px, sidebar sticky top 0). Captura 03b refeita após a primeira não representar a barra lateral estabilizada. Inativos e cadastros QA antigos permanecem visíveis; não foram alterados. Limites: não executados salvar/editar/status/refresh nem teste de erro remoto. Texto auxiliar pequeno merece avaliação de contraste/zoom separada.
