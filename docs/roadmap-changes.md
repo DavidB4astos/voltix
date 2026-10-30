@@ -44,6 +44,9 @@ A avaliação documental [evaluate-isolated-cart-join-tests](../openspec/changes
 ### Categorias e marcas desktop — 30/10/2026
 Concluída a [refine-internal-catalog-desktop](../openspec/changes/archive/2026-10-30-refine-internal-catalog-desktop/evidence/final-review.md): formulários rotulados, tabelas legíveis, ações específicas e estados preservados. 188 testes passaram e QA isolada verificou desktop 1440/1024, edição/cancelamento, loading/vazio/erro e exclusividade do Administrador. Sem alteração de State, handlers ou Xano; nenhuma mutação real executada. A sugestão visual anterior de Categorias e marcas foi atendida. Importação em massa pode ser avaliada como próxima tela, com escopo próprio; CRM histórico/atendimentos mantém dependências e bloqueios já documentados.
 
+### Importação desktop — 30/10/2026
+Concluída a [refine-internal-import-desktop](../openspec/changes/archive/2026-10-30-refine-internal-import-desktop/evidence/final-review.md): guia de arquivo, nome selecionado, prévia/relatório tabulares, confirmação explícita e bloqueio nativo do seletor durante processamento. 188 testes passaram; QA isolada verificou CSV fictício, linhas mistas/sem válidas, processamento/cancelamento, falhas, Funcionário e larguras 1440/1024. State, parsers, handlers, limites e Xano preservados. Nenhuma importação real executada. Shell interno, Clientes, Produtos, Categorias/marcas e Importação possuem refinamentos desktop próprios arquivados; novas capabilities de pedidos/CRM continuam sujeitas às dependências C1–C10.
+
 ## Decisões aprovadas E1–E7
 
 | ID | Decisão preservada |

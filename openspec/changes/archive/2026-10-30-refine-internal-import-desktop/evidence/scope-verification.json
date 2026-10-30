@@ -1,0 +1,37 @@
+{
+  "application_ast_unchanged_except_bulk_import_management": true,
+  "state_handlers_parsers_and_limits_unchanged": true,
+  "xano_sources_unchanged": true,
+  "unit_tests": {
+    "passed": 188,
+    "seconds": 1.926
+  },
+  "full_application_dry_compile": "passed",
+  "full_application_compile": "passed",
+  "real_imports_executed": false,
+  "desktop_1440": {
+    "page_width": 1425,
+    "two_columns": true
+  },
+  "desktop_1024": {
+    "page_width": 1009,
+    "stacked": true,
+    "table_width": 627.3
+  },
+  "qa": [
+    "CSV fixture selected through visible drop area and filename shown",
+    "preview has valid/error/duplicate rows with full reasons",
+    "no confirmation when no valid rows",
+    "loading disables native file input via fieldset; pointer events none",
+    "confirm/cancel disabled states preserved",
+    "simulated cancellation exposes partial report",
+    "report distinguishes CRIADO/PULADO/FALHA",
+    "file failure visible without preview",
+    "employee has zero import components",
+    "Tab from preview to reset with visible outline"
+  ],
+  "limitations": [
+    "Fixture handlers simulate operations locally; no real Xano import was executed.",
+    "Desktop only; no complete mobile audit."
+  ]
+}

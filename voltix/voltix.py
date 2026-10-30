@@ -5861,147 +5861,69 @@ def index() -> rx.Component:
 
     bulk_import_management = rx.cond(
         State.user_role == "ADMINISTRADOR",
-        surface_card(
-            rx.vstack(
-                section_heading("Importar produtos em massa"),
-                rx.text(
-                    "Envie um arquivo CSV ou XLSX com as colunas: "
-                    "produto_nome, produto_descricao, "
-                    "produto_especificacoes_tecnicas, categoria_nome, "
-                    "marca_nome, variacao_nome, sku, preco, "
-                    "quantidade_disponivel. Limites: 200 linhas, "
-                    "50 produtos e 2 MB.",
-                    color=COLOR_TEXT_MUTED,
-                ),
-                rx.upload(
-                    rx.text("Selecione um arquivo CSV ou XLSX"),
-                    id="bulk-import-file",
-                    accept={
-                        "text/csv": [".csv"],
-                        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [
-                            ".xlsx"
-                        ],
-                    },
-                    max_files=1,
-                    disabled=State.bulk_import_loading,
-                    width="100%",
-                ),
-                rx.hstack(
-                    primary_button(
-                        "Pré-visualizar",
-                        type="button",
-                        on_click=State.preview_bulk_import(
-                            rx.upload_files("bulk-import-file")
-                        ),
-                        disabled=State.bulk_import_loading,
-                    ),
-                    secondary_button(
-                        "Limpar",
-                        type="button",
-                        on_click=State.reset_bulk_import,
-                        disabled=State.bulk_import_loading,
-                    ),
-                    spacing="2",
-                    wrap="wrap",
-                ),
-                feedback_text(State.bulk_import_message),
-                rx.cond(
-                    State.bulk_import_loading,
-                    loading_text("Processando importação..."),
-                    rx.fragment(),
-                ),
-                rx.cond(
-                    State.bulk_import_progress != "",
-                    rx.text(State.bulk_import_progress, color=COLOR_TEXT_MUTED),
-                    rx.fragment(),
-                ),
-                rx.cond(
-                    State.bulk_import_preview.length() > 0,
-                    rx.vstack(
-                        section_heading("Pré-visualização", size="4"),
-                        rx.foreach(
-                            State.bulk_import_preview,
-                            lambda row: surface_card(
-                                rx.vstack(
-                                    rx.hstack(
-                                        rx.text(
-                                            "Linha "
-                                            + row.line.to_string()
-                                            + ": "
-                                            + row.product_name,
-                                            weight="bold",
-                                        ),
-                                        status_badge(row.status),
-                                        justify="between",
-                                        width="100%",
-                                    ),
-                                    rx.text(row.reason, color=COLOR_TEXT_MUTED),
-                                    align="stretch",
-                                    spacing="1",
-                                    width="100%",
-                                ),
-                            ),
-                        ),
-                        align="stretch",
-                        spacing="2",
-                        width="100%",
-                    ),
-                    rx.fragment(),
-                ),
-                rx.cond(
-                    State.bulk_import_has_valid,
-                    rx.hstack(
-                        primary_button(
-                            "Confirmar importação",
-                            type="button",
-                            on_click=State.confirm_bulk_import,
-                            disabled=State.bulk_import_loading,
-                        ),
-                        secondary_button(
-                            "Cancelar importação",
-                            type="button",
-                            on_click=State.cancel_bulk_import,
-                            disabled=~State.bulk_import_loading,
-                        ),
-                        spacing="2",
-                        wrap="wrap",
-                    ),
-                    rx.fragment(),
-                ),
-                rx.cond(
-                    State.bulk_import_report.length() > 0,
-                    rx.vstack(
-                        section_heading("Resultado", size="4"),
-                        rx.foreach(
-                            State.bulk_import_report,
-                            lambda item: surface_card(
-                                rx.vstack(
-                                    rx.hstack(
-                                        rx.text(item.product_name, weight="bold"),
-                                        status_badge(item.outcome),
-                                        justify="between",
-                                        width="100%",
-                                    ),
-                                    rx.text(item.detail, color=COLOR_TEXT_MUTED),
-                                    align="stretch",
-                                    spacing="1",
-                                    width="100%",
-                                ),
-                            ),
-                        ),
-                        align="stretch",
-                        spacing="2",
-                        width="100%",
-                    ),
-                    rx.fragment(),
-                ),
-                align="stretch",
-                spacing="3",
-                width="100%",
-            ),
-        ),
-        rx.fragment(),
-    )
+        rx.el.div(
+            rx.el.aside(
+                rx.el.p("ANTES DE COMEÇAR", class_name="vx-import__eyebrow"),
+                rx.el.h2("Prepare seu arquivo"),
+                rx.el.p("Cadastre produtos e variações a partir de uma planilha. Revise as linhas antes de confirmar a gravação."),
+                rx.el.div(rx.el.span("CSV ou XLSX"), rx.el.span("Até 2 MB"), class_name="vx-import__formats"),
+                rx.el.dl(rx.el.div(rx.el.dt("Linhas por arquivo"), rx.el.dd("Até 200")),
+                    rx.el.div(rx.el.dt("Produtos por arquivo"), rx.el.dd("Até 50")), class_name="vx-import__limits"),
+                rx.el.details(
+                    rx.el.summary("Colunas do arquivo"),
+                    rx.el.p("Obrigatórias", class_name="vx-import__column-label"),
+                    rx.el.ul(*[rx.el.li(rx.el.code(name)) for name in ("produto_nome", "categoria_nome", "marca_nome", "variacao_nome", "sku", "preco", "quantidade_disponivel")]),
+                    rx.el.p("Opcionais", class_name="vx-import__column-label"),
+                    rx.el.ul(rx.el.li(rx.el.code("produto_descricao")), rx.el.li(rx.el.code("produto_especificacoes_tecnicas"))),
+                    class_name="vx-import__columns"),
+                rx.el.p("Categorias e marcas devem existir e estar ativas. Produtos e SKUs existentes não serão sobrescritos.", class_name="vx-import__note"),
+                class_name="vx-import__guide", aria_label="Orientações do arquivo"),
+            rx.el.div(
+                rx.el.section(
+                    rx.el.header(rx.el.span("01", class_name="vx-import__step"), rx.el.div(rx.el.h2("Selecione o arquivo"), rx.el.p("A pré-visualização valida as linhas sem gravar produtos.")), class_name="vx-import__heading"),
+                    rx.el.fieldset(rx.upload(
+                        rx.el.div(rx.icon("file-spreadsheet", size=28), rx.el.p("Selecione ou arraste um arquivo"), rx.el.span("CSV ou XLSX · um arquivo por vez"), class_name="vx-import__drop-content"),
+                        id="bulk-import-file",
+                        accept={"text/csv": [".csv"], "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": [".xlsx"]},
+                        max_files=1, disabled=State.bulk_import_loading, width="100%",
+                        class_name="vx-import__drop", aria_label="Selecionar arquivo CSV ou XLSX"),
+                        disabled=State.bulk_import_loading, class_name="vx-import__file-control"),
+                    rx.foreach(rx.selected_files("bulk-import-file"), lambda filename: rx.el.p(rx.icon("file", size=14), filename, class_name="vx-import__filename")),
+                    rx.el.div(
+                        primary_button("Pré-visualizar", type="button", on_click=State.preview_bulk_import(rx.upload_files("bulk-import-file")), disabled=State.bulk_import_loading),
+                        secondary_button("Limpar", type="button", on_click=State.reset_bulk_import, disabled=State.bulk_import_loading), class_name="vx-import__actions"),
+                    rx.el.div(feedback_text(State.bulk_import_message), class_name="vx-import__feedback", role="status"),
+                    rx.cond(State.bulk_import_loading, rx.el.p("Processando importação…", class_name="vx-import__processing", role="status"), rx.fragment()),
+                    rx.cond(State.bulk_import_progress != "", rx.el.p(State.bulk_import_progress, class_name="vx-import__progress", role="status"), rx.fragment()),
+                    class_name="vx-import__panel", aria_label="Arquivo de importação"),
+                rx.cond(State.bulk_import_preview.length() > 0,
+                    rx.el.section(
+                        rx.el.header(rx.el.span("02", class_name="vx-import__step"), rx.el.div(rx.el.h2("Revise as linhas"), rx.el.p("Confira os status e os motivos antes de importar.")), class_name="vx-import__heading"),
+                        rx.el.div(rx.el.table(
+                            rx.el.thead(rx.el.tr(rx.el.th("Linha", scope="col"), rx.el.th("Produto", scope="col"), rx.el.th("Status", scope="col"), rx.el.th("Motivo", scope="col"))),
+                            rx.el.tbody(rx.foreach(State.bulk_import_preview, lambda row: rx.el.tr(
+                                rx.el.td(row.line), rx.el.td(row.product_name, class_name="vx-import__product"),
+                                rx.el.td(status_badge(row.status)), rx.el.td(row.reason)))), aria_label="Pré-visualização da importação"),
+                            class_name="vx-import__table", role="region", aria_label="Linhas do arquivo", tab_index=0),
+                        class_name="vx-import__panel", aria_label="Pré-visualização"), rx.fragment()),
+                rx.cond(State.bulk_import_has_valid,
+                    rx.el.section(
+                        rx.el.div(rx.el.h3("Pronto para importar?"), rx.el.p("A confirmação grava os grupos válidos. Registros duplicados não serão sobrescritos.")),
+                        rx.el.div(
+                            primary_button("Confirmar importação", type="button", on_click=State.confirm_bulk_import, disabled=State.bulk_import_loading),
+                            secondary_button("Cancelar importação", type="button", on_click=State.cancel_bulk_import, disabled=~State.bulk_import_loading), class_name="vx-import__actions"),
+                        class_name="vx-import__confirmation", aria_label="Confirmação da importação"), rx.fragment()),
+                rx.cond(State.bulk_import_report.length() > 0,
+                    rx.el.section(
+                        rx.el.header(rx.el.span("03", class_name="vx-import__step"), rx.el.div(rx.el.h2("Resultado do processamento"), rx.el.p("Confira os registros criados, pulados e as falhas reportadas.")), class_name="vx-import__heading"),
+                        rx.el.div(rx.el.table(
+                            rx.el.thead(rx.el.tr(rx.el.th("Produto", scope="col"), rx.el.th("Resultado", scope="col"), rx.el.th("Detalhe", scope="col"))),
+                            rx.el.tbody(rx.foreach(State.bulk_import_report, lambda item: rx.el.tr(
+                                rx.el.td(item.product_name, class_name="vx-import__product"), rx.el.td(status_badge(item.outcome)), rx.el.td(item.detail)))), aria_label="Resultado da importação"),
+                            class_name="vx-import__table", role="region", aria_label="Relatório por produto", tab_index=0),
+                        class_name="vx-import__panel", aria_label="Resultado"), rx.fragment()),
+                class_name="vx-import__workspace"),
+            class_name="vx-import"), rx.fragment())
 
     catalog_management = rx.cond(
         State.user_role == "ADMINISTRADOR",
