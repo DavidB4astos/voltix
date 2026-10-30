@@ -1,4 +1,5 @@
 import asyncio
+import re
 import unittest
 from pathlib import Path
 from urllib.error import URLError
@@ -436,6 +437,24 @@ class CheckoutOrdersTests(unittest.TestCase):
         self.assertIn("$order.cliente_id == $auth.id", order_detail)
         order_list = api_paths[2].read_text(encoding="utf-8")
         self.assertIn("$db.pedido.cliente_id == $auth.id", order_list)
+
+    def test_cart_review_and_confirmation_order_each_item_read(self):
+        # Review snapshots are arrays: protect each read, including transaction reread.
+        queries = (
+            ("cart_GET.xs", ["cart"]),
+            ("checkout_review_POST.xs", ["cart"]),
+            ("checkout_confirm_POST.xs", ["cart", "current_cart"]),
+        )
+        for filename, owners in queries:
+            source = (Path("xano/api/customer") / filename).read_text(encoding="utf-8")
+            reads = re.findall(r"db\.query item_carrinho \{(.*?)\} as \$(?:current_)?cart_items", source, re.S)
+            with self.subTest(query=filename):
+                self.assertEqual(len(reads), len(owners))
+                for block, owner in zip(reads, owners):
+                    self.assertEqual(block.count('sort = {id: "asc"}'), 1)
+                    self.assertIn(f"$db.item_carrinho.carrinho_id == ${owner}.id", block)
+                    self.assertIn("$db.item_carrinho.variacao_produto_id == $db.variacao_produto.id", block)
+                    self.assertIn("$db.variacao_produto.produto_id == $db.produto.id", block)
 
     def test_checkout_and_order_routes_use_state_and_exclude_payment_processing(self):
         source = Path("voltix/voltix.py").read_text(encoding="utf-8")

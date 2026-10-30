@@ -1,0 +1,28 @@
+{
+  "snapshot_documents": 98,
+  "package": [
+    {
+      "query": "cart_GET.xs",
+      "item_sorts_added": 1,
+      "guid_preserved": true,
+      "only_whitespace_and_sort_changed": true,
+      "sha256": "77d3c887cf15d5a2875cc95dbe89a20a50863c881ed6d5c1de2f2ed4b80a4a99"
+    },
+    {
+      "query": "checkout/review_POST.xs",
+      "item_sorts_added": 1,
+      "guid_preserved": true,
+      "only_whitespace_and_sort_changed": true,
+      "sha256": "54b1f50a3953adb0d0abb1505a3034a52192b52611c82bcc15097e5bd27e2008"
+    },
+    {
+      "query": "checkout/confirm_POST.xs",
+      "item_sorts_added": 2,
+      "guid_preserved": true,
+      "only_whitespace_and_sort_changed": true,
+      "sha256": "0e19e6402cd59ce3d43be49634c68f218b170a00a0e18f2c5001ae8b25f83ae8"
+    }
+  ],
+  "published": false,
+  "records_modified": false
+}
