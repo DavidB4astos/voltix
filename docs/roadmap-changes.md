@@ -35,6 +35,9 @@ A [auditoria somente leitura do Xano](auditorias/xano-sync-2026-10-30.md) identi
 ### Catálogo público reconciliado — 30/10/2026
 A ordenação de categorias e variações foi publicada e verificada em [reconcile-public-catalog-ordering](../openspec/changes/archive/2026-10-30-reconcile-public-catalog-ordering/evidence/published-review.md). Somente duas queries alteradas; leituras públicas 200/404 verificadas, sem modificar registros. A listagem foi conferida, sem republicação. Esta etapa recomendada acima está concluída; próxima área candidata é a revisão dos joins/contratos de carrinho e checkout, antes de qualquer publicação. Defaults e upload também permanecem pendentes. Uma nova change requer escopo próprio e aprovação; não executar compras ou alterar estoque para auditar.
 
+### Ordenação de carrinho e checkout reconciliada — 30/10/2026
+Concluída a [reconcile-cart-checkout-ordering](../openspec/changes/archive/2026-10-30-reconcile-cart-checkout-ordering/evidence/published-review.md): quatro sort id asc em três rotas, publicação restrita conferida por pull e duas negativas GET cart 401. Nenhuma compra executada. A ausência de type inner no publicado não foi tratada como bug confirmado; falta prova isolada do comportamento dos joins. Essa pendência, defaults e upload continuam em revisão futura com escopo próprio; C1 segue adiada e nenhuma regra de estoque foi ampliada.
+
 ## Decisões aprovadas E1–E7
 
 | ID | Decisão preservada |

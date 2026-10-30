@@ -6,6 +6,6 @@
 - [x] 2.1 Verificar contratos e suíte existente sem mutar dados reais.
 - [x] 2.2 Executar dry-run e apresentar o pacote concreto.
 ## Publicação
-- [ ] 3.1 Publicar pacote revisado após autorização.
-- [ ] 3.2 Conferir novo pull e rejeição segura de GET cart sem sessão.
-- [ ] 3.3 Documentar limites e pendência de joins, consolidar, arquivar e commitar.
+- [x] 3.1 Publicar pacote revisado após autorização.
+- [x] 3.2 Conferir novo pull e rejeição segura de GET cart sem sessão.
+- [x] 3.3 Documentar limites e pendência de joins, consolidar, arquivar e commitar.

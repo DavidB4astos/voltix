@@ -1,0 +1,41 @@
+{
+  "published_queries": [
+    {
+      "query": "api/voltix_customer/cart_GET.xs",
+      "matches_package": true,
+      "only_sort_and_serialization_changed": true,
+      "item_orderings": 1
+    },
+    {
+      "query": "api/voltix_customer/checkout/confirm_POST.xs",
+      "matches_package": true,
+      "only_sort_and_serialization_changed": true,
+      "item_orderings": 2
+    },
+    {
+      "query": "api/voltix_customer/checkout/review_POST.xs",
+      "matches_package": true,
+      "only_sort_and_serialization_changed": true,
+      "item_orderings": 1
+    }
+  ],
+  "other_metadata_changes": 0,
+  "documents_added_or_removed": 0,
+  "metadata_documents": 98,
+  "probes": [
+    {
+      "endpoint": "GET cart",
+      "session": "anonymous",
+      "status": 401
+    },
+    {
+      "endpoint": "GET cart",
+      "session": "invalid_token",
+      "status": 401
+    }
+  ],
+  "purchase_or_mutation_requests_executed": false,
+  "authenticated_cart_or_checkout_test_executed": false,
+  "records_modified": false,
+  "joins_changed": false
+}
