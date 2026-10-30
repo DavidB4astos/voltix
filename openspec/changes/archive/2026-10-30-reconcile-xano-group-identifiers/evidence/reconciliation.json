@@ -1,0 +1,35 @@
+{
+  "groups": [
+    {
+      "group": "product_management",
+      "local_file": "xano/api/product_management/api_group.xs",
+      "previous_canonical": "voltix-product-management",
+      "canonical": "umWTO5yo",
+      "guid_matches_published": true,
+      "configured_url_names": [
+        "XANO_PRODUCTS_URL",
+        "XANO_VARIATIONS_URL"
+      ],
+      "swagger_copied": false,
+      "local_descriptions_and_tags_preserved": true
+    },
+    {
+      "group": "public_catalog",
+      "local_file": "xano/api/public_catalog/api_group.xs",
+      "previous_canonical": "voltix-public-catalog",
+      "canonical": "cVn4Vybh",
+      "guid_matches_published": true,
+      "configured_url_names": [
+        "XANO_PUBLIC_CATEGORIES_URL",
+        "XANO_PUBLIC_PRODUCTS_URL",
+        "XANO_PUBLIC_PRODUCT_DETAILS_URL",
+        "XANO_PUBLIC_PRODUCT_IMAGE_URL"
+      ],
+      "swagger_copied": false,
+      "local_descriptions_and_tags_preserved": true
+    }
+  ],
+  "env_unchanged": true,
+  "remote_push_executed": false,
+  "snapshot_documents": 98
+}
