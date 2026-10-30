@@ -1,0 +1,36 @@
+{
+  "published_queries": [
+    "api/public_catalog/categories_GET.xs",
+    "api/public_catalog/products/product_id_GET.xs"
+  ],
+  "other_metadata_changes": 0,
+  "documents_added_or_removed": 0,
+  "probes": [
+    {
+      "probe": "anonymous categories",
+      "status": 200
+    },
+    {
+      "probe": "anonymous products",
+      "status": 200
+    },
+    {
+      "probe": "anonymous existing product detail",
+      "status": 200
+    },
+    {
+      "probe": "anonymous missing product detail",
+      "status": 404
+    }
+  ],
+  "categories_count": 5,
+  "products_count": 23,
+  "sample_active_variations_count": 1,
+  "observed_categories_sorted": true,
+  "observed_variations_sorted": true,
+  "records_modified": false,
+  "limitations": [
+    "Only existing public data was read; inactive, zero-stock and equal-key scenarios were not manufactured.",
+    "Sample variation ordering may be trivial with fewer than two items; published source confirms explicit sort."
+  ]
+}

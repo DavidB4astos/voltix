@@ -6,6 +6,6 @@
 - [x] 2.1 Preparar duas queries com GUIDs e testes de contrato.
 - [x] 2.2 Executar dry-run e apresentar revisão concreta.
 ## Publicação e encerramento
-- [ ] 3.1 Publicar somente o pacote revisado após autorização.
-- [ ] 3.2 Conferir pull, ausência de diferenças fora do escopo e leituras públicas.
-- [ ] 3.3 Consolidar spec, arquivar somente após verificação e commitar.
+- [x] 3.1 Publicar somente o pacote revisado após autorização.
+- [x] 3.2 Conferir pull, ausência de diferenças fora do escopo e leituras públicas.
+- [x] 3.3 Consolidar spec, arquivar somente após verificação e commitar.
