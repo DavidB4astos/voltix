@@ -1,0 +1,1028 @@
+{
+  "date": "2026-10-30",
+  "workspace": 147981,
+  "profile": "voltix",
+  "branch": "default live (no branch override in profile)",
+  "local_git_commit": "37c9e0d0a981d8d707ca215dd991d43ae39e3dea",
+  "snapshot_documents": 98,
+  "local_documents": 97,
+  "normalized_matches": 72,
+  "differences": [
+    {
+      "identity": [
+        "api_group",
+        "Catalog Management"
+      ],
+      "local": "api/catalog_management/api_group.xs",
+      "remote": "api/catalog_management/catalog_management.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "api_group",
+        "Product Management"
+      ],
+      "local": "api/product_management/api_group.xs",
+      "remote": "api/product_management/product_management.xs",
+      "changes": [
+        {
+          "kind": "replace",
+          "local_tokens": 2,
+          "remote_tokens": 2
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 6,
+          "remote_tokens": 4
+        },
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 1
+        }
+      ]
+    },
+    {
+      "identity": [
+        "api_group",
+        "Public Catalog"
+      ],
+      "local": "api/public_catalog/api_group.xs",
+      "remote": "api/public_catalog/public_catalog.xs",
+      "changes": [
+        {
+          "kind": "replace",
+          "local_tokens": 2,
+          "remote_tokens": 2
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 6,
+          "remote_tokens": 4
+        },
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 1
+        }
+      ]
+    },
+    {
+      "identity": [
+        "api_group",
+        "Voltix Customer"
+      ],
+      "local": "api/customer/api_group.xs",
+      "remote": "api/voltix_customer/voltix_customer.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Catalog Management",
+        "brands",
+        "GET"
+      ],
+      "local": "api/catalog_management/brands_GET.xs",
+      "remote": "api/catalog_management/brands_GET.xs",
+      "changes": [
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 7
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 7,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Catalog Management",
+        "categories",
+        "GET"
+      ],
+      "local": "api/catalog_management/categories_GET.xs",
+      "remote": "api/catalog_management/categories_GET.xs",
+      "changes": [
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 7
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 7,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "DB_XANO_BASTOS",
+        "cliente",
+        "GET"
+      ],
+      "local": "api/db_xano_bastos/cliente_GET.xs",
+      "remote": "api/db_xano_bastos/cliente_GET.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 15,
+          "remote_tokens": 5
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 23,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 21,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 1,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "DB_XANO_BASTOS",
+        "cliente/{cliente_id}",
+        "DELETE"
+      ],
+      "local": "api/db_xano_bastos/cliente/cliente_id_DELETE.xs",
+      "remote": "api/db_xano_bastos/cliente/cliente_id_DELETE.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 4,
+          "remote_tokens": 4
+        },
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 2
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 20,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 4,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 1,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "DB_XANO_BASTOS",
+        "cliente/{cliente_id}",
+        "GET"
+      ],
+      "local": "api/db_xano_bastos/cliente/cliente_id_GET.xs",
+      "remote": "api/db_xano_bastos/cliente/cliente_id_GET.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 17,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 10,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 7,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 21,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 1,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "DB_XANO_BASTOS",
+        "cliente/{cliente_id}",
+        "PATCH"
+      ],
+      "local": "api/db_xano_bastos/cliente/cliente_id_PATCH.xs",
+      "remote": "api/db_xano_bastos/cliente/cliente_id_PATCH.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 4,
+          "remote_tokens": 3
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 15,
+          "remote_tokens": 2
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 2,
+          "remote_tokens": 10
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 15,
+          "remote_tokens": 2
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 8,
+          "remote_tokens": 5
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 234,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 21,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 1,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Product Management",
+        "products",
+        "GET"
+      ],
+      "local": "api/product_management/products_GET.xs",
+      "remote": "api/product_management/products_GET.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 2,
+          "remote_tokens": 8
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 21,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 5,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Product Management",
+        "products/{product_id}/image",
+        "POST"
+      ],
+      "local": "api/product_management/product/product_id_image_POST.xs",
+      "remote": "api/product_management/products/product_id/image_POST.xs",
+      "changes": [
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 1
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Product Management",
+        "variations",
+        "GET"
+      ],
+      "local": "api/product_management/variations_GET.xs",
+      "remote": "api/product_management/variations_GET.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 7,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 2,
+          "remote_tokens": 8
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 7,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 2
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 2,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 5,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Public Catalog",
+        "categories",
+        "GET"
+      ],
+      "local": "api/public_catalog/categories_GET.xs",
+      "remote": "api/public_catalog/categories_GET.xs",
+      "changes": [
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Public Catalog",
+        "products",
+        "GET"
+      ],
+      "local": "api/public_catalog/products_GET.xs",
+      "remote": "api/public_catalog/products_GET.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 7,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 7
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 7,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 7
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 7,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 7
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 7,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 7
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Public Catalog",
+        "products/{product_id}",
+        "GET"
+      ],
+      "local": "api/public_catalog/product/product_id_GET.xs",
+      "remote": "api/public_catalog/products/product_id_GET.xs",
+      "changes": [
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Voltix Customer",
+        "addresses",
+        "POST"
+      ],
+      "local": "api/customer/customer_addresses_POST.xs",
+      "remote": "api/voltix_customer/addresses_POST.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Voltix Customer",
+        "addresses/{address_id}",
+        "PATCH"
+      ],
+      "local": "api/customer/customer_address_id_PATCH.xs",
+      "remote": "api/voltix_customer/addresses/address_id_PATCH.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Voltix Customer",
+        "cart",
+        "GET"
+      ],
+      "local": "api/customer/cart_GET.xs",
+      "remote": "api/voltix_customer/cart_GET.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 8
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 9,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Voltix Customer",
+        "checkout/confirm",
+        "POST"
+      ],
+      "local": "api/customer/checkout_confirm_POST.xs",
+      "remote": "api/voltix_customer/checkout/confirm_POST.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 8
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 9,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 8
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 9,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Voltix Customer",
+        "checkout/review",
+        "POST"
+      ],
+      "local": "api/customer/checkout_review_POST.xs",
+      "remote": "api/voltix_customer/checkout/review_POST.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "insert",
+          "local_tokens": 0,
+          "remote_tokens": 8
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 9,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        },
+        {
+          "kind": "replace",
+          "local_tokens": 1,
+          "remote_tokens": 1
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Voltix Customer",
+        "orders/{order_id}",
+        "GET"
+      ],
+      "local": "api/customer/order_id_GET.xs",
+      "remote": "api/voltix_customer/orders/order_id_GET.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "query",
+        "Voltix Customer",
+        "orders/{order_id}/payment/simulate",
+        "POST"
+      ],
+      "local": "api/customer/order_id_payment_simulate_POST.xs",
+      "remote": "api/voltix_customer/orders/order_id/payment/simulate_POST.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        },
+        {
+          "kind": "delete",
+          "local_tokens": 3,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "table",
+        "endereco"
+      ],
+      "local": "table/endereco.xs",
+      "remote": "table/endereco.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 2,
+          "remote_tokens": 0
+        }
+      ]
+    },
+    {
+      "identity": [
+        "table",
+        "pedido"
+      ],
+      "local": "table/pedido.xs",
+      "remote": "table/pedido.xs",
+      "changes": [
+        {
+          "kind": "delete",
+          "local_tokens": 2,
+          "remote_tokens": 0
+        }
+      ]
+    }
+  ],
+  "only_local": [],
+  "only_remote": [
+    [
+      "table",
+      "tmp_rollback_test"
+    ]
+  ],
+  "config_checks": [
+    {
+      "name": "XANO_HEALTH_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_LOGIN_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_ME_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_INTERNAL_ACCESS_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_PUBLIC_CATEGORIES_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_PUBLIC_PRODUCTS_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_PUBLIC_PRODUCT_DETAILS_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_PUBLIC_PRODUCT_IMAGE_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_CATEGORIES_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_BRANDS_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_PRODUCTS_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_VARIATIONS_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_CUSTOMER_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_CUSTOMER_LOGIN_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_CUSTOMER_ME_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_CUSTOMER_ADDRESSES_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_CART_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_CHECKOUT_REVIEW_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_CHECKOUT_CONFIRM_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_ORDERS_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_PAYMENT_SIMULATION_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_INTERNAL_CUSTOMERS_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    },
+    {
+      "name": "XANO_INTERNAL_CUSTOMER_DETAILS_URL",
+      "configured": true,
+      "same_instance": true,
+      "published_group_found": true
+    }
+  ],
+  "probes": [
+    {
+      "probe": "health",
+      "status": 200
+    },
+    {
+      "probe": "public_categories",
+      "status": 200,
+      "shape": "list",
+      "items": 5
+    },
+    {
+      "probe": "internal_customers_without_auth",
+      "status": 401
+    },
+    {
+      "probe": "products_without_auth",
+      "status": 401
+    },
+    {
+      "probe": "legacy_customer_nonexistent_without_auth",
+      "status": 404
+    }
+  ],
+  "runtime_and_data_changes": false,
+  "private_response_bodies_saved": false
+}
