@@ -1,0 +1,36 @@
+{
+  "application_ast_unchanged_except_catalog_section_and_catalog_management": true,
+  "state_handlers_unchanged": true,
+  "xano_sources_unchanged": true,
+  "isolated_preview_uses_ast_extracted_real_component": true,
+  "unit_tests": {
+    "passed": 188,
+    "seconds": 2.326
+  },
+  "full_application_dry_compile": "passed",
+  "qa_1440": {
+    "viewport": 1440,
+    "document_scroll_width": 1425,
+    "form_and_table_side_by_side": true
+  },
+  "qa_1024": {
+    "viewport": 1024,
+    "document_scroll_width": 1009,
+    "form_and_table_stack": true
+  },
+  "qa_states": [
+    "category edit and cancel",
+    "brand edit and simulated submit",
+    "loading disables all scoped controls; zero empty notices",
+    "empty list has two notices and no tables",
+    "error visible with records",
+    "employee has zero catalog components",
+    "four persistent labels associated to unique fields",
+    "keyboard Tab from name to description with visible outline"
+  ],
+  "real_mutations_executed": false,
+  "limitations": [
+    "Fixture events are local simulations, not authenticated Xano save/status tests.",
+    "Desktop focus only; no complete mobile audit."
+  ]
+}

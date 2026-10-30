@@ -142,3 +142,47 @@
 .vx-products :is(button,input,textarea,summary,[role=combobox],[tabindex]):focus-visible{outline:3px solid #00b8d9;outline-offset:3px}
 @media(max-width:1250px){.vx-products{grid-template-columns:minmax(0,1fr)}.vx-products__form{max-width:none}}
 @media(max-width:800px){.vx-products__form,.vx-products__card{padding:20px}.vx-products__pair{grid-template-columns:1fr}.vx-products__list-heading{align-items:start}}
+
+/* Desktop category and brand management; isolated from other workspace sections. */
+.vx-taxonomy__sections{display:flex;flex-direction:column;gap:28px}
+.vx-taxonomy__section{background:#fff;border:1px solid #e3e9ef;border-radius:14px;min-width:0;overflow:hidden}
+.vx-taxonomy__heading{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:24px 28px;border-bottom:1px solid #e8edf2}
+.vx-taxonomy__heading h2{margin:0;font-size:20px;font-weight:650;letter-spacing:-.025em;color:#10283e}
+.vx-taxonomy__heading p{margin:7px 0 0;font-size:12px;line-height:1.6;color:#637287}
+.vx-taxonomy__refresh{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex-shrink:0;border:1px solid #dce5ed;border-radius:7px;padding:10px 12px;background:#fff;color:#24405a;font:inherit;font-size:11px;cursor:pointer}
+.vx-taxonomy__refresh:hover{background:#f4f8fb}
+.vx-taxonomy__body{display:grid;grid-template-columns:290px minmax(0,1fr);min-width:0}
+.vx-taxonomy__form{padding:26px;border-right:1px solid #e8edf2;background:#fafcfd;min-width:0}
+.vx-taxonomy__eyebrow{font-size:9px;letter-spacing:.13em;font-weight:650;color:#728398;margin:0 0 9px}
+.vx-taxonomy__form h3{font-size:16px;letter-spacing:-.02em;color:#17314b;margin:0 0 24px;font-weight:600}
+.vx-taxonomy__field{display:flex;flex-direction:column;gap:8px;margin-bottom:18px}
+.vx-taxonomy__field label{font-size:11px;font-weight:600;color:#40546b}
+.vx-taxonomy__field textarea{min-height:92px;line-height:1.6}
+.vx-taxonomy__form-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:22px}
+.vx-taxonomy__form-actions button{font-size:11px;min-height:36px}
+.vx-taxonomy__note{margin:22px 0 0;font-size:10px;color:#718195;line-height:1.7}
+.vx-taxonomy__list{padding:26px;min-width:0}
+.vx-taxonomy__list-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+.vx-taxonomy__list-heading h3{font-size:12px;color:#29435b;font-weight:600;margin:0}
+.vx-taxonomy__list-heading span{font-size:10px;color:#728398;white-space:nowrap}
+.vx-taxonomy__table{max-width:100%;overflow-x:auto}
+.vx-taxonomy__table table{width:100%;border-collapse:collapse;table-layout:fixed;min-width:340px}
+.vx-taxonomy__table th{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:#728398;text-align:left;padding:0 10px 12px;border-bottom:1px solid #e8edf2}
+.vx-taxonomy__table th:first-child{padding-left:0;width:55%}
+.vx-taxonomy__table th:nth-child(2){width:20%}
+.vx-taxonomy__table th:last-child{width:25%}
+.vx-taxonomy__table td{vertical-align:top;padding:19px 10px;border-bottom:1px solid #edf1f5}
+.vx-taxonomy__table td:first-child{padding-left:0}
+.vx-taxonomy__table tr:last-child td{border-bottom:0}
+.vx-taxonomy__record-name{margin:0;color:#17314b;font-size:12px;font-weight:600;line-height:1.5;overflow-wrap:anywhere}
+.vx-taxonomy__record-description{margin:6px 0 0;color:#637287;font-size:11px;line-height:1.65;white-space:pre-wrap;overflow-wrap:anywhere}
+.vx-taxonomy__badge{display:inline-block;padding:4px 7px;border-radius:5px;background:#eaf6f3;color:#267362;font-size:9px;font-weight:600;white-space:nowrap}
+.vx-taxonomy__badge.is-inactive{background:#f0f2f5;color:#6f7886}
+.vx-taxonomy__actions{display:flex;flex-direction:column;align-items:start;gap:9px}
+.vx-taxonomy__action{border:0;padding:0;background:transparent;color:#0866d9;font:inherit;font-size:11px;cursor:pointer;text-align:left}
+.vx-taxonomy__action.is-secondary{color:#637287}
+.vx-taxonomy__notice,.vx-taxonomy__empty{font-size:12px;line-height:1.7;color:#637287;padding:18px;background:#f6f9fc;border-radius:7px;margin:14px 0}
+.vx-taxonomy button:disabled{opacity:.5;cursor:wait}
+.vx-taxonomy :is(button,input,textarea):focus-visible{outline:3px solid #00b8d9;outline-offset:3px}
+@media(max-width:1150px){.vx-taxonomy__body{grid-template-columns:minmax(0,1fr)}.vx-taxonomy__form{border-right:0;border-bottom:1px solid #e8edf2}.vx-taxonomy__form form{max-width:560px}}
+@media(max-width:800px){.vx-taxonomy__heading{align-items:start;flex-direction:column}.vx-taxonomy__heading,.vx-taxonomy__form,.vx-taxonomy__list{padding:20px}}

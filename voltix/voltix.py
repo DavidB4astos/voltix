@@ -5632,105 +5632,64 @@ def index() -> rx.Component:
         edit_event: rx.EventHandler,
         status_event: rx.EventHandler,
     ) -> rx.Component:
-        return surface_card(
-            rx.vstack(
-                rx.hstack(
-                    section_heading(title, size="5"),
-                    secondary_button(
-                        "Atualizar lista",
-                        on_click=refresh_event,
-                        disabled=loading,
-                    ),
-                    justify="between",
-                    width="100%",
+        singular = "categoria" if title == "Categorias" else "marca"
+        field_prefix = "internal-category" if title == "Categorias" else "internal-brand"
+
+        def record_row(entry):
+            return rx.el.tr(
+                rx.el.td(
+                    rx.el.p(entry.name, class_name="vx-taxonomy__record-name"),
+                    rx.cond(entry.description != "", rx.el.p(entry.description, class_name="vx-taxonomy__record-description"), rx.fragment()),
                 ),
-                rx.form(
-                    rx.vstack(
-                        rx.input(
-                            name="name",
-                            type="text",
-                            placeholder=f"Nome de {title.lower()}",
-                            value=form_name,
-                            on_change=name_change_event,
-                            required=True,
-                            disabled=loading,
-                            width="100%",
-                        ),
-                        rx.input(
-                            name="description",
-                            type="text",
-                            placeholder="Descrição (opcional)",
-                            value=form_description,
-                            on_change=description_change_event,
-                            disabled=loading,
-                            width="100%",
-                        ),
-                        rx.hstack(
-                            primary_button(
-                                rx.cond(
-                                    editing_id != None,
-                                    "Salvar alterações",
-                                    f"Adicionar {title[:-1].lower()}",
-                                ),
-                                type="submit",
-                                disabled=loading,
-                            ),
-                            rx.cond(
-                                editing_id != None,
-                                secondary_button(
-                                    "Cancelar",
-                                    type="button",
-                                    on_click=cancel_event,
-                                    disabled=loading,
-                                ),
-                                rx.fragment(),
-                            ),
-                            spacing="2",
-                        ),
-                        align="stretch",
-                        spacing="2",
-                    ),
-                    on_submit=save_event,
-                    width="100%",
-                ),
-                feedback_text(message),
-                rx.cond(
-                    loading,
-                    loading_text("Carregando..."),
-                    rx.fragment(),
-                ),
-                rx.foreach(
-                    entries,
-                    lambda entry: rx.hstack(
-                        rx.text(entry.name, weight="bold", color=COLOR_NAVY),
-                        rx.text(entry.description, color=COLOR_TEXT_MUTED),
-                        status_badge(entry.status),
-                        secondary_button(
-                            "Editar",
-                            on_click=edit_event(entry.id),
-                            disabled=loading,
-                        ),
-                        secondary_button(
-                            rx.cond(
-                                entry.status == "ATIVO",
-                                "Inativar",
-                                "Reativar",
-                            ),
-                            on_click=status_event(entry.id),
-                            disabled=loading,
-                        ),
-                        justify="between",
-                        width="100%",
-                        padding="2",
-                        border_bottom=f"1px solid {COLOR_BORDER}",
-                        wrap="wrap",
-                    ),
-                ),
-                align="stretch",
-                spacing="3",
-                width="100%",
-            ),
-        )
+                rx.el.td(rx.el.span(rx.cond(entry.status == "ATIVO", "Ativo", "Inativo"),
+                    class_name=rx.cond(entry.status == "ATIVO", "vx-taxonomy__badge", "vx-taxonomy__badge is-inactive"))),
+                rx.el.td(rx.el.div(
+                    rx.el.button("Editar", type="button", on_click=edit_event(entry.id), disabled=loading,
+                        aria_label="Editar " + singular + " " + entry.name, class_name="vx-taxonomy__action"),
+                    rx.el.button(rx.cond(entry.status == "ATIVO", "Inativar", "Reativar"), type="button",
+                        on_click=status_event(entry.id), disabled=loading,
+                        aria_label=rx.cond(entry.status == "ATIVO", "Inativar ", "Reativar ") + singular + " " + entry.name,
+                        class_name="vx-taxonomy__action is-secondary"), class_name="vx-taxonomy__actions")),
+            )
+
+        return rx.el.section(
+            rx.el.header(
+                rx.el.div(rx.el.h2(title), rx.el.p("Organize os registros e preserve suas associações ao catálogo.")),
+                rx.el.button(rx.icon("refresh-cw", size=14), "Atualizar lista", type="button",
+                    on_click=refresh_event, disabled=loading, aria_label="Atualizar " + title.lower(), class_name="vx-taxonomy__refresh"),
+                class_name="vx-taxonomy__heading"),
+            rx.el.div(
+                rx.el.div(
+                    rx.el.p(rx.cond(editing_id != None, "EDITAR REGISTRO", "NOVO REGISTRO"), class_name="vx-taxonomy__eyebrow"),
+                    rx.el.h3(rx.cond(editing_id != None, "Editar " + singular, "Adicionar " + singular)),
+                    rx.form(
+                        rx.el.div(rx.el.label("Nome *", html_for=field_prefix + "-name"),
+                            rx.input(id=field_prefix + "-name", name="name", type="text", value=form_name,
+                                on_change=name_change_event, required=True, disabled=loading, width="100%"), class_name="vx-taxonomy__field"),
+                        rx.el.div(rx.el.label("Descrição (opcional)", html_for=field_prefix + "-description"),
+                            rx.text_area(id=field_prefix + "-description", name="description", value=form_description,
+                                on_change=description_change_event, disabled=loading, width="100%", resize="vertical"), class_name="vx-taxonomy__field"),
+                        rx.el.div(
+                            primary_button(rx.cond(editing_id != None, "Salvar alterações", "Adicionar " + singular), type="submit", disabled=loading),
+                            rx.cond(editing_id != None, secondary_button("Cancelar", type="button", on_click=cancel_event, disabled=loading), rx.fragment()),
+                            class_name="vx-taxonomy__form-actions"),
+                        on_submit=save_event, width="100%"),
+                    rx.el.p("Registros inativos são preservados para manter as associações existentes.", class_name="vx-taxonomy__note"),
+                    class_name="vx-taxonomy__form"),
+                rx.el.div(
+                    rx.el.div(rx.el.h3("Registros cadastrados"), rx.el.span(entries.length().to_string() + " na lista"), class_name="vx-taxonomy__list-heading"),
+                    feedback_text(message),
+                    rx.cond(loading, rx.el.p("Atualizando registros…", role="status", class_name="vx-taxonomy__notice"), rx.fragment()),
+                    rx.cond((entries.length() == 0) & ~loading,
+                        rx.el.p("Nenhum registro na lista atual. Use Atualizar lista para consultar novamente.", class_name="vx-taxonomy__empty"), rx.fragment()),
+                    rx.cond(entries.length() > 0,
+                        rx.el.div(rx.el.table(
+                            rx.el.thead(rx.el.tr(rx.el.th("Registro", scope="col"), rx.el.th("Status", scope="col"), rx.el.th("Ações", scope="col"))),
+                            rx.el.tbody(rx.foreach(entries, record_row)), aria_label="Lista de " + title.lower()),
+                            class_name="vx-taxonomy__table"), rx.fragment()),
+                    class_name="vx-taxonomy__list", aria_busy=loading),
+                class_name="vx-taxonomy__body"),
+            class_name="vx-taxonomy__section", aria_label=title)
 
     def product_field(label, field_id, control):
         return rx.el.div(rx.el.label(label, html_for=field_id), control, class_name="vx-products__field")
@@ -6046,9 +6005,8 @@ def index() -> rx.Component:
 
     catalog_management = rx.cond(
         State.user_role == "ADMINISTRADOR",
-        rx.vstack(
-            section_heading("Gestão do catálogo"),
-            rx.grid(
+        rx.el.div(
+            rx.el.div(
                 catalog_section(
                     "Categorias",
                     State.categories,
@@ -6079,16 +6037,11 @@ def index() -> rx.Component:
                     State.save_brand,
                     State.cancel_brand_edit,
                     State.edit_brand,
-State.toggle_brand_status,
+                    State.toggle_brand_status,
                 ),
-                columns={"initial": "1", "md": "2"},
-                spacing="4",
-                align="start",
-                width="100%",
+                class_name="vx-taxonomy__sections",
             ),
-            width="100%",
-            spacing="4",
-            align="stretch",
+            class_name="vx-taxonomy",
         ),
         rx.fragment(),
     )

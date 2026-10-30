@@ -41,6 +41,9 @@ Concluída a [reconcile-cart-checkout-ordering](../openspec/changes/archive/2026
 ### Viabilidade de teste isolado dos joins — 30/10/2026
 A avaliação documental [evaluate-isolated-cart-join-tests](../openspec/changes/archive/2026-10-30-evaluate-isolated-cart-join-tests/evidence/feasibility-review.md) foi concluída; a prova no runtime **não foi executada**. Perfil atual lista somente o workspace do Voltix, usuário não possui outro ambiente e sandbox automático é descrito oficialmente como pago. Mantida a gratuidade e E6. [Plano de retomada](deferred-changes/2026-10-30-cart-join-runtime-tests/README.md): somente em ambiente separado gratuito e autorizado; não modificar joins por suposição. Entregas independentes, como refinamento desktop de Categorias e marcas, podem ser propostas sem esperar esse teste.
 
+### Categorias e marcas desktop — 30/10/2026
+Concluída a [refine-internal-catalog-desktop](../openspec/changes/archive/2026-10-30-refine-internal-catalog-desktop/evidence/final-review.md): formulários rotulados, tabelas legíveis, ações específicas e estados preservados. 188 testes passaram e QA isolada verificou desktop 1440/1024, edição/cancelamento, loading/vazio/erro e exclusividade do Administrador. Sem alteração de State, handlers ou Xano; nenhuma mutação real executada. A sugestão visual anterior de Categorias e marcas foi atendida. Importação em massa pode ser avaliada como próxima tela, com escopo próprio; CRM histórico/atendimentos mantém dependências e bloqueios já documentados.
+
 ## Decisões aprovadas E1–E7
 
 | ID | Decisão preservada |
