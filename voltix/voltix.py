@@ -1918,6 +1918,18 @@ class State(rx.State):
     _internal_customers_generation: int = 0
     _internal_detail_generation: int = 0
 
+    internal_section: str = "clientes"
+
+    @rx.event
+    def select_internal_section(self, section: str):
+        if not isinstance(section, str) or not self._internal_customer_allowed():
+            return
+        allowed = {"clientes"}
+        if self.user_role == "ADMINISTRADOR":
+            allowed.update({"produtos", "catalogo", "importacao"})
+        if section in allowed:
+            self.internal_section = section
+
     def _internal_customer_allowed(self) -> bool:
         return bool(self._auth_token and self.is_authenticated and self.session_status == "success"
                     and self.user_status == "ATIVO" and self.user_role in {"FUNCIONARIO", "ADMINISTRADOR"})
@@ -2236,6 +2248,7 @@ class State(rx.State):
         session_status: str = "error",
     ):
         self._clear_internal_customers()
+        self.internal_section = "clientes"
         self._auth_token = ""
         self.is_authenticated = False
         self.user_id = None
@@ -3593,6 +3606,7 @@ class State(rx.State):
 
     @rx.event
     async def login(self, email: str, password: str):
+        self.internal_section = "clientes"
         self._clear_catalog_state()
         self.login_loading = True
         self.login_status = "loading"
@@ -5446,7 +5460,7 @@ def page_shell(
     )
 
 
-def internal_customer_panel() -> rx.Component:
+def internal_customer_panel(*, show_heading: bool = True) -> rx.Component:
     def customer_row(customer):
         return rx.table.row(
             rx.table.cell(customer.nome_completo),
@@ -5471,7 +5485,7 @@ def internal_customer_panel() -> rx.Component:
             align="stretch", spacing="3"))
 
     return surface_card(rx.vstack(
-        rx.heading("Clientes", size="6", as_="h2"),
+        rx.heading("Clientes", size="6", as_="h2") if show_heading else rx.fragment(),
         rx.text("Consulte clientes e seus dados protegidos. Acesso somente para leitura."),
         rx.form(rx.flex(
             rx.vstack(rx.el.label("Nome ou e-mail", html_for="internal-customer-query"),
@@ -5507,6 +5521,54 @@ def internal_customer_panel() -> rx.Component:
         rx.cond(State.internal_customer_loading, rx.text("Carregando detalhe…", role="status")),
         rx.foreach(State.internal_customer_detail, detail),
         spacing="4", width="100%", align="stretch"))
+
+
+def internal_workspace_shell(content: rx.Component) -> rx.Component:
+    def navigation(label: str, key: str, icon: str):
+        selected = State.internal_section == key
+        return rx.el.button(
+            rx.icon(icon, size=19), rx.el.span(label),
+            on_click=State.select_internal_section(key), type="button",
+            aria_current=rx.cond(selected, "page", "false"),
+            class_name=rx.cond(selected, "vx-internal__nav-item is-selected", "vx-internal__nav-item"))
+
+    title = rx.match(State.internal_section, ("produtos", "Produtos"),
+        ("catalogo", "Categorias e marcas"), ("importacao", "Importação"), "Clientes")
+    description = rx.match(State.internal_section,
+        ("produtos", "Organize os produtos e suas variações."),
+        ("catalogo", "Mantenha a estrutura do seu catálogo organizada."),
+        ("importacao", "Prepare, confira e acompanhe a importação do catálogo."),
+        "Uma visão clara para consultar e conhecer seus clientes.")
+    return rx.el.div(
+        rx.link("Ir para o conteúdo", href="#internal-workspace-main", class_name="vx-internal__skip"),
+        rx.el.aside(
+            rx.link(brand_logo(on_dark=True), href="/catalogo", aria_label="Voltix — loja pública", class_name="vx-internal__brand"),
+            rx.el.p("ESPAÇO DA EQUIPE", class_name="vx-internal__eyebrow"),
+            rx.el.nav(navigation("Clientes", "clientes", "users"),
+                rx.cond(State.user_role == "ADMINISTRADOR", rx.fragment(
+                    navigation("Produtos", "produtos", "package"),
+                    navigation("Categorias e marcas", "catalogo", "tags"),
+                    navigation("Importação", "importacao", "file-up")), rx.fragment()),
+                aria_label="Navegação interna", class_name="vx-internal__nav"),
+            rx.el.div(
+                rx.link(rx.el.span("Ver loja"), rx.icon("arrow-up-right", size=16), href="/catalogo", class_name="vx-internal__store"),
+                rx.el.div(rx.el.div(rx.icon("user-round", size=18), class_name="vx-internal__avatar"),
+                    rx.el.div(rx.el.p(State.user_name, class_name="vx-internal__name"),
+                        rx.el.p(rx.cond(State.user_role == "ADMINISTRADOR", "Administrador", "Funcionário"), class_name="vx-internal__role")),
+                    class_name="vx-internal__identity"),
+                rx.el.button(rx.icon("log-out", size=16), "Sair da conta", on_click=State.logout,
+                    type="button", class_name="vx-internal__logout"),
+                class_name="vx-internal__bottom"),
+            class_name="vx-internal__sidebar"),
+        rx.el.main(
+            rx.el.header(rx.el.div(rx.el.p("OPERAÇÃO VOLTIX", class_name="vx-internal__overline"),
+                rx.el.h1(title, class_name="vx-internal__title"), rx.el.p(description, class_name="vx-internal__description")),
+                rx.el.span(rx.el.span(class_name="vx-internal__status-dot"), "Acesso interno", class_name="vx-internal__status"),
+                class_name="vx-internal__header"),
+            rx.el.div(content, class_name="vx-internal__content"),
+            rx.el.footer("Voltix · Ambiente acadêmico", class_name="vx-internal__footer"),
+            id="internal-workspace-main", tab_index=-1, class_name="vx-internal__main"),
+        class_name="vx-internal")
 
 
 def index() -> rx.Component:
@@ -6246,50 +6308,14 @@ State.toggle_brand_status,
         rx.fragment(),
     )
 
-    protected_area = rx.cond(
-        (State.is_authenticated) & (State.session_status == "success"),
-        rx.vstack(
-            rx.hstack(
-                rx.hstack(
-                    rx.link(
-                        brand_logo(),
-                        href="/catalogo",
-                        text_decoration="none",
-                    ),
-                    rx.badge("Acesso interno", color_scheme="cyan"),
-                    spacing="3",
-                    align="center",
-                    wrap="wrap",
-                ),
-                secondary_button("Sair", on_click=State.logout),
-                justify="between",
-                width="100%",
-                wrap="wrap",
-            ),
-            section_heading("Área interna"),
-            feedback_text("Acesso autorizado.", tone="success"),
-            surface_card(
-                rx.vstack(
-                    rx.text("Usuário: " + State.user_name, weight="bold"),
-                    rx.text(State.user_email),
-                    rx.text("Perfil: " + State.user_role),
-                    rx.text("Status: " + State.user_status),
-                    align="stretch",
-                    spacing="2",
-                ),
-            ),
-            internal_customer_panel(),
-            catalog_management,
-            product_management,
-            bulk_import_management,
-            spacing="4",
-            align="stretch",
-            width="100%",
-        ),
-        rx.fragment(),
-    )
+    protected_area = internal_workspace_shell(rx.fragment(
+        rx.cond(State.internal_section == "clientes", internal_customer_panel(show_heading=False), rx.fragment()),
+        rx.cond(State.user_role == "ADMINISTRADOR", rx.fragment(
+            rx.cond(State.internal_section == "catalogo", catalog_management, rx.fragment()),
+            rx.cond(State.internal_section == "produtos", product_management, rx.fragment()),
+            rx.cond(State.internal_section == "importacao", bulk_import_management, rx.fragment())), rx.fragment())))
 
-    return page_shell(
+    login_surface = page_shell(
         rx.vstack(
             surface_card(
                 rx.vstack(
@@ -6359,7 +6385,6 @@ State.toggle_brand_status,
                 max_width="28rem",
                 margin_x="auto",
             ),
-            protected_area,
             align="center",
         ),
         header=site_header(
@@ -6372,6 +6397,10 @@ State.toggle_brand_status,
         ),
         max_width="56rem",
     )
+    return rx.cond(
+        State.is_authenticated & (State.session_status == "success") & (State.user_status == "ATIVO"),
+        protected_area, login_surface)
+
 
 
 def home_page() -> rx.Component:
@@ -7851,6 +7880,7 @@ def customer_orders_page() -> rx.Component:
 
 
 app = rx.App(
+    stylesheets=["/voltix-internal.css"],
     style={
         "font_family": "Inter, system-ui, -apple-system, 'Segoe UI', sans-serif",
         "background_color": COLOR_SURFACE,

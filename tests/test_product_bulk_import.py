@@ -715,8 +715,8 @@ class BulkImportInterfaceTests(unittest.TestCase):
         self.assertIn("State.preview_bulk_import", bulk_ui)
         self.assertIn("State.confirm_bulk_import", bulk_ui)
         self.assertIn("State.cancel_bulk_import", bulk_ui)
-        protected = source.split("    protected_area = rx.cond(", 1)[1]
-        protected = protected.split("    return page_shell(", 1)[0]
+        protected = source.split("    protected_area = internal_workspace_shell(", 1)[1]
+        protected = protected.split("    login_surface = page_shell(", 1)[0]
         self.assertIn("bulk_import_management", protected)
 
 

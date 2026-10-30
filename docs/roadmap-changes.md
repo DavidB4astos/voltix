@@ -27,7 +27,7 @@ Atualizado em 29/10/2026 por conferência do repositório local. Fontes: [AGENTS
 
 Os lotes de fotos até ASUS estão nos commits `18e7919`, `d215ce8`, `b4dfb46`, `ef0b6c7`, `f41ef3f` e `064e66b`; a pesquisa sem foto nova é `1f29f3b`. Preservam arquivos originais, fontes, licenças, avisos e evidências. Cinco pendentes: G203 LIGHTSYNC, M90, WD SN580 1TB, Ryzen 5 5600 e Archer C6. Não usar modelos parecidos, imagens geradas por IA para SKU ou conteúdo sem direitos demonstrados.
 
-**C4 concluída e arquivada:** [consulta-clientes-painel](../openspec/changes/archive/2026-10-29-consulta-clientes-painel/proposal.md). Spec internal-customers consolidada após publicação restrita, validação autenticada e restauração da conta fictícia usada no teste de status. Limites das verificações registrados na revisão final. Consultar `openspec list` para o estado corrente; nenhuma próxima change foi iniciada neste encerramento.
+**C4 concluída e arquivada:** [consulta-clientes-painel](../openspec/changes/archive/2026-10-29-consulta-clientes-painel/proposal.md). Spec internal-customers consolidada após publicação restrita, validação autenticada e restauração da conta fictícia usada no teste de status. Limites das verificações registrados na revisão final. Em andamento: `refine-internal-workspace`, acabamento desktop e navegação por perfil do painel interno, sem novas funções de CRM. Implementação e testes automatizados prontos; validação autenticada dos dois perfis precede o arquivamento. Consultar `openspec list` para o estado corrente.
 
 ## Decisões aprovadas E1–E7
 

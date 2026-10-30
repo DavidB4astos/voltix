@@ -1,0 +1,34 @@
+/* Internal workspace only. Storefront styles remain independent. */
+.vx-internal{--vx-ink:#0c1d30;--vx-muted:#637287;--vx-line:#e3e9ef;display:grid;grid-template-columns:246px minmax(0,1fr);min-height:100vh;background:#f4f6f8;color:var(--vx-ink);font-family:Inter,system-ui,sans-serif}
+.vx-internal *{box-sizing:border-box}
+.vx-internal__sidebar{position:sticky;top:0;height:100vh;padding:34px 20px 24px;display:flex;flex-direction:column;background:#071525;color:#ecf3fa}
+.vx-internal__brand{display:block;width:fit-content;margin:0 12px 44px;text-decoration:none}
+.vx-internal__eyebrow{font-size:10px;font-weight:700;letter-spacing:.17em;color:#8296ab;margin:0 14px 18px}
+.vx-internal__nav{display:flex;flex-direction:column;gap:7px}
+.vx-internal__nav-item{display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;border:1px solid transparent;border-radius:9px;background:transparent;color:#aebfd0;font:inherit;font-size:13px;text-align:left;cursor:pointer;transition:background .15s,color .15s}
+.vx-internal__nav-item:hover{background:#11283c;color:white}
+.vx-internal__nav-item.is-selected{background:#103345;border-color:#245064;color:#9ce9f3;font-weight:650}
+.vx-internal__bottom{margin-top:auto;padding-top:40px}
+.vx-internal__store{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;color:#aebfd0;text-decoration:none;font-size:12px}
+.vx-internal__identity{display:flex;gap:10px;align-items:center;border-top:1px solid #233547;margin-top:18px;padding:24px 8px 18px;min-width:0}
+.vx-internal__avatar{display:grid;place-items:center;flex:0 0 34px;height:34px;border-radius:50%;background:#193449;color:#9ce9f3}
+.vx-internal__name{margin:0;color:#e8f0f7;font-size:12px;font-weight:600;overflow-wrap:anywhere}
+.vx-internal__role{margin:4px 0 0;color:#8da3b7;font-size:11px}
+.vx-internal__logout{display:flex;align-items:center;gap:10px;padding:10px 12px;border:0;background:transparent;color:#aebfd0;font:inherit;font-size:12px;cursor:pointer}
+.vx-internal__logout:hover,.vx-internal__store:hover{color:#fff}
+.vx-internal__main{min-width:0;padding:44px clamp(24px,4vw,68px) 20px;max-width:1600px;width:100%;margin:0 auto}
+.vx-internal__header{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:34px}
+.vx-internal__overline{font-size:10px;letter-spacing:.16em;color:#637287;font-weight:650;margin:0 0 12px}
+.vx-internal__title{font-size:clamp(28px,2.7vw,38px);font-weight:650;letter-spacing:-.035em;line-height:1.15;margin:0 0 12px}
+.vx-internal__description{font-size:14px;color:#637287;line-height:1.6;margin:0}
+.vx-internal__status{display:flex;gap:8px;align-items:center;white-space:nowrap;margin-top:7px;font-size:11px;color:#52677a;border:1px solid #dce5ec;border-radius:99px;padding:7px 12px;background:#fff}
+.vx-internal__status-dot{width:6px;height:6px;border-radius:50%;background:#00a3bc}
+.vx-internal__content{min-width:0}
+.vx-internal__content>.rt-Box{padding:28px;border:1px solid var(--vx-line);box-shadow:0 3px 18px #09233c04!important}
+.vx-internal__content table{font-size:13px}
+.vx-internal__footer{padding:28px 0 0;font-size:11px;color:#7b8a99}
+.vx-internal :is(button,a,input,select):focus-visible{outline:3px solid #00b8d9;outline-offset:3px}
+.vx-internal__skip{position:fixed;left:260px;top:-80px;z-index:100;background:white;color:#071525;padding:12px 18px;border-radius:6px}
+.vx-internal__skip:focus{top:12px}
+@media(max-width:800px){.vx-internal{grid-template-columns:1fr}.vx-internal__sidebar{position:static;height:auto;padding:20px}.vx-internal__brand{margin:0 0 20px}.vx-internal__eyebrow{display:none}.vx-internal__nav{flex-direction:row;flex-wrap:wrap}.vx-internal__nav-item{width:auto}.vx-internal__bottom{padding-top:16px;display:flex;align-items:center;flex-wrap:wrap;gap:12px}.vx-internal__identity{border:0;margin:0;padding:4px}.vx-internal__store{padding:4px}.vx-internal__main{padding:28px 18px}.vx-internal__header{flex-direction:column;gap:12px}.vx-internal__skip{left:12px}}
+@media(prefers-reduced-motion:reduce){.vx-internal__nav-item{transition:none}}
