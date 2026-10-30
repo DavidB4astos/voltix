@@ -1,5 +1,6 @@
 import asyncio
 import os
+import re
 import unittest
 from decimal import Decimal
 from pathlib import Path
@@ -45,6 +46,29 @@ class _FakeEmployeeState(_FakeAdminState):
 
 
 class ProductManagementTests(unittest.TestCase):
+    def test_administrative_reads_keep_output_bounded_and_do_not_write(self):
+        contracts = [
+            ("products", "produto", "nome", {"id", "nome", "descricao", "especificacoes_tecnicas",
+                "imagem_principal", "categoria_id", "marca_id", "status", "created_at", "updated_at"}),
+            ("variations", "variacao_produto", "sku", {"id", "produto_id", "nome_ou_descricao",
+                "sku", "preco", "quantidade_disponivel", "status", "created_at", "updated_at"}),
+        ]
+        for route, table, sort_field, fields in contracts:
+            with self.subTest(route=route):
+                source = Path(f"xano/api/product_management/{route}_GET.xs").read_text(encoding="utf-8")
+                query = source.split(f"db.query {table}", 1)[1].split(f"as ${route}", 1)[0]
+                output = re.search(r"output\s*=\s*\[([^]]*)\]", query, re.S)
+                self.assertIsNotNone(output)
+                self.assertEqual(set(re.findall(r'"([^"\n]+)"', output.group(1))), fields)
+                self.assertRegex(query, rf'sort\s*=\s*\{{\s*{sort_field}:\s*"asc"\s*\}}')
+                self.assertNotIn("where", query)  # Maintenance must retain inactive records.
+                for write in ["db.add", "db.patch", "db.del", "db.bulk", "db.edit"]:
+                    self.assertNotIn(write, source)
+                user_lookup = source.split("db.get user", 1)[1].split("as $user", 1)[0]
+                user_output = re.search(r"output\s*=\s*\[([^]]*)\]", user_lookup, re.S)
+                self.assertIsNotNone(user_output)
+                self.assertEqual(set(re.findall(r'"([^"\n]+)"', user_output.group(1))), {"id", "role", "status"})
+
     def test_product_payloads_include_inactive_existing_relationships_and_decimal_stock(self):
         entries = app._product_entries(
             [

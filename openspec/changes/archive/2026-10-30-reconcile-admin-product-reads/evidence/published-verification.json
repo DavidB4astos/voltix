@@ -1,0 +1,45 @@
+{
+  "published": [
+    {
+      "path": "api/product_management/products_GET.xs",
+      "normalized_match_except_sort_placement": true,
+      "sort_field": "nome",
+      "sort_ascending": true,
+      "auth_user": true
+    },
+    {
+      "path": "api/product_management/variations_GET.xs",
+      "normalized_match_except_sort_placement": true,
+      "sort_field": "sku",
+      "sort_ascending": true,
+      "auth_user": true
+    }
+  ],
+  "unrelated_metadata_changes": [],
+  "added": [],
+  "removed": [],
+  "probes": [
+    {
+      "endpoint": "XANO_PRODUCTS_URL",
+      "token": "anonymous",
+      "status": 401
+    },
+    {
+      "endpoint": "XANO_VARIATIONS_URL",
+      "token": "anonymous",
+      "status": 401
+    },
+    {
+      "endpoint": "XANO_PRODUCTS_URL",
+      "token": "invalid",
+      "status": 401
+    },
+    {
+      "endpoint": "XANO_VARIATIONS_URL",
+      "token": "invalid",
+      "status": 401
+    }
+  ],
+  "authenticated_positive_reads_executed": false,
+  "records_modified": false
+}

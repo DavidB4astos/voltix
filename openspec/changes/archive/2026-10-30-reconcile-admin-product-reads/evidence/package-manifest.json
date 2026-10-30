@@ -1,0 +1,24 @@
+{
+  "queries": [
+    {
+      "path": "api/product_management/products_GET.xs",
+      "guid_matches_published": true,
+      "auth_table_preserved": true,
+      "package_sha256": "386f7f64f6e79ff86b753a78aecf5a093301a50c4b56cf55def540df8369026e",
+      "before_sha256": "f8f162b8309a92d7ca267bb70a009931695c0d343d437f4ba0b25aff2e00b3d1"
+    },
+    {
+      "path": "api/product_management/variations_GET.xs",
+      "guid_matches_published": true,
+      "auth_table_preserved": true,
+      "package_sha256": "22e15275435fd5a2e92fbf4aaa26e5ad67246365616c507d6a0a9c1725e0c528",
+      "before_sha256": "375098db84aebe9fb45ffc9ef29993f11345efb079a323b6bea3770ec2a8dd69"
+    }
+  ],
+  "query_count": 2,
+  "groups": 0,
+  "tables": 0,
+  "records": false,
+  "env": false,
+  "runtime_changes": false
+}

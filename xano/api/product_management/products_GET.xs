@@ -1,4 +1,4 @@
-query "products" verb=GET {
+query products verb=GET {
   api_group = "Product Management"
   auth = "user"
 
@@ -23,18 +23,18 @@ query "products" verb=GET {
     }
 
     db.query produto {
-      return = {type: "list"}
       sort = {nome: "asc"}
+      return = {type: "list"}
       output = [
-        "id",
-        "nome",
-        "descricao",
-        "especificacoes_tecnicas",
-        "imagem_principal",
-        "categoria_id",
-        "marca_id",
-        "status",
-        "created_at",
+        "id"
+        "nome"
+        "descricao"
+        "especificacoes_tecnicas"
+        "imagem_principal"
+        "categoria_id"
+        "marca_id"
+        "status"
+        "created_at"
         "updated_at"
       ]
     } as $products
@@ -42,4 +42,5 @@ query "products" verb=GET {
 
   response = $products
   tags = ["voltix:product-management"]
+  guid = "AgoGmCxwo3Ip91yQCVqrEwlxztg"
 }

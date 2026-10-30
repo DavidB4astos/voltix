@@ -1,4 +1,4 @@
-query "variations" verb=GET {
+query variations verb=GET {
   api_group = "Product Management"
   auth = "user"
 
@@ -23,17 +23,17 @@ query "variations" verb=GET {
     }
 
     db.query variacao_produto {
-      return = {type: "list"}
       sort = {sku: "asc"}
+      return = {type: "list"}
       output = [
-        "id",
-        "produto_id",
-        "nome_ou_descricao",
-        "sku",
-        "preco",
-        "quantidade_disponivel",
-        "status",
-        "created_at",
+        "id"
+        "produto_id"
+        "nome_ou_descricao"
+        "sku"
+        "preco"
+        "quantidade_disponivel"
+        "status"
+        "created_at"
         "updated_at"
       ]
     } as $variations
@@ -41,4 +41,5 @@ query "variations" verb=GET {
 
   response = $variations
   tags = ["voltix:product-management"]
+  guid = "Dtv-oCU1lq8XBNxIDtuujTwke1M"
 }
