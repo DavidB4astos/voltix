@@ -5732,6 +5732,13 @@ def index() -> rx.Component:
             ),
         )
 
+    def product_field(label, field_id, control):
+        return rx.el.div(rx.el.label(label, html_for=field_id), control, class_name="vx-products__field")
+
+    def product_status(value):
+        return rx.el.span(rx.cond(value == "ATIVO", "Ativo", "Inativo"),
+            class_name=rx.cond(value == "ATIVO", "vx-products__badge", "vx-products__badge is-inactive"))
+
     def product_form() -> rx.Component:
         category_choices = rx.foreach(
             State.categories,
@@ -5764,400 +5771,134 @@ def index() -> rx.Component:
             ),
         )
         return rx.form(
-            rx.vstack(
-                section_heading(
-                    rx.cond(
-                        State.product_editing_id != None,
-                        "Editar produto",
-                        "Cadastrar produto",
-                    ),
-                    size="4",
-                ),
-                rx.input(
-                    placeholder="Nome do produto",
-                    value=State.product_form_name,
-                    on_change=State.set_product_form_name,
-                    disabled=State.products_loading,
-                    width="100%",
-                ),
-                rx.text_area(
-                    placeholder="Descrição",
-                    value=State.product_form_description,
-                    on_change=State.set_product_form_description,
-                    disabled=State.products_loading,
-                    width="100%",
-                ),
-                rx.text_area(
-                    placeholder="Especificações técnicas",
-                    value=State.product_form_specifications,
-                    on_change=State.set_product_form_specifications,
-                    disabled=State.products_loading,
-                    width="100%",
-                ),
-                rx.select.root(
-                    rx.select.trigger(placeholder="Selecione uma categoria"),
-                    rx.select.content(category_choices),
-                    value=State.product_form_category_id,
-                    on_change=State.set_product_form_category_id,
-                    disabled=State.products_loading,
-                    width="100%",
-                ),
-                rx.select.root(
-                    rx.select.trigger(placeholder="Selecione uma marca"),
-                    rx.select.content(brand_choices),
-                    value=State.product_form_brand_id,
-                    on_change=State.set_product_form_brand_id,
-                    disabled=State.products_loading,
-                    width="100%",
-                ),
-                rx.cond(
-                    State.product_editing_id == None,
-                    rx.vstack(
-                        rx.heading("Variação inicial obrigatória", size="3"),
-                        rx.input(
-                            name="variation_name",
-                            placeholder="Nome ou descrição da variação (opcional)",
-                            disabled=State.products_loading,
-                            width="100%",
-                        ),
-                        rx.input(
-                            name="variation_sku",
-                            placeholder="SKU",
-                            required=True,
-                            disabled=State.products_loading,
-                            width="100%",
-                        ),
-                        rx.input(
-                            name="variation_price",
-                            type="number",
-                            step="any",
-                            placeholder="Preço (maior que zero)",
-                            required=True,
-                            disabled=State.products_loading,
-                            width="100%",
-                        ),
-                        rx.input(
-                            name="variation_quantity",
-                            type="number",
-                            step="any",
-                            placeholder="Quantidade disponível (zero ou maior)",
-                            required=True,
-                            disabled=State.products_loading,
-                            width="100%",
-                        ),
-                        align="stretch",
-                        width="100%",
-                    ),
-                    rx.fragment(),
-                ),
-                rx.cond(
-                    State.product_editing_id != None,
-                    rx.vstack(
-                        rx.text(
-                            rx.cond(
-                                State.products.length() > 0,
-                                "Produto existente: imagem principal opcional.",
-                                "",
-                            ),
-                            color="gray",
-                        ),
-                        rx.upload(
-                            rx.text("Selecione uma imagem JPG, PNG, GIF ou WEBP"),
-                            id="product-main-image",
-                            accept={
-                                "image/jpeg": [".jpg", ".jpeg"],
-                                "image/png": [".png"],
-                                "image/gif": [".gif"],
-                                "image/webp": [".webp"],
-                            },
-                            max_files=1,
-                            disabled=State.products_loading,
-                            width="100%",
-                        ),
-                        secondary_button(
-                            "Enviar imagem principal",
-                            type="button",
-                            on_click=State.upload_product_image(
-                                rx.upload_files("product-main-image")
-                            ),
-                            disabled=State.products_loading,
-                        ),
-                        rx.text(State.product_image_message, color="gray"),
-                        align="stretch",
-                        width="100%",
-                    ),
-                    rx.fragment(),
-                ),
-                rx.hstack(
-                    primary_button(
-                        rx.cond(
-                            State.product_editing_id != None,
-                            "Salvar produto",
-                            "Criar produto",
-                        ),
-                        type="submit",
-                        disabled=State.products_loading,
-                    ),
-                    rx.cond(
-                        State.product_editing_id != None,
-                        secondary_button(
-                            "Cancelar edição",
-                            type="button",
-                            on_click=State.cancel_product_edit,
-                            disabled=State.products_loading,
-                        ),
-                        rx.fragment(),
-                    ),
-                    spacing="2",
-                ),
-                align="stretch",
-                spacing="3",
-                width="100%",
-            ),
-            on_submit=State.save_product,
-            width="100%",
-            background=COLOR_CARD,
-            border=f"1px solid {COLOR_BORDER}",
-            border_radius=RADIUS,
-            box_shadow=CARD_SHADOW,
-            padding="4",
-        )
+            rx.el.div(rx.el.p("INFORMAÇÕES DO PRODUTO", class_name="vx-products__eyebrow"),
+                rx.el.h2(rx.cond(State.product_editing_id != None, "Editar produto", "Cadastrar produto")),
+                rx.el.p("Organize as informações e associações do catálogo.", class_name="vx-products__muted"),
+                class_name="vx-products__form-heading"),
+            product_field("Nome do produto", "product-name", rx.input(id="product-name",
+                placeholder="Nome do produto", value=State.product_form_name,
+                on_change=State.set_product_form_name, disabled=State.products_loading, width="100%", size="3")),
+            product_field("Descrição", "product-description", rx.text_area(id="product-description",
+                placeholder="Descrição", value=State.product_form_description,
+                on_change=State.set_product_form_description, disabled=State.products_loading, width="100%")),
+            product_field("Especificações técnicas", "product-specifications", rx.text_area(id="product-specifications",
+                placeholder="Especificações técnicas", value=State.product_form_specifications,
+                on_change=State.set_product_form_specifications, disabled=State.products_loading, width="100%")),
+            rx.el.div(product_field("Categoria", "product-category", rx.select.root(
+                    rx.select.trigger(placeholder="Selecione uma categoria", id="product-category", aria_label="Categoria"),
+                    rx.select.content(category_choices), value=State.product_form_category_id,
+                    on_change=State.set_product_form_category_id, disabled=State.products_loading, width="100%")),
+                product_field("Marca", "product-brand", rx.select.root(
+                    rx.select.trigger(placeholder="Selecione uma marca", id="product-brand", aria_label="Marca"),
+                    rx.select.content(brand_choices), value=State.product_form_brand_id,
+                    on_change=State.set_product_form_brand_id, disabled=State.products_loading, width="100%")),
+                class_name="vx-products__pair"),
+            rx.cond(State.product_editing_id == None,
+                rx.el.section(rx.el.h3("Variação inicial obrigatória"),
+                    rx.el.p("SKU, preço e quantidade pertencem à variação.", class_name="vx-products__muted"),
+                    product_field("Nome ou descrição (opcional)", "initial-variation-name", rx.input(
+                        id="initial-variation-name", name="variation_name", placeholder="Ex.: Preto · 1 TB",
+                        disabled=State.products_loading, width="100%")),
+                    product_field("SKU", "initial-variation-sku", rx.input(id="initial-variation-sku", name="variation_sku",
+                        placeholder="Identificador único", required=True, disabled=State.products_loading, width="100%")),
+                    rx.el.div(product_field("Preço (R$)", "initial-variation-price", rx.input(id="initial-variation-price",
+                        name="variation_price", type="number", step="any", placeholder="Maior que zero",
+                        required=True, disabled=State.products_loading, width="100%")),
+                        product_field("Quantidade disponível", "initial-variation-quantity", rx.input(id="initial-variation-quantity",
+                        name="variation_quantity", type="number", step="any", placeholder="Zero ou maior",
+                        required=True, disabled=State.products_loading, width="100%")), class_name="vx-products__pair"),
+                    class_name="vx-products__group"), rx.fragment()),
+            rx.cond(State.product_editing_id != None,
+                rx.el.section(rx.el.h3("Imagem principal (opcional)"),
+                    rx.el.p("O envio depende da disponibilidade do backend. Confira o resultado abaixo.", class_name="vx-products__muted"),
+                    rx.upload(rx.icon("image-plus", size=23), rx.text("Selecione JPG, PNG, GIF ou WEBP"),
+                        id="product-main-image", accept={"image/jpeg":[".jpg",".jpeg"],"image/png":[".png"],
+                            "image/gif":[".gif"],"image/webp":[".webp"]}, max_files=1,
+                        disabled=State.products_loading, width="100%", class_name="vx-products__upload"),
+                    rx.el.button("Enviar imagem principal", type="button",
+                        on_click=State.upload_product_image(rx.upload_files("product-main-image")),
+                        disabled=State.products_loading, class_name="vx-products__secondary"),
+                    rx.el.p(State.product_image_message, role="status", class_name="vx-products__muted"),
+                    class_name="vx-products__group"), rx.fragment()),
+            rx.el.div(rx.el.button(rx.cond(State.product_editing_id != None, "Salvar produto", "Criar produto"),
+                    type="submit", disabled=State.products_loading, class_name="vx-products__primary"),
+                rx.cond(State.product_editing_id != None, rx.el.button("Cancelar edição", type="button",
+                    on_click=State.cancel_product_edit, disabled=State.products_loading, class_name="vx-products__secondary"), rx.fragment()),
+                class_name="vx-products__actions"),
+            on_submit=State.save_product, width="100%", class_name="vx-products__form")
 
     def variation_form() -> rx.Component:
-        return rx.cond(
-            State.variation_product_id != None,
-            rx.form(
-                rx.vstack(
-                    section_heading(
-                        rx.cond(
-                            State.variation_editing_id != None,
-                            "Editar variação",
-                            "Adicionar variação",
-                        ),
-                        size="4",
-                    ),
-                    rx.input(
-                        name="variation_name",
-                        placeholder="Nome ou descrição (opcional)",
-                        value=State.variation_form_name,
-                        on_change=State.set_variation_form_name,
-                        disabled=State.products_loading,
-                        width="100%",
-                    ),
-                    rx.input(
-                        name="variation_sku",
-                        placeholder="SKU",
-                        value=State.variation_form_sku,
-                        on_change=State.set_variation_form_sku,
-                        required=True,
-                        disabled=State.products_loading,
-                        width="100%",
-                    ),
-                    rx.input(
-                        name="variation_price",
-                        type="number",
-                        step="any",
-                        placeholder="Preço (maior que zero)",
-                        value=State.variation_form_price,
-                        on_change=State.set_variation_form_price,
-                        required=True,
-                        disabled=State.products_loading,
-                        width="100%",
-                    ),
-                    rx.input(
-                        name="variation_quantity",
-                        type="number",
-                        step="any",
-                        placeholder="Quantidade disponível (zero ou maior)",
-                        value=State.variation_form_quantity,
-                        on_change=State.set_variation_form_quantity,
-                        required=True,
-                        disabled=State.products_loading,
-                        width="100%",
-                    ),
-                    rx.hstack(
-                        primary_button(
-                            "Salvar variação",
-                            type="submit",
-                            disabled=State.products_loading,
-                        ),
-                        secondary_button(
-                            "Cancelar",
-                            type="button",
-                            on_click=State.cancel_variation,
-                            disabled=State.products_loading,
-                        ),
-                        spacing="2",
-                    ),
-                    align="stretch",
-                    width="100%",
-                ),
-                on_submit=State.save_variation,
-                width="100%",
-                background=COLOR_CARD,
-                border=f"1px solid {COLOR_BORDER}",
-                border_radius=RADIUS,
-                box_shadow=CARD_SHADOW,
-                padding="4",
-            ),
-            rx.fragment(),
-        )
+        return rx.cond(State.variation_product_id != None,
+            rx.form(rx.el.div(rx.el.p("VARIAÇÕES DO PRODUTO", class_name="vx-products__eyebrow"),
+                    rx.el.h2(rx.cond(State.variation_editing_id != None, "Editar variação", "Adicionar variação")),
+                    class_name="vx-products__form-heading"),
+                product_field("Nome ou descrição (opcional)", "variation-name", rx.input(id="variation-name", name="variation_name",
+                    placeholder="Nome ou descrição", value=State.variation_form_name,
+                    on_change=State.set_variation_form_name, disabled=State.products_loading, width="100%")),
+                product_field("SKU", "variation-sku", rx.input(id="variation-sku", name="variation_sku", placeholder="SKU",
+                    value=State.variation_form_sku, on_change=State.set_variation_form_sku,
+                    required=True, disabled=State.products_loading, width="100%")),
+                rx.el.div(product_field("Preço (R$)", "variation-price", rx.input(id="variation-price", name="variation_price",
+                    type="number", step="any", placeholder="Maior que zero", value=State.variation_form_price,
+                    on_change=State.set_variation_form_price, required=True, disabled=State.products_loading, width="100%")),
+                    product_field("Quantidade disponível", "variation-quantity", rx.input(id="variation-quantity", name="variation_quantity",
+                    type="number", step="any", placeholder="Zero ou maior", value=State.variation_form_quantity,
+                    on_change=State.set_variation_form_quantity, required=True, disabled=State.products_loading, width="100%")),
+                    class_name="vx-products__pair"),
+                rx.el.div(rx.el.button("Salvar variação", type="submit", disabled=State.products_loading, class_name="vx-products__primary"),
+                    rx.el.button("Cancelar", type="button", on_click=State.cancel_variation,
+                        disabled=State.products_loading, class_name="vx-products__secondary"), class_name="vx-products__actions"),
+                on_submit=State.save_variation, width="100%", class_name="vx-products__form"), rx.fragment())
 
     product_management = rx.cond(
         State.user_role == "ADMINISTRADOR",
-        rx.vstack(
-            section_heading("Gestão de produtos"),
-            product_form(),
-            rx.hstack(
-                section_heading("Produtos cadastrados", size="5"),
-                secondary_button(
-                    "Atualizar lista",
-                    on_click=State.load_products,
-                    disabled=State.products_loading,
-                ),
-                justify="between",
-                width="100%",
-            ),
-            feedback_text(State.products_message),
-            rx.cond(
-                State.products_loading,
-                loading_text("Carregando produtos..."),
-                rx.fragment(),
-            ),
-            rx.foreach(
-                State.products,
-                lambda product: surface_card(
-                    rx.vstack(
-                        rx.hstack(
-                            section_heading(
-                                rx.cond(
-                                    product.name != "",
-                                    product.name,
-                                    "Produto #" + product.id.to_string(),
-                                ),
-                                size="4",
-                            ),
-                            status_badge(product.status),
-                            justify="between",
-                            width="100%",
-                        ),
-                        rx.text(product.description, color=COLOR_TEXT_MUTED),
-                        rx.text(product.technical_specifications, color=COLOR_TEXT_MUTED),
-                        rx.text(
-                            "Categoria: "
-                            + product.category_name
-                            + " ("
-                            + product.category_status
-                            + ")"
-                        ),
-                        rx.text(
-                            "Marca: "
-                            + product.brand_name
-                            + " ("
-                            + product.brand_status
-                            + ")"
-                        ),
-                        rx.text(
-                            rx.cond(
-                                product.image_present,
-                                "Imagem principal cadastrada",
-                                "Sem imagem principal",
-                            ),
-                            color="gray",
-                        ),
-                        rx.hstack(
-                            secondary_button(
-                                "Editar produto",
-                                on_click=State.edit_product(product.id),
-                                disabled=State.products_loading,
-                            ),
-                            secondary_button(
-                                rx.cond(
-                                    product.status == "ATIVO",
-                                    "Inativar produto",
-                                    "Reativar produto",
-                                ),
-                                on_click=State.toggle_product_status(product.id),
-                                disabled=State.products_loading,
-                            ),
-                            primary_button(
-                                "Adicionar variação",
-                                on_click=State.begin_variation(product.id),
-                                disabled=State.products_loading,
-                            ),
-                            spacing="2",
-                        ),
-                        section_heading("Variações", size="3"),
-                        rx.foreach(
-                            product.variations,
-                            lambda variation: rx.vstack(
-                                rx.hstack(
-                                    rx.text(
-                                        rx.cond(
-                                            variation.name_or_description != "",
-                                            variation.name_or_description,
-                                            variation.sku,
-                                        ),
-                                        weight="bold",
-                                    ),
-                                    status_badge(variation.status),
-                                    justify="between",
-                                    width="100%",
-                                ),
-                                rx.text(
-                                    "SKU: "
-                                    + variation.sku
-                                    + " | Preço: "
-                                    + variation.price.to_string()
-                                    + " | Disponível: "
-                                    + variation.available_quantity.to_string()
-                                ),
-                                rx.hstack(
-                                    secondary_button(
-                                        "Editar variação",
-                                        on_click=State.edit_variation(
-                                            product.id,
-                                            variation.id,
-                                        ),
-                                        disabled=State.products_loading,
-                                    ),
-                                    secondary_button(
-                                        rx.cond(
-                                            variation.status == "ATIVO",
-                                            "Inativar variação",
-                                            "Reativar variação",
-                                        ),
-                                        on_click=State.toggle_variation_status(
-                                            variation.id,
-                                            rx.cond(
-                                                variation.status == "ATIVO",
-                                                "INATIVO",
-                                                "ATIVO",
-                                            ),
-                                        ),
-                                        disabled=State.products_loading,
-                                    ),
-                                    spacing="2",
-                                ),
-                                align="stretch",
-                                width="100%",
-                                padding="2",
-                                border_bottom=f"1px solid {COLOR_BORDER}",
-                            ),
-                        ),
-                        align="stretch",
-                        spacing="2",
-                        width="100%",
-                    ),
-                ),
-            ),
-            variation_form(),
-            align="stretch",
-            spacing="3",
-            width="100%",
-        ),
-        rx.fragment(),
-    )
+        rx.el.section(
+            rx.el.div(variation_form(), product_form(), class_name="vx-products__editor"),
+            rx.el.div(rx.el.header(rx.el.div(rx.el.h2("Produtos cadastrados"),
+                        rx.el.p("Informações e variações do catálogo.", class_name="vx-products__muted")),
+                    rx.el.button(rx.icon("refresh-cw", size=15), "Atualizar lista", on_click=State.load_products,
+                        type="button", disabled=State.products_loading, class_name="vx-products__secondary"),
+                    class_name="vx-products__list-heading"),
+                rx.cond(State.products_message != "", rx.el.p(State.products_message, role="status", class_name="vx-products__feedback")),
+                rx.cond(State.products_loading, rx.el.p("Carregando produtos...", role="status", class_name="vx-products__feedback")),
+                rx.foreach(State.products, lambda product: rx.el.article(
+                    rx.el.div(rx.el.h3(rx.cond(product.name != "", product.name, "Produto #" + product.id.to_string())),
+                        product_status(product.status), class_name="vx-products__card-heading"),
+                    rx.cond(product.description != "", rx.el.p(product.description, class_name="vx-products__description")),
+                    rx.el.div(rx.el.span("Categoria: " + product.category_name + " (" + product.category_status + ")"),
+                        rx.el.span("Marca: " + product.brand_name + " (" + product.brand_status + ")"),
+                        class_name="vx-products__meta"),
+                    rx.el.p(rx.icon("image", size=15), rx.cond(product.image_present, "Imagem principal cadastrada", "Sem imagem principal"),
+                        class_name="vx-products__image-status"),
+                    rx.cond(product.technical_specifications != "", rx.el.details(rx.el.summary("Especificações técnicas"),
+                        rx.el.p(product.technical_specifications), class_name="vx-products__specs")),
+                    rx.el.div(rx.el.button("Editar produto", on_click=State.edit_product(product.id), type="button",
+                            disabled=State.products_loading, class_name="vx-products__secondary"),
+                        rx.el.button(rx.cond(product.status == "ATIVO", "Inativar produto", "Reativar produto"),
+                            on_click=State.toggle_product_status(product.id), type="button",
+                            disabled=State.products_loading, class_name="vx-products__quiet"),
+                        rx.el.button(rx.icon("plus", size=15), "Adicionar variação", on_click=State.begin_variation(product.id),
+                            type="button", disabled=State.products_loading, class_name="vx-products__secondary"),
+                        class_name="vx-products__actions"),
+                    rx.el.h4("Variações", class_name="vx-products__variation-title"),
+                    rx.el.div(rx.table.root(rx.table.header(rx.table.row(*[rx.table.column_header_cell(label)
+                            for label in ["Variação / SKU", "Preço (R$)", "Disponível", "Status", "Ações"]])),
+                        rx.table.body(rx.foreach(product.variations, lambda variation: rx.table.row(
+                            rx.table.cell(rx.el.p(rx.cond(variation.name_or_description != "", variation.name_or_description, variation.sku),
+                                class_name="vx-products__variation-name"), rx.el.p(variation.sku, class_name="vx-products__sku")),
+                            rx.table.cell(variation.price.to_string()), rx.table.cell(variation.available_quantity.to_string()),
+                            rx.table.cell(product_status(variation.status)),
+                            rx.table.cell(rx.el.div(rx.el.button("Editar variação", type="button",
+                                    on_click=State.edit_variation(product.id, variation.id), disabled=State.products_loading,
+                                    class_name="vx-products__text-action"),
+                                rx.el.button(rx.cond(variation.status == "ATIVO", "Inativar variação", "Reativar variação"),
+                                    type="button", on_click=State.toggle_variation_status(variation.id,
+                                        rx.cond(variation.status == "ATIVO", "INATIVO", "ATIVO")),
+                                    disabled=State.products_loading, class_name="vx-products__text-action is-muted"),
+                                class_name="vx-products__variation-actions")))))),
+                        class_name="vx-products__table", role="region", aria_label="Variações de " + product.name, tab_index=0),
+                    class_name="vx-products__card")),
+                class_name="vx-products__list"), class_name="vx-products"), rx.fragment())
 
     bulk_import_management = rx.cond(
         State.user_role == "ADMINISTRADOR",
