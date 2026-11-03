@@ -17,4 +17,4 @@ Data: 03/11/2026.
 
 ## Encerramento
 
-Change documental, sem deltas de spec (`skip_specs: true`) e sem alteração funcional. A limitação da captura do perfil Funcionário foi aceita e registrada conforme orientação do usuário. Validação OpenSpec estrita executada; nenhuma suíte funcional foi necessária para esta entrega documental. A change foi arquivada como `2026-11-03-audit-internal-desktop-flow`; o commit permanece pendente porque o ambiente negou escrita em `.git/index.lock`.
+Change documental, sem deltas de spec (`skip_specs: true`) e sem alteração funcional. A limitação da captura do perfil Funcionário foi aceita e registrada conforme orientação do usuário. Validação OpenSpec estrita executada; nenhuma suíte funcional foi necessária para esta entrega documental. A change foi arquivada como `2026-11-03-audit-internal-desktop-flow` e commitada em `eb83ac2` (`docs: archive internal desktop audit`).

@@ -6,4 +6,4 @@
 - [x] 2.2 Conferir teclado e experiência do Funcionário, ou registrar limites.
 - [x] 2.3 Inspecionar capturas e registrar achados sem extrapolar as provas.
 ## Encerramento
-- [ ] 3.1 Revisar relatório/diff, validar, arquivar e commitar documentação.
+- [x] 3.1 Revisar relatório/diff, validar, arquivar e commitar documentação (`eb83ac2`).
