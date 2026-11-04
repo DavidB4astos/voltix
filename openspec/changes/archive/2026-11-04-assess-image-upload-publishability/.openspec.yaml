@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-04
+goal: Garantir que o endpoint de upload exija o arquivo que o handler Reflex
+  sempre envia.
+skip_specs: true
