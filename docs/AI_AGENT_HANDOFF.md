@@ -203,10 +203,12 @@ tabela remota temporária que não deve ser excluída por suposição. Consulte:
 
 ### Estoque e checkout
 
-Baixa/reserva atômica de estoque (C1) está formalmente adiada. O Xano Free não
-ofereceu uma solução comprovada para a atomicidade multi-item necessária. O
-checkout atual valida disponibilidade, mas não pode ser descrito como baixa ou
-reserva de estoque. Não implementar solução baseada em suposição.
+Baixa/reserva atômica de estoque (C1) segue adiada e não implementada. A
+avaliação documental de 03/11 identificou `db.increment` como caminho nativo
+candidato para baixa guardada. Ainda não há prova no runtime Voltix de disponibilidade,
+rollback multi-item, concorrência ou preservação da resposta HTTP 200
+`confirmado=false`. Não alterar o Xano nem implementar até haver ambiente
+isolado, gratuito e autorizado para essas provas e nova aprovação.
 
 ### Imagens de produto
 

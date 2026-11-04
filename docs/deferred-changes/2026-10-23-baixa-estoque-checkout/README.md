@@ -1,33 +1,26 @@
-# Change adiada: baixa-estoque-checkout (2026-10-23)
+# Change adiada: baixa-estoque-checkout (C1)
 
-Esta pasta preserva integralmente os artefatos da change `baixa-estoque-checkout` (C1), que foi **adiada**, não concluída.
+Atualização documental: 03/11/2026. A implementação segue **ADIADA/BLOQUEADA**; a revisão encontrou um caminho nativo candidato (`db.increment`) na documentação oficial atual do XanoScript.
 
-## Status
+## Estado
 
-- **ADIADA/BLOQUEADA**, não concluída.
-- **Progresso:** 0/11 tarefas.
-- **Não é uma change ativa do OpenSpec.**
-- Nenhum código de aplicação, endpoint, banco, teste ou dependência foi alterado por este adiamento.
+- 0/11 tarefas concluídas; não é uma change ativa do OpenSpec.
+- Nenhum código, endpoint, tabela, teste ou registro Xano foi alterado nesta avaliação.
+- O bloqueio antigo de `db.direct_query` permanece real para esse recurso, mas não basta para concluir que não existe solução nativa.
 
-## Bloqueio
+## Conclusão da avaliação
 
-A tarefa 1.1 não pôde ser concluída porque `db.direct_query` não está disponível no plano Xano Free (`ERROR_CODE_ACCESS_DENIED`). Sem esse primitivo, não há alternativa nativa comprovada para garantir baixa atômica de estoque, rollback conjunto e estoque nunca negativo sob concorrência.
+`db.increment` é documentado como operação numérica atômica com condição `where`, guarda de estoque e contagem de linhas alteradas. `db.transaction` é documentado para agrupar operações com atomicidade. Isso torna plausível uma baixa guardada sem SQL direto, com erro específico e rollback se algum item falhar.
 
-A implementação de uma solução insegura não está autorizada.
+Ainda não há prova de que o runtime atual do Voltix aceite essa operação dentro da transação, reverta baixa multi-item quando um item falha, nem preserve a resposta HTTP 200 `confirmado=false` sob concorrência. O plano Free e a disponibilidade no workspace não foram verificados no dashboard nesta avaliação.
 
 ## Condição de retomada
 
-A change poderá ser retomada somente quando:
+A C1 só poderá voltar para `openspec/changes/` com nova aprovação e após uma prova em ambiente separado, gratuito, autorizado e sem dados reais. A prova deve incluir rollback multi-item, disputa concorrente pela última unidade, mapeamento do conflito para a resposta aprovada e avaliação de deadlock. Não fazer teste de compra ou publicar mudanças no workspace Voltix para fechar essa lacuna.
 
-1. existir uma solução compatível com o plano gratuito do Xano que preserve atomicidade, rollback conjunto e estoque nunca negativo; e
-2. houver nova aprovação explícita para movê-la de volta para `openspec/changes/` e iniciar a implementação.
+## Referências oficiais consultadas
 
-## Conteúdo preservado
+- [Xano Developer MCP — operações de banco, `db.increment`, transação e try/catch](https://github.com/xano-inc/xano-developer-mcp/blob/main/src/xanoscript_docs/database.md).
+- [Planos Xano](https://www.xano.com/pricing).
 
-- `.openspec.yaml`
-- `proposal.md`
-- `design.md`
-- `tasks.md`
-- `specs/checkout-orders/spec.md`
-
-Os arquivos foram movidos sem alteração de conteúdo. Este diretório é apenas um registro de adiamento e não deve ser tratado como change ativa nem arquivada como concluída.
+A documentação indica viabilidade como **candidata**, não comprova a execução no workspace deste projeto.

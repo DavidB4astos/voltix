@@ -1,28 +1,22 @@
-## 1. Confirmação técnica obrigatória do primitivo de estoque
+## 1. Prova técnica do caminho candidato
 
-- [ ] 1.1 Confirmar que `db.direct_query` executa dentro da mesma transação de `checkout_confirm_POST.xs` e é revertido pelo rollback de Pedido, ItemPedido, Pagamento e estoque; confirmar também que `arg` aceita múltiplos placeholders. Registrar a evidência no `design.md`.
-- [ ] 1.2 Se a participação na transação/rollback não for confirmada, suspender a implementação e registrar o bloqueio no `design.md` para decisão; não implementar solução sujeita a concorrência.
+- [ ] 1.1 Em ambiente separado, confirmar sintaxe/disponibilidade de `db.increment`, condição de estoque/status, contagem de linhas e uso dentro de `db.transaction` no runtime Xano autorizado.
+- [ ] 1.2 Forçar falha no segundo item e provar rollback dos decrementos anteriores, Pedido, ItemPedido, Pagamento e Carrinho; confirmar mapeamento exclusivo de conflito para HTTP 200 `confirmado=false`.
 
-## 2. Baixa atômica no backend
+## 2. Baixa atômica no backend (somente após prova e aprovação)
 
-- [ ] 2.1 Adicionar em `checkout_confirm_POST.xs`, dentro da transação existente, a leitura travada (`FOR UPDATE`) das variações do Carrinho e a avaliação de disponibilidade com os valores travados, mantendo HTTP 200 com `confirmado=false` quando indisponível.
-- [ ] 2.2 Adicionar a baixa guardada (`UPDATE ... SET quantidade_disponivel = quantidade_disponivel - q WHERE id = ? AND quantidade_disponivel >= q AND status = 'ATIVO'`) na mesma transação, uma por item, com falha defensiva que aborta a transação inteira quando nenhuma linha é afetada.
-- [ ] 2.3 Preservar a criação de Pedido/ItemPedido/Pagamento, a limpeza do Carrinho, `valor_frete: 0` e todas as chaves do contrato de resposta.
+- [ ] 2.1 Implementar decremento guardado por ItemCarrinho com `db.increment`, usando `id`, quantidade suficiente e variação ativa; não usar `db.direct_query`, leitura seguida de `db.patch` nem `db.edit` para aritmética de estoque.
+- [ ] 2.2 Em contagem zero, lançar conflito dentro da transação, reverter todos os efeitos e mapear somente esse caso para `confirmado=false`; preservar erro inesperado.
+- [ ] 2.3 Preservar criação de Pedido/ItemPedido/Pagamento, limpeza do Carrinho, `valor_frete: 0` e todas as chaves da resposta, na mesma transação.
 
-## 3. Testes
+## 3. Testes isolados
 
-- [ ] 3.1 Atualizar `tests/test_checkout_orders.py`: substituir a asserção que proibia a baixa (`assertNotIn("db.patch variacao_produto", ...)`) por asserções da baixa guardada e de sua presença dentro da transação.
-- [ ] 3.2 Adicionar testes de contrato (chaves da resposta inalteradas), de rollback (nada persistido quando a baixa falha) e de que o Carrinho continua sem reservar estoque.
-- [ ] 3.3 Confirmar que `tests/test_shopping_cart.py` e as demais suítes permanecem verdes, sem regressão.
+- [ ] 3.1 Atualizar `tests/test_checkout_orders.py` para refletir a baixa guardada e sua presença na transação.
+- [ ] 3.2 Cobrir contrato, item sem estoque, rollback multi-item e ausência de reserva no Carrinho.
+- [ ] 3.3 Validar compras concorrentes da última unidade: apenas uma confirma, a outra responde HTTP 200 `confirmado=false`, estoque permanece zero.
 
-## 4. Verificação ponta a ponta e de escopo
+## 4. Verificação e escopo
 
-- [ ] 4.1 Executar a suíte aplicável completa, `python -m py_compile voltix/voltix.py`, `reflex compile`, validação dos XanoScript alterados e `git diff --check`.
-- [ ] 4.2 Validar ao vivo o cenário da última unidade: duas confirmações concorrentes ⇒ uma vence e a outra recebe `confirmado=false`, sem estoque negativo; registrar a evidência ou a pendência quando depender de sessões reais.
-- [ ] 4.3 Auditar o escopo final: sem cancelamento/devolução, reserva, movimentação de estoque, nova tabela, painel ou alteração de frontend; confirmar que `gestao-produtos` permanece intacta com 13/15 tarefas e pendências 5.2/5.3 documentadas.
-## BLOQUEIO T�CNICO (Xano Free)
-
-- Tarefa 1.1 n�o p�de ser conclu�da: **db.direct_query n�o est� dispon�vel** no Xano Free (ERROR_CODE_ACCESS_DENIED). Documenta��o oficial exige planos Launch/Scale.
-- **Sem alternativa nativa comprovada** para garantir estoque nunca negativo sob concorr�ncia usando apenas db.get/db.query/db.patch/db.edit dentro de db.transaction.
-- **Nenhuma implementa��o insegura** est� autorizada. Os requisitos de atomicidade, rollback conjunto (Pedido/ItemPedido/Pagamento/estoque) e "nunca negativo" devem ser preservados.
-- **Status:** **C1 BLOQUEADA** por limita��o t�cnica. Implementa��o adiada at� (a) upgrade para Launch/Scale (habilitar db.direct_query), ou (b) decis�o de reprioriza��o.
+- [ ] 4.1 Validar sintaxe XanoScript no runtime isolado e executar verificações locais pertinentes, sem alterar dependências.
+- [ ] 4.2 Registrar versão/plano isolado, consultas, resultados sanitizados, rollback, concorrência e deadlocks.
+- [ ] 4.3 Confirmar que nenhuma mutação ocorreu no workspace Voltix, não houve reserva/movimentação/cancelamento/front-end e `gestao-produtos` permaneceu intacta.

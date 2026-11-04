@@ -1,6 +1,6 @@
 # Roadmap de changes — Voltix
 
-Atualizado em 30/10/2026 por conferência do repositório local. Fontes: [AGENTS](../AGENTS.md), [visão geral](project-overview.md), [domínio](domain-model.md), [configuração OpenSpec](../openspec/config.yaml), specs consolidadas, arquivos, manifesto e histórico Git. O histórico anterior permanece no Git.
+Atualizado em 03/11/2026 por conferência do repositório local. Fontes: [AGENTS](../AGENTS.md), [visão geral](project-overview.md), [domínio](domain-model.md), [configuração OpenSpec](../openspec/config.yaml), specs consolidadas, arquivos, manifesto e histórico Git. O histórico anterior permanece no Git.
 
 ## Regras
 
@@ -63,7 +63,7 @@ Concluída a [refine-internal-import-desktop](../openspec/changes/archive/2026-1
 
 O roadmap anterior registrou Xano Free com 10 requisições/20 s, 100.000 registros, um workspace, ausência de ambientes isolados e APIs/funções sujeitas a rate limit. Esses números são **registro histórico**, não verificação atual do plano ou do consumo. Esta change não consultou o dashboard nem alterou o serviço.
 
-- C1 foi adiada por `db.direct_query` indisponível (`ERROR_CODE_ACCESS_DENIED`); não há alternativa comprovada de baixa atômica/rollback conjunto nesta revisão. Não escolher `db.patch` ou SQL como solução garantida sem prova técnica.
+- C1 continua adiada. `db.direct_query` não está disponível (`ERROR_CODE_ACCESS_DENIED`), mas a avaliação documental de 03/11 identificou `db.increment` como caminho nativo candidato para baixa condicional. Atomicidade multi-item, rollback e concorrência ainda não foram provados no runtime atual; manter sem implementação até prova em ambiente isolado autorizado.
 - Upload de imagem principal teve HTTP 403 no plano usado; não declarar funcional sem validação específica ou decidir armazenamento alternativo nesta change.
 - Medir consumo de registros e histórico de 429 no dashboard, em leitura, antes de C7/C9.
 - Reflex continua frontend, Xano/XanoScript continuam backend/dados; nenhuma nova plataforma aprovada por este roadmap.
@@ -91,7 +91,7 @@ O rascunho `consulta-clientes-admin` restringe a ADMINISTRADOR e diverge de E2; 
 ## Ordem recomendada para propostas futuras
 
 1. C4 concluída e arquivada em 29/10/2026. Consulta de clientes somente leitura entregue; o rascunho admin-only adiado foi preservado como referência histórica e não publicado.
-2. Avaliar viabilidade de C1 no plano gratuito em proposta específica. Se não houver solução comprovada, manter bloqueada; não implementar baixa insegura.
+2. C1: caminho candidato `db.increment` identificado em documentação oficial. Próximo passo é provar suporte/rollback/concorrência em ambiente isolado e autorizado; até lá, manter adiada e sem implementação.
 3. Resolvida C1: C2 → C3 → C10, preservando ordem estoque, devolução, transições e agregados.
 4. Resolvidas consultas C4/C3: C6 → C7, medindo capacidade antes de criar atendimentos.
 5. C8 conforme lacunas reais e C9 somente com isolamento aprovado. Não duplicar as suítes existentes nem repetir testes sem motivo.
@@ -102,7 +102,7 @@ C5 já está concluída; não é próxima prioridade. As fotos restantes podem s
 
 | ID / proposta | Escopo, dependências e critérios preservados |
 |---|---|
-| C1 baixa-estoque-checkout | Adiada, 0/11 no registro de adiamento. Baixar estoque na confirmação com atomicidade multi-item, rollback e estoque nunca negativo; carrinho não reserva. Concorrência da última unidade deve ser testada. Sem cancelamento, reserva ou tabela de movimentação. Preservar contrato vigente; proposta adiada usa HTTP 200, confirmado=false para indisponibilidade, não o 400 contraditório do roadmap antigo. Retomar apenas com solução Free comprovada e nova aprovação. |
+| C1 baixa-estoque-checkout | Adiada, 0/11. `db.increment` é caminho nativo candidato documentado para decremento guardado; não há prova no runtime Voltix de disponibilidade, transação/rollback multi-item, concorrência ou resposta HTTP 200 `confirmado=false`. Exige ambiente isolado, gratuito e autorizado, mais nova aprovação. Sem cancelamento, reserva ou tabela de movimentação. |
 | C2 cancelamento-pedido | Depende de C1. Cliente/ADMIN conforme E1; devolução apenas de unidades já baixadas, idempotente; histórico e pagamento 1:1 preservados. Testar pedido alheio, estado inválido e cancelamento repetido. Definir efeito no status do pagamento e confirmação de UI. Sem reembolso real, logística ou novo painel. |
 | C3 gestao-pedidos-painel | Depende de C1/C2 no planejamento aprovado. Listar/detalhar pedidos e transições EM_PREPARACAO/ENVIADO/ENTREGUE; cancelamento reutiliza C2. Definir permissão do FUNCIONARIO, validar transições e autorização negativa no backend. Sem transportadora, CRM ou métricas. |
 | C4 consulta-clientes-painel | Leitura de lista/detalhe; depende da autenticação interna existente. Compatibilizar o rascunho adiado com E2 e schema real. Definir campos, máscara, filtros combinados, paginação/limites e detalhe. Nunca senha/hash/token, CPF mascarado; negar anônimo/cliente/interno inativo. Testar vazio, erro e 429. Sem editar/inativar cliente, exportar, histórico ou atendimento. |

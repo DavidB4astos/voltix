@@ -1,102 +1,54 @@
-## Context
+# Design — C1 baixa atômica de estoque
 
-`checkout_confirm_POST.xs` confirma o Pedido dentro de um `db.transaction`, mas não baixa estoque. O Domain Model exige:
+## Contexto e invariantes
 
-- 3.4 / 8.3: quantidade disponível inteira e estoque nunca negativo.
-- 5.1 / 8.14: o Carrinho não reserva estoque.
-- 5.3 / 8.17: cancelamento devolve unidades **já baixadas** (dependência futura da C2).
+`checkout_confirm_POST.xs` já revalida Carrinho, endereço, itens e revisão dentro de `db.transaction`, cria Pedido/ItemPedido/Pagamento e remove itens do Carrinho. Ainda não baixa estoque.
 
-Decisões já aprovadas (roadmap C1 + aprovação da Change):
+Preservar estas decisões aprovadas:
 
-1. Estoque insuficiente retorna **HTTP 200 com `confirmado=false`**, sem criar Pedido (contrato atual preservado).
-2. **Sem** tabela de movimentação de estoque.
-3. A baixa ocorre **atomicamente dentro da transação do checkout**, impedindo estoque negativo e compras concorrentes da última unidade.
-4. Preservar frontend e contratos existentes sempre que possível.
-5. O Carrinho continua **sem** reservar estoque.
+1. Estoque insuficiente responde HTTP 200 com `confirmado=false`, sem Pedido, itens, Pagamento, limpeza do Carrinho ou mudança de estoque.
+2. Não criar tabela de movimentação.
+3. O Carrinho não reserva estoque.
+4. Pedido e todas as baixas dos itens devem persistir ou ser revertidos juntos; estoque não pode ficar negativo.
+5. Manter as chaves e semântica atuais da resposta.
 
-## Investigação do primitivo XanoScript
+## Descoberta documental — 03/11/2026
 
-| Recurso | Situação | Conclusão |
-|---|---|---|
-| `db.direct_query { sql, arg, response_type }` | Documentado nas referências oficiais do XanoScript | **Adotado** — permite `UPDATE` guardado com aritmética na coluna |
-| `db.transaction { stack { ... } }` | Documentado; já usado pelo checkout | **Adotado** — atomicidade/rollback |
-| `db.transaction { isolation = ... }` | Documentado | Plano B (não usado) |
-| `lock` em `db.get` / `db.query` | Existe no construtor visual, **sem sintaxe documentada em XanoScript** | Rejeitado |
-| `db.patch` / `db.edit` com `where` | Não existe: apenas `field_name`/`field_value` | Rejeitado |
-| `db.bulk.update` / `db.bulk.patch` com `where` | Documentação conflitante (forma oficial usa `items=[...]`) | Rejeitado |
-| Aritmética do valor atual da coluna em `data` | Não documentada | Rejeitado (evitaria *lost update* apenas por sorte) |
+A documentação oficial atual do XanoScript descreve `db.increment` como uma operação atômica sobre um campo numérico, executada em uma única instrução, com filtro `where`, valor negativo para decrementar e retorno opcional de contagem. O exemplo oficial limita a baixa por `stock >= 1` e verifica se a contagem foi maior que zero. A mesma referência descreve `db.transaction` como a forma de agrupar operações atomicamente e mostra `try_catch` envolvendo uma transação.
 
-### Por que o `UPDATE` guardado é seguro
+- [Xano Developer MCP — referência de operações de banco](https://github.com/xano-inc/xano-developer-mcp/blob/main/src/xanoscript_docs/database.md)
+- [Planos Xano](https://www.xano.com/pricing)
 
-```sql
-UPDATE variacao_produto
-   SET quantidade_disponivel = quantidade_disponivel - ?, updated_at = now()
- WHERE id = ? AND quantidade_disponivel >= ? AND status = 'ATIVO'
-RETURNING id, quantidade_disponivel
-```
+A página pública de planos lista lógica de negócio no Free e acesso direto ao banco como recurso Essential. Isso sugere que `db.increment`, uma operação nativa de lógica Xano, pode ser diferente do acesso SQL direto; a página não confirma especificamente a disponibilidade dessa operação em toda versão/workspace Free. Não consultar o dashboard nesta avaliação.
 
-- Statement único → atômico.
-- O `WHERE` é reavaliado contra a versão atual da linha após a aquisição do lock (semântica Postgres READ COMMITTED) → **sem oversell** e **sem estoque negativo**.
-- A aritmética é feita **na coluna** (`col - q`), não a partir de uma leitura prévia → **sem lost update**.
-- Dentro de `db.transaction` → rollback cobre Pedido, ItemPedido, Pagamento, Carrinho e estoque.
+## Caminho candidato (não aprovado para implementação)
 
-## Fluxo proposto (dentro da `db.transaction` existente)
+1. Preservar a releitura de endereço, Carrinho, itens, preços, status, estoque e comparação da revisão que já ocorre dentro da transação.
+2. Se a verificação atual detectar indisponibilidade antes de qualquer escrita, manter o caminho existente: responder `confirmado=false` (HTTP 200) e deixar dados intactos.
+3. Para cada ItemCarrinho, chamar `db.increment` na tabela `variacao_produto` com uma condição equivalente a `id == variacao_id && quantidade_disponivel >= quantidade && status == "ATIVO"`, `field_name = "quantidade_disponivel"`, `value = -quantidade` e `return = {type: "count"}`.
+4. Se qualquer contagem for zero, lançar um erro específico de conflito de estoque. A transação deve reverter decrementos anteriores e todas as gravações do Pedido. Um `try_catch` fora da transação deve converter somente esse erro na resposta já aprovada `confirmado=false`; erros inesperados devem continuar sendo propagados.
+5. Criar Pedido, ItemPedido e Pagamento e limpar o Carrinho somente no mesmo bloco transacional. Preferencialmente executar os decrementos antes das gravações do pedido, para que qualquer falha posterior reverta estoque e pedido juntos.
 
-1. Re-leitura de endereço, Carrinho e `item_carrinho` (já existente).
-2. **Fase 1 — leitura travada:** `SELECT id, quantidade_disponivel, status FROM variacao_produto WHERE id = ? FOR UPDATE;` para cada variação do Carrinho (um `db.direct_query` por item; o Carrinho garante no máximo um item por variação).
-3. **Fase 2 — avaliação:** recalcular a disponibilidade (`$all_available`) usando os valores **travados** e os status de Produto/Variação. Se indisponível → **nenhuma escrita** → `confirmado=false` (HTTP 200).
-4. **Fase 3 — persistência:** se disponível, criar Pedido, ItemPedido e Pagamento (fluxo atual) e, em seguida, aplicar a **baixa guardada** por item.
-5. **Falha defensiva:** se algum `UPDATE` guardado retornar zero linhas, abortar a transação inteira (`throw`).
+A condição da atualização é a proteção contra corrida; uma leitura anterior, por si só, não autoriza decremento. O índice único de `(carrinho_id, variacao_produto_id)` garante no máximo uma linha por variação em cada Carrinho. Ainda será necessário escolher uma ordem determinística de atualização entre diferentes Carrinhos e tratar deadlocks sem persistência parcial.
 
-### Ordem da baixa (por que no fim)
+## Provas bloqueantes antes da implementação
 
-Se o `db.direct_query` **não** participar da transação (lacuna a confirmar), a pior falha seria "baixa sem Pedido" — em vez de "Pedido sem baixa". Como o guard de zero linhas impede estoque negativo em qualquer cenário, essa ordem é a mais conservadora. Essa premissa é confirmada pela tarefa 1.
+Executar somente em ambiente Xano separado, gratuito, autorizado e sem dados reais:
 
-### Por que `FOR UPDATE` (fase 1)
+1. Validar que a versão/runtime aceita `db.increment`, o filtro composto, `return = {type: "count"}` e `try_catch` envolvendo a transação.
+2. Confirmar que `db.increment` dentro da transação participa do mesmo commit/rollback que `db.add`, `db.del` e `db.patch`.
+3. Forçar o segundo decremento de um Carrinho multi-item a retornar zero depois de o primeiro ter sido aplicado; provar que ambos os estoques, Pedido, ItemPedido, Pagamento e Carrinho são revertidos.
+4. Concorrer duas confirmações pela última unidade; exatamente uma deve confirmar, a outra deve responder HTTP 200 `confirmado=false`, e estoque final deve ser zero.
+5. Confirmar que conflito esperado é traduzido em `confirmado=false`, enquanto falhas inesperadas continuam observáveis.
+6. Avaliar ordem de locks/deadlock quando duas compras com múltiplas variações atualizam conjuntos sobrepostos.
+7. Confirmar que Produto/Variação inativos continuam sem compra; o status do Produto é uma tabela relacionada e o guard de `db.increment` só protege a linha da Variação. Documentar a janela de concorrência do status do Produto.
 
-Quem perde a corrida pela última unidade precisa enxergar `estoque=0` **sob lock** para seguir o caminho limpo de HTTP 200 / `confirmado=false`, em vez de abortar com erro HTTP. Sem a leitura travada, a detecção só ocorreria no guard e o perdedor receberia erro.
+Um parser ou mock local pode verificar forma, não comportamento transacional do runtime Xano. Sem workspace isolado, manter C1 adiada e não executar a confirmação no workspace Voltix.
 
-## Invariantes e resultados inválidos
+## Disponibilidade de plano
 
-- `baixa sem Pedido` é **resultado inválido**.
-- `Pedido sem baixa` é **resultado inválido**.
-- Estoque nunca pode assumir valor negativo.
-- Estoque igual a zero **não** torna a variação `INATIVO`.
+O bloqueio histórico de `db.direct_query` (`ERROR_CODE_ACCESS_DENIED`) continua válido para esse primitivo. Ele não prova que `db.increment` esteja indisponível. A documentação consultada não marca `db.increment` como recurso pago, mas somente o runtime autorizado pode confirmar sua disponibilidade neste workspace/plano.
 
-## Verificação obrigatória (bloqueante — tarefa 1)
+## Fora do escopo
 
-Antes de qualquer implementação, confirmar que `db.direct_query` participa da mesma transação do checkout e é revertido junto com Pedido, ItemPedido, Pagamento e estoque. Sem essa confirmação:
-
-- não implementar a baixa;
-- registrar o bloqueio no próprio `design.md` para decisão;
-- avaliar o plano B (`db.transaction { isolation = "serializable" }` com escrita nativa e retry), sem adotá-lo por suposição.
-
-## Preservação de contrato
-
-- Chaves de resposta inalteradas: `confirmado`, `revisao_alterada`, `pedido_id`, `codigo`, `subtotal`, `valor_frete` (0), `valor_total`, `itens`, `revisao`, `endereco_id`, `endereco`.
-- `itens[].estoque_disponivel` continua refletindo a leitura usada na decisão.
-- Nenhuma mudança em `voltix/voltix.py` nem no frontend.
-- `checkout_review_POST.xs`, `cart_*.xs` e as tabelas não são alterados.
-
-## Riscos
-
-1. **Participação do `db.direct_query` na transação** — lacuna crítica; mitigada pela tarefa 1 bloqueante.
-2. **Argumentos múltiplos em `arg`** — a documentação oficial mostra um argumento; um espelho mostra array. Confirmar sintaxe na implementação; se necessário, ajustar a forma do comando.
-3. **Rate limit (Xano Free, 10 req/20 s)** — a baixa usa statements internos, não requisições da API; a validação ao vivo deve respeitar o limite.
-4. **Coluna decimal** — `quantidade_disponivel` é `decimal`; as quantidades do Carrinho são inteiras positivas, então a baixa permanece inteira.
-5. **Status do Produto** — o guard cobre variação `ATIVO` e estoque; o status do Produto continua avaliado na fase 2 (comportamento atual), sem garantia de lock.
-
-## Fora de escopo
-
-Cancelamento/devolução (C2), reserva de estoque, tabela de movimentação, painel de pedidos (C3), dashboard (C10), frete, aprovação/simulação de pagamento e alteração de frontend.
-
-## Dependências
-
-- `checkout_confirm_POST.xs` e `tests/test_checkout_orders.py`.
-- Nenhuma dependência de outras changes.
-## BLOQUEIO T�CNICO (Xano Free)
-
-- **db.direct_query indispon�vel:** Confirmado por ERROR_CODE_ACCESS_DENIED no editor Xano. Documenta��o oficial exige planos **Launch/Scale** (n�o-Legacy).
-- **Sem alternativa comprovada:** Com db.get/db.query/db.patch/db.edit + db.transaction n�o � poss�vel implementar SELECT ... FOR UPDATE + UPDATE guardado para garantir estoque nunca negativo sob concorr�ncia. Check-then-write � inseguro neste contexto.
-- **Requisitos preservados:** atomicidade, rollback conjunto (Pedido, ItemPedido, Pagamento, baixa de estoque) e **estoque nunca negativo**. **Nenhuma implementa��o insegura est� autorizada**.
-- **Status:** **C1 BLOQUEADA por limita��o t�cnica**. Aguardando (a) upgrade do plano para Launch/Scale (habilitar db.direct_query), ou (b) decis�o de reprioriza��o/replanejamento.
+Cancelamento/devolução (C2), reserva de estoque, tabela de movimentação, painel de pedidos (C3), dashboard (C10), frete, aprovação/simulação de pagamento e frontend.
