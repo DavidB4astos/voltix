@@ -196,3 +196,6 @@ Os nomes abaixo foram conferidos no repositório; os detalhes de escopo, aceite 
 - [Rascunho de consulta de clientes](deferred-changes/2026-10-27-consulta-clientes-admin/README.md).
 - [Correção N+1 absorvida na Home](superseded-changes/2026-10-22-fix-catalog-image-n1/README.md): não recriar como change ativa.
 - [Higiene do repositório](development/repository-hygiene.md).
+
+### Defaults do endereço e Pedido — 03/11/2026
+A change documental [audit-xano-schema-defaults](../openspec/changes/archive/2026-11-03-audit-xano-schema-defaults/evidence/verification.md) confirmou, por pull de metadados sem registros, que os schemas publicados não declaram os defaults locais `endereco.principal=false` e `pedido.valor_frete=0`. Os endpoints atuais informam ambos explicitamente, sem impacto observado. O fallback de inserções futuras que omitam os campos permanece não verificado; não publicar alteração nem afirmar sincronização completa com base nesta leitura.
