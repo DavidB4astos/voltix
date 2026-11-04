@@ -1,6 +1,6 @@
 # Handoff para agente de IA — Voltix
 
-> Atualizado em 03/11/2026. Este documento resume o trabalho já realizado,
+> Atualizado em 04/11/2026. Este documento resume o trabalho já realizado,
 > o estado verificável do repositório e as regras para continuar o projeto com
 > segurança. Não contém senhas, tokens, URLs privadas de credenciais ou dados
 > pessoais de clientes.
@@ -84,10 +84,12 @@ importação real) exige ambiente isolado, autorizado e sem dados reais.
 
 ## 4. Estado do Git e do OpenSpec
 
-No momento deste handoff, a branch local `main` está **1 commit à frente** de
-`origin/main`:
-
-- `2272578 docs: record administrator audit pending employee check`
+Na conferência de 04/11/2026, após o push da revisão anterior, `main` estava
+sincronizada com `origin/main` no commit `da94323`; `git status --short
+--branch` mostrou a árvore limpa e `openspec list` não encontrou changes
+ativas. `openspec validate --all --strict` aprovou as 16 specs. A suíte
+`python -m unittest discover -s tests -q` aprovou 188 testes. Esses resultados
+são um registro datado, não substituem uma nova verificação após mudanças.
 
 Antes de prosseguir, confira o estado real com:
 
@@ -101,34 +103,24 @@ Não faça `push` automaticamente. Peça confirmação ao usuário ou siga uma
 autorização explícita já dada. A identidade Git aprovada para este repositório
 é `David Bastos <david.bastos@live.com>`.
 
-### Change ativa — não arquivar ainda
+### Auditoria interna desktop — concluída e arquivada
 
-`openspec/changes/audit-internal-desktop-flow/`
+`openspec/changes/archive/2026-11-03-audit-internal-desktop-flow/`
 
-Estado registrado: **3/6 tarefas**. A auditoria já verificou visualmente a
-área interna como Administrador, mas falta concluir e registrar a verificação
-como Funcionário. O usuário já informou que entrou nessa conta de teste; a
-sessão do navegador deve ser reconferida antes de considerar a tarefa pronta.
+As tarefas foram concluídas e a change foi arquivada em `eb83ac2`. A revisão
+incluiu a navegação de Administrador e Funcionário, limites de teclado e
+restrição de seções no código. Não foram testadas rotas administrativas
+diretas, autorização remota independente no Xano ou mutações; nenhuma captura
+PNG nova do perfil Funcionário foi produzida, conforme decisão do usuário.
 
-Evidências já registradas nessa change:
+As evidências e limitações estão registradas em `evidence/` e
+`evidence/final-review.md`. Não reabrir a auditoria para repetir essas tarefas
+sem novo escopo aprovado.
 
-- `01-admin-customers.*`
-- `02-admin-products.*`
-- `03-admin-catalog.*`
-- `03b-admin-brands.png`
-- `04-admin-import.*`
-- `05-sign-out.*`
-- `admin-observations.md`
-
-Para finalizar a auditória, confirmar no perfil Funcionário:
-
-- apenas **Clientes** fica disponível no menu;
-- Produtos, Categorias/marcas e Importação não aparecem nem ficam acessíveis;
-- nenhuma lista de clientes é carregada sem ação explícita;
-- não há mutação de dados;
-- registrar captura/evidência final e limitações;
-- só então marcar tarefas, arquivar com OpenSpec, validar e criar commit
-  documental.
+Também estão concluídas e arquivadas as changes `2026-11-03-fix-internal-login-heading-hierarchy`,
+`2026-11-03-format-internal-product-prices` e
+`2026-11-03-associate-internal-login-labels`. Consulte `openspec list` e o
+Git para obter o estado atual, em vez de presumir que ainda há change ativa.
 
 ## 5. Trabalho implementado e verificado
 
@@ -263,18 +255,17 @@ git status --short --branch
 
 ## 7. Próximas prioridades recomendadas
 
-1. **Concluir `audit-internal-desktop-flow`** sem ampliar escopo.
-2. Abrir uma change pequena, se o usuário aprovar, para corrigir achados da
-   auditoria: associação de labels no login interno, múltiplos `h1`, formatação
-   monetária e eventual contraste de texto auxiliar. Não implemente esses
-   ajustes dentro da auditoria sem mudança aprovada.
-3. Após C1 ter solução técnica comprovada, seguir a sequência do roadmap:
+1. **Manter C1 adiada** até existir ambiente isolado, gratuito e autorizado
+   para provar suporte, rollback e concorrência no runtime. `db.increment` é
+   somente um candidato documentado; não implementar nem alterar o Xano sem
+   evidência e nova aprovação.
+2. Após C1 ter solução técnica comprovada, seguir a sequência do roadmap:
    cancelamento de pedido (C2), gestão de pedidos (C3), dashboard (C10),
    histórico CRM (C6) e atendimentos (C7).
-4. Manter C1 e testes de compra E2E bloqueados até haver ambiente Xano isolado
+3. Manter C1 e testes de compra E2E bloqueados até haver ambiente Xano isolado
    e autorizado.
-5. Retomar o trabalho mobile somente com uma change própria.
-6. Completar as cinco imagens de produto pendentes somente quando houver fonte,
+4. Retomar o trabalho mobile somente com uma change própria.
+5. Completar as cinco imagens de produto pendentes somente quando houver fonte,
    modelo e direitos comprovados.
 
 CRM ainda não está completo: a consulta de clientes (C4) existe; histórico de
