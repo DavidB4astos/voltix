@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-04
+goal: Determinar as condições e autorização necessárias para testar C1 com
+  isolamento.
+skip_specs: true
