@@ -7229,7 +7229,7 @@ def customer_account_page() -> rx.Component:
 
 def _cart_money_text(value) -> rx.Var[str]:
     """Present backend decimal text without float conversion or recalculation."""
-    value = rx.Var.create(value)
+    value = rx.Var.create(value).to_string()
     whole = value.split(".")[0]
     fraction = (value + ".").split(".")[1]
     digits = rx.cond(fraction.length() == 0, "00",
