@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-04
+goal: Identificar lacunas responsivas evidentes no código antes de propor
+  ajustes mobile.
+skip_specs: true
