@@ -4945,6 +4945,7 @@ def brand_logo(size: str = "6", on_dark: bool = False) -> rx.Component:
         rx.heading(
             "Voltix",
             size=size,
+            as_="h2",
             color=COLOR_CARD if on_dark else COLOR_NAVY,
             letter_spacing="-0.02em",
         ),
