@@ -5842,11 +5842,11 @@ def index() -> rx.Component:
                         class_name="vx-products__actions"),
                     rx.el.h4("Variações", class_name="vx-products__variation-title"),
                     rx.el.div(rx.table.root(rx.table.header(rx.table.row(*[rx.table.column_header_cell(label)
-                            for label in ["Variação / SKU", "Preço (R$)", "Disponível", "Status", "Ações"]])),
+                            for label in ["Variação / SKU", "Preço", "Disponível", "Status", "Ações"]])),
                         rx.table.body(rx.foreach(product.variations, lambda variation: rx.table.row(
                             rx.table.cell(rx.el.p(rx.cond(variation.name_or_description != "", variation.name_or_description, variation.sku),
                                 class_name="vx-products__variation-name"), rx.el.p(variation.sku, class_name="vx-products__sku")),
-                            rx.table.cell(variation.price.to_string()), rx.table.cell(variation.available_quantity.to_string()),
+                            rx.table.cell(_cart_money_text(variation.price)), rx.table.cell(variation.available_quantity.to_string()),
                             rx.table.cell(product_status(variation.status)),
                             rx.table.cell(rx.el.div(rx.el.button("Editar variação", type="button",
                                     on_click=State.edit_variation(product.id, variation.id), disabled=State.products_loading,
