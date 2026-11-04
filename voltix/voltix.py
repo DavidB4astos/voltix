@@ -5400,15 +5400,26 @@ def loading_text(message) -> rx.Component:
     )
 
 
-def form_field(label: str, control) -> rx.Component:
-    """Campo padronizado com rotulo para os formularios Voltix."""
-    return rx.vstack(
-        rx.text(
+def form_field(label: str, control, *, field_id: str | None = None) -> rx.Component:
+    """Campo padronizado; associa o rótulo ao controle quando recebe um ID."""
+    label_component = (
+        rx.el.label(
+            label,
+            html_for=field_id,
+            font_size="0.85rem",
+            font_weight="600",
+            color=COLOR_TEXT,
+        )
+        if field_id
+        else rx.text(
             label,
             font_size="0.85rem",
             font_weight="600",
             color=COLOR_TEXT,
-        ),
+        )
+    )
+    return rx.vstack(
+        label_component,
         control,
         align="stretch",
         spacing="1",
@@ -5996,22 +6007,26 @@ def index() -> rx.Component:
                             form_field(
                                 "E-mail",
                                 rx.input(
+                                    id="internal-login-email",
                                     name="email",
                                     type="email",
                                     placeholder="voce@empresa.com",
                                     required=True,
                                     width="100%",
                                 ),
+                                field_id="internal-login-email",
                             ),
                             form_field(
                                 "Senha",
                                 rx.input(
+                                    id="internal-login-password",
                                     name="password",
                                     type="password",
                                     placeholder="Sua senha",
                                     required=True,
                                     width="100%",
                                 ),
+                                field_id="internal-login-password",
                             ),
                             primary_button(
                                 rx.cond(State.login_loading, "Entrando...", "Entrar"),
