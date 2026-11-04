@@ -5099,8 +5099,8 @@ def site_header(
         width="100%",
     )
 
-    # A variante antiga permanece intacta para mobile e área interna.
-    if active not in {"/", "/catalogo", "/cliente", "/carrinho", "/checkout", "/pedidos"}:
+    # A variante antiga permanece disponível para larguras compactas.
+    if active not in {"/", "/catalogo", "/cliente", "/carrinho", "/checkout", "/pedidos", "/interno"}:
         return legacy_header
 
     def desktop_link(label, href, *, icon=None, secondary=False):
@@ -5988,90 +5988,100 @@ def index() -> rx.Component:
             rx.cond(State.internal_section == "importacao", bulk_import_management, rx.fragment())), rx.fragment())))
 
     login_surface = page_shell(
-        rx.vstack(
-            surface_card(
-                rx.vstack(
-                    rx.box(
-                        width="3rem",
-                        height="4px",
-                        background=COLOR_CYAN,
-                        border_radius="9999px",
-                    ),
-                    section_heading("Acesso interno", size="5"),
-                    rx.text(
-                        "Entre com as credenciais do seu usuário interno.",
-                        color=COLOR_TEXT_MUTED,
-                    ),
-                    rx.form(
-                        rx.vstack(
-                            form_field(
-                                "E-mail",
-                                rx.input(
-                                    id="internal-login-email",
-                                    name="email",
-                                    type="email",
-                                    placeholder="voce@empresa.com",
-                                    required=True,
+        rx.fragment(
+            rx.el.link(rel="stylesheet", href="/voltix-internal-login.css"),
+            rx.vstack(
+                surface_card(
+                    rx.vstack(
+                        rx.box(
+                            width="3rem",
+                            height="4px",
+                            background=COLOR_CYAN,
+                            border_radius="9999px",
+                            class_name="vx-internal-login__accent",
+                        ),
+                        section_heading("Acesso interno", size="5"),
+                        rx.text(
+                            "Entre com as credenciais do seu usuário interno.",
+                            color=COLOR_TEXT_MUTED,
+                        ),
+                        rx.form(
+                            rx.vstack(
+                                form_field(
+                                    "E-mail",
+                                    rx.input(
+                                        id="internal-login-email",
+                                        name="email",
+                                        type="email",
+                                        placeholder="voce@empresa.com",
+                                        required=True,
+                                        width="100%",
+                                    ),
+                                    field_id="internal-login-email",
+                                ),
+                                form_field(
+                                    "Senha",
+                                    rx.input(
+                                        id="internal-login-password",
+                                        name="password",
+                                        type="password",
+                                        placeholder="Sua senha",
+                                        required=True,
+                                        width="100%",
+                                    ),
+                                    field_id="internal-login-password",
+                                ),
+                                primary_button(
+                                    rx.cond(State.login_loading, "Entrando...", "Entrar"),
+                                    type="submit",
+                                    disabled=State.login_loading,
                                     width="100%",
                                 ),
-                                field_id="internal-login-email",
+                                width="100%",
+                                spacing="4",
                             ),
-                            form_field(
-                                "Senha",
-                                rx.input(
-                                    id="internal-login-password",
-                                    name="password",
-                                    type="password",
-                                    placeholder="Sua senha",
-                                    required=True,
-                                    width="100%",
-                                ),
-                                field_id="internal-login-password",
-                            ),
+                            on_submit=State.submit_login,
+                            width="100%",
+                        ),
+                        rx.cond(
+                            State.login_status != "idle",
+                            feedback_text(State.login_message),
+                            rx.fragment(),
+                        ),
+                        rx.cond(
+                            (State.login_status == "success")
+                            & (State.session_status != "success"),
                             primary_button(
-                                rx.cond(State.login_loading, "Entrando...", "Entrar"),
-                                type="submit",
-                                disabled=State.login_loading,
+                                "Acessar área interna",
+                                on_click=State.enter_internal_area,
                                 width="100%",
                             ),
-                            width="100%",
-                            spacing="4",
+                            rx.fragment(),
                         ),
-                        on_submit=State.submit_login,
-                        width="100%",
+                        align="stretch",
+                        spacing="4",
                     ),
-                    rx.cond(
-                        State.login_status != "idle",
-                        feedback_text(State.login_message),
-                        rx.fragment(),
-                    ),
-                    rx.cond(
-                        (State.login_status == "success")
-                        & (State.session_status != "success"),
-                        primary_button(
-                            "Acessar área interna",
-                            on_click=State.enter_internal_area,
-                            width="100%",
-                        ),
-                        rx.fragment(),
-                    ),
-                    align="stretch",
-                    spacing="4",
+                    max_width="28rem",
+                    margin_x="auto",
+                    class_name="vx-internal-login__card",
                 ),
-                max_width="28rem",
-                margin_x="auto",
+                align="center",
+                width="100%",
+                class_name="vx-internal-login__layout",
             ),
-            align="center",
         ),
         header=site_header(
             [
                 ("Catálogo público", "/catalogo"),
                 ("Área do Cliente", "/cliente"),
                 ("Carrinho", "/carrinho"),
+                ("Acesso interno", "/interno"),
             ],
+            active="/interno",
             badge="Área interna",
         ),
         max_width="56rem",
+        public_footer=True,
     )
     return rx.cond(
         State.is_authenticated & (State.session_status == "success") & (State.user_status == "ATIVO"),
@@ -6761,6 +6771,7 @@ def customer_account_page() -> rx.Component:
                     height="4px",
                     background=COLOR_BLUE,
                     border_radius="9999px",
+                    class_name="vx-account__form-accent",
                 ),
                 rx.vstack(
                     rx.heading("Criar conta de Cliente", size="5", as_="h2"),
@@ -6855,6 +6866,7 @@ def customer_account_page() -> rx.Component:
                     height="4px",
                     background=COLOR_CYAN,
                     border_radius="9999px",
+                    class_name="vx-account__form-accent",
                 ),
                 rx.vstack(
                     rx.heading("Entrar como Cliente", size="5", as_="h2"),

@@ -1,0 +1,33 @@
+/* Login público interno; visual isolado do workspace autenticado. */
+.vx-internal-login__layout{width:100%}
+@media(min-width:1024px){
+  .vx-internal-login__layout{
+    display:flex;
+    flex:1;
+    align-items:center;
+    justify-content:center;
+    min-height:clamp(24rem,48vh,34rem);
+  }
+  .vx-internal-login__card{
+    width:100%;
+    max-width:30rem!important;
+    padding:2rem!important;
+    border:1px solid #d8e3ed!important;
+    border-radius:20px!important;
+    background:linear-gradient(180deg,#fff 0%,#fff 78%,#fbfdff 100%)!important;
+    box-shadow:0 16px 36px rgba(7,21,37,.09),0 3px 8px rgba(7,21,37,.04)!important;
+  }
+  .vx-internal-login__card h2{
+    color:#071525;
+    font-size:1.4rem;
+    line-height:1.25;
+    letter-spacing:-.025em;
+    font-weight:700;
+  }
+  .vx-internal-login__accent{
+    width:3.5rem!important;
+    height:5px!important;
+    background-image:linear-gradient(90deg,#0866d9 0%,#10b8c7 100%)!important;
+    box-shadow:0 2px 9px rgba(8,102,217,.22);
+  }
+}
