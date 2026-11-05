@@ -195,12 +195,18 @@ tabela remota temporária que não deve ser excluída por suposição. Consulte:
 
 ### Estoque e checkout
 
-Baixa/reserva atômica de estoque (C1) segue adiada e não implementada. A
-avaliação documental de 03/11 identificou `db.increment` como caminho nativo
-candidato para baixa guardada. Ainda não há prova no runtime Voltix de disponibilidade,
-rollback multi-item, concorrência ou preservação da resposta HTTP 200
-`confirmado=false`. Não alterar o Xano nem implementar até haver ambiente
-isolado, gratuito e autorizado para essas provas e nova aprovação.
+Baixa/reserva atômica de estoque (C1) foi **comprovada no runtime em 04/11/2026**
+(exceção a E6 autorizada pelo usuário; dados sintéticos `TEST-C1-*` na tabela
+`test_c1_estoque` do workspace `147981`; evidências em
+`openspec/changes/prove-c1-atomic-decrement-synthetic/evidence/`). Resultado:
+`db.increment` com guarda dentro de `db.transaction` é atômico, rollback multi-item
+funciona, disputa concorrente pela última unidade correta, sem deadlock em concorrência
+reversa; HTTP 200 `confirmado=false` preservado. Veredito GO. A implementação da C1 ainda
+não foi iniciada nem aprovada; continua bloqueada em produção até uma change própria com
+spec e dry-run. As rotas de teste (`c1_prova/*`) ficaram inalcançáveis na borda Free
+(novos pushes via CLI não registram rotas no edge); os artefatos de teste permanecem no
+Xano até exclusão pela UI. Ver também
+`docs/deferred-changes/2026-10-23-baixa-estoque-checkout/README.md`.
 
 ### Imagens de produto
 

@@ -1,0 +1,22 @@
+﻿
+  Include: table/test_c1_estoque.xs, api/c1_prova_temp/api_group.xs, api/c1_prova_temp/c1_prova_baixa_POST.xs, api/c1_prova_temp/c1_prova_estado_GET.xs
+  Matched: 4 of 101 files
+
+=== Push Preview: workspace 147981 ===
+  instance: x8ki-letl-twmt.n7.xano.io  |  workspace: David's Workspace  |  cli: v1.2.0
+
+  Tables               +1 created
+  API Groups           +1 created
+  API Endpoints        +2 created
+
+--- Changes ---
+
+  CREATE           table              test_c1_estoque
+  CREATE           api_group          C1 Proof Temp
+  CREATE           query              c1_prova/baixa POST
+  CREATE           query              c1_prova/estado GET
+
+
+[33mNotice: Update available 1.2.0 → 1.3.4
+Run [36mxano update[33m to update[0m
+
