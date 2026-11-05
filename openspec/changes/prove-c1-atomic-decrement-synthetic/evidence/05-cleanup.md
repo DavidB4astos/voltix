@@ -1,44 +1,31 @@
 # 05 — Limpeza e integridade
 
-Data: 04/11/2026.
+Data: 04/11/2026 (execução) / 05/11/2026 (remoção completa).
 
-## O que permanece no workspace (decisão do usuário: limpeza parcial via CLI)
+## Remoção completa (05/11/2026) — concluída
 
-- Tabela `test_c1_estoque` — 5 registros sintéticos, baseline restaurada
-  (OK=5, SEM-ESTOQUE=0, MULTI-A=1, MULTI-B=0, LIMITE=1).
-- Grupo `C1 Proof Temp` com 3 rotas (`baixa`, `estado`, `reset`) — **inalcançáveis na
-  borda** (404 HTTP estável desde a criação; ver `evidence/03-edge-registration-debug.md`).
-- Função `C1 Proof / preparar` — invocável apenas via metadata; `xano function run` falha
-  para todo o profile/workspace (inclusive funções pré-existentes), logo inutilizada.
+O usuário excluiu no editor do Xano: a tabela `test_c1_estoque`, o grupo
+`C1 Proof Temp` (rotas `baixa`, `estado`, `reset`) e a função
+`C1 Proof / preparar`. Pull independente posterior confirma: 98 documentos no
+workspace, nenhum artefato `c1*`/`test_c_1*` presente, tabelas demo
+(`variacao_produto`, `pedido`, `item_carrinho`, `produto`, etc.) intactas.
+`GET /c1_prova/estado` → 404 `ERROR_CODE_NOT_FOUND`. A tabela `tmp_rollback_test`
+(pré-existente, de terceiros) não foi tocada.
 
-O CLI não oferece remoção segura por documento (`--sync --delete` apagaria tudo o que não
-fosse incluído no push; não foi usado). A remoção completa dos três itens acima exige
-exclusão no editor do Xano (UI) — pendente e documentada; sem impacto no Voltix porque as
-rotas não são roteáveis e a tabela só contém dados sintéticos.
+## Histórico de limpeza (04/11/2026)
 
-## O que NÃO permanece no repositório local
-
-- `xano/api/c1_prova_temp/` (rotas e grupo) — removido.
-- `xano/table/test_c1_estoque.xs` — removido.
-- `xano/function/c1_prova_preparar.xs` — removido.
+- Limpeza parcial via CLI era a única opção segura (o CLI não remove documentos
+  individualmente; `--sync`/`--delete` seriam destrutivos e não foram usados).
+- Artefatos locais removidos na mesma sessão: `xano/api/c1_prova_temp/`,
+  `xano/table/test_c1_estoque.xs`, `xano/function/c1_prova_preparar.xs`.
+- Baseline restaurada por UPSERT antes da remoção da tabela (registros sintéticos
+  excluídos junto com a tabela pela UI).
 
 ## Integridade dos dados reais/demo
 
-- As únicas escritas no workspace foram: criação de 1 tabela, 5 registros e 1 grupo com
-  rotas, todos sintéticos; e os pushs constantes no histórico de comandos desta change.
-- Nenhum Pedido, ItemPedido, Pagamento, Cliente, endereço, estoque ou SKU real foi lido
-  ou alterado para a prova; `ItemCarrinho` e o checkout real não foram tocados.
-- `tmp_rollback_test` (tabela pré-existente no workspace, de testes anteriores de terceiros)
-  não foi tocada.
-- Nenhuma evidência desta change contém dados pessoais — apenas SKUs sintéticos e respostas
-  HTTP dos casos A–E.
-
-## Baseline atual da tabela de teste (para quem quiser conferir)
-
-| id | sku | quantidade_disponivel | status |
-|---|---|---|---|
-| 1 | TEST-C1-OK | 5 | ATIVO |
-| 2 | TEST-C1-SEM-ESTOQUE | 0 | ATIVO |
-| 3 | TEST-C1-MULTI-A | 1 | ATIVO |
-| 4 | TEST-C1-MULTI-B | 0 | ATIVO |
-| 5 | TEST-C1-LIMITE | 1 | ATIVO |
+- As únicas escritas no workspace foram: criação de 1 tabela, 5 registros e 1 grupo
+  com rotas, todos sintéticos.
+- Nenhum Pedido, ItemPedido, Pagamento, Cliente, endereço, estoque ou SKU real foi
+  lido ou alterado para a prova; `ItemCarrinho` e o checkout real não foram tocados.
+- Nenhuma evidência desta change contém dados pessoais — apenas SKUs sintéticos e
+  respostas HTTP dos casos A–E.

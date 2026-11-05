@@ -23,7 +23,7 @@
 
 ## 4. Limpeza e verificação do workspace
 
-- [ ] 4.1 Desabilitar/remover as rotas de prova e, se permitido, a tabela `test_c1_estoque` (UI do Xano se o CLI não suportar remoção segura) — verificação: pull/GETs confirmam ausência ou inacessibilidade — PARCIAL: CLI não oferece remoção segura (sem `--sync`/`--delete`); rotas já inalcançáveis na borda (404); baseline sintética restaurada; remoção completa pendente na UI (ver evidence/05-cleanup.md)
+- [x] 4.1 Desabilitar/remover as rotas de prova e, se permitido, a tabela `test_c1_estoque` (UI do Xano se o CLI não suportar remoção segura) — verificação: usuário excluiu na UI (grupo C1 Proof Temp, tabela test_c1_estoque, função "C1 Proof / preparar"); pull independente (98 docs) confirma ausência dos artefatos e integridade das tabelas demo
 - [x] 4.2 Verificar que nenhum SKU demo, Pedido, ItemPedido, cliente ou estoque real foi alterado — verificação: auditoria do histórico de pushes — somente artefatos sintéticos foram criados/alterados (evidence/05-cleanup.md)
 - [x] 4.3 Excluir qualquer artefato sintético residual em `xano/` local que não deva ser versionado, ou registrá-lo se intencional — verificação: `xano/api/c1_prova_temp/` e `xano/table/test_c1_estoque.xs` removidos; `git status` só lista o diretório da change
 
