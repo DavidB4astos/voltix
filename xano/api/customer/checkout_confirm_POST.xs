@@ -105,6 +105,10 @@ query "checkout/confirm" verb=POST {
       value = true
     }
 
+    var $erro_estoque {
+      value = false
+    }
+
     foreach ($cart_items) {
       each as $item {
         var $item_available {
@@ -182,8 +186,10 @@ query "checkout/confirm" verb=POST {
       value = null
     }
 
-    db.transaction {
-      stack {
+    try_catch {
+      try {
+        db.transaction {
+          stack {
         db.get endereco {
           field_name = "id"
           field_value = $input.endereco_id
@@ -341,7 +347,30 @@ query "checkout/confirm" verb=POST {
           else {
             conditional {
               if ($all_available == true) {
-                security.create_uuid as $order_uuid
+                  foreach ($current_cart_items) {
+                  each as $stock_item {
+                    db.increment "variacao_produto" {
+                      where = $db.variacao_produto.id == $stock_item.variacao_produto_id && $db.variacao_produto.quantidade_disponivel >= $stock_item.quantidade && $db.variacao_produto.status == "ATIVO"
+                      field_name = "quantidade_disponivel"
+                      value = -$stock_item.quantidade
+                      return = {type: "count"}
+                    } as $decremented
+
+                    conditional {
+                      if ($decremented == 0) {
+                        var.update $erro_estoque {
+                          value = true
+                        }
+                        throw {
+                          name = "inputerror"
+                          value = "Estoque insuficiente para a variacao"
+                        }
+                      }
+                    }
+                  }
+                }
+
+              security.create_uuid as $order_uuid
 
                 db.add pedido {
                   data = {
@@ -416,6 +445,23 @@ query "checkout/confirm" verb=POST {
                   value = $created_order.codigo
                 }
               }
+            }
+          }
+        }
+      }
+        }
+      }
+      catch {
+        conditional {
+          if ($erro_estoque == true) {
+            var.update $confirmed {
+              value = false
+            }
+          }
+          else {
+            throw {
+              name = "inputerror"
+              value = $error.message
             }
           }
         }
