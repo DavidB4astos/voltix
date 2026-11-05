@@ -34,7 +34,7 @@ Após confirmação válida, o sistema SHALL criar atomicamente um Pedido perten
 
 ### Requirement: Checkout item reads share the same explicit order
 
-Checkout review, the preliminary confirmation read and the confirmation read inside the existing transaction SHALL order returned ItemCarrinho records by ItemCarrinho id ascending before building review items and snapshots. Ordering SHALL preserve ownership checks, address validation, availability, prices, quantities, totals, stale-review comparison and existing atomic persistence. The stock decrements introduced by the confirmation SHALL use the same ordering and the same transaction, and SHALL NOT reservation outside the confirmation.
+Checkout review, the preliminary confirmation read and the confirmation read inside the existing transaction SHALL order returned ItemCarrinho records by ItemCarrinho id ascending before building review items and snapshots. Ordering SHALL preserve ownership checks, address validation, availability, prices, quantities, totals, stale-review comparison and existing atomic persistence. The stock decrements introduced by the confirmation SHALL use the same ordering and the same transaction, and SHALL NOT introduce any stock reduction or reservation outside the confirmation transaction.
 
 #### Scenario: Customer reviews multiple cart items
 - **WHEN** o Cliente revisa o carrinho com múltiplos itens

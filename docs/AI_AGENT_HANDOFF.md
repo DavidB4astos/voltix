@@ -195,18 +195,7 @@ tabela remota temporária que não deve ser excluída por suposição. Consulte:
 
 ### Estoque e checkout
 
-Baixa/reserva atômica de estoque (C1) foi **comprovada no runtime em 04/11/2026**
-(exceção a E6 autorizada pelo usuário; dados sintéticos `TEST-C1-*` na tabela
-`test_c1_estoque` do workspace `147981`; evidências em
-`openspec/changes/prove-c1-atomic-decrement-synthetic/evidence/`). Resultado:
-`db.increment` com guarda dentro de `db.transaction` é atômico, rollback multi-item
-funciona, disputa concorrente pela última unidade correta, sem deadlock em concorrência
-reversa; HTTP 200 `confirmado=false` preservado. Veredito GO. A implementação da C1 ainda
-não foi iniciada nem aprovada; continua bloqueada em produção até uma change própria com
-spec e dry-run. As rotas de teste (`c1_prova/*`) ficaram inalcançáveis na borda Free
-(novos pushes via CLI não registram rotas no edge); os artefatos de teste permanecem no
-Xano até exclusão pela UI. Ver também
-`docs/deferred-changes/2026-10-23-baixa-estoque-checkout/README.md`.
+A C1 (baixa/reserva atômica de estoque no checkout) foi **IMPLEMENTADA e PUBLICADA em 05/11/2026** no XanoFree (change `implement-c1-atomic-decrement`, commits `854fa8b`, `af2e959`). O checkout revalida e baixa estoque atomicamente por item dentro da mesma transação que cria Pedido/ItemPedido/Pagamento; em falta → HTTP 200 `confirmado=false`, nada persiste, Carrinho intacto. Pull confere; rota responde à validação esperada; 188 testes e `openspec validate` verdes. A spec consolidada `checkout-orders` traz o delta; a transação e guarda seguem exatamente o modelo aprovado na prova de 04/11 (dados sintéticos, E6 exceção). Verificação remota = somente leitura (decisão do usuário em 05/11). Artefatos de prova foram excluídos em 05/11; nenhum consumo de estoque real ou pedido foi escrito.
 
 ### Imagens de produto
 
@@ -261,17 +250,14 @@ git status --short --branch
 
 ## 7. Próximas prioridades recomendadas
 
-1. **Manter C1 adiada** até existir ambiente isolado, gratuito e autorizado
-   para provar suporte, rollback e concorrência no runtime. `db.increment` é
-   somente um candidato documentado; não implementar nem alterar o Xano sem
-   evidência e nova aprovação.
-2. Após C1 ter solução técnica comprovada, seguir a sequência do roadmap:
+1. **C1 concluída e publicada (05/11/2026)**; seguir a sequência do roadmap:
    cancelamento de pedido (C2), gestão de pedidos (C3), dashboard (C10),
-   histórico CRM (C6) e atendimentos (C7).
-3. Manter C1 e testes de compra E2E bloqueados até haver ambiente Xano isolado
+   histórico CRM (C6) e atendimentos (C7). Cada mudança com escopo e aprovação
+   próprios.
+2. Manter testes de compra E2E (C9) bloqueados até haver ambiente Xano isolado
    e autorizado.
-4. Retomar o trabalho mobile somente com uma change própria.
-5. Completar as cinco imagens de produto pendentes somente quando houver fonte,
+3. Retomar o trabalho mobile somente com uma change própria.
+4. Completar as cinco imagens de produto pendentes somente quando houver fonte,
    modelo e direitos comprovados.
 
 CRM ainda não está completo: a consulta de clientes (C4) existe; histórico de

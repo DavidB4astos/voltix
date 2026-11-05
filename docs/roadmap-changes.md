@@ -20,7 +20,7 @@ Atualizado em 03/11/2026 por conferência do repositório local. Fontes: [AGENTS
 | Conta, carrinho, checkout e pedidos do cliente | Refinamentos desktop arquivados. Conferências com dados isolados não comprovam compra real completa. | `2026-10-28-refine-desktop-account/cart/checkout/orders`; specs correspondentes |
 | Imagens locais dos produtos demo | 15 fotos aprovadas de 20, cinco pendentes. Infraestrutura existente; pendência atual é de conteúdo e direitos/modelo. | `assets/demo/manifest.json`; lotes Icecat e pesquisa arquivados em 29/10 |
 | Gestão de produtos e importação em massa | Changes arquivadas. Upload de imagem no Xano Free permanece com limitação histórica documentada, não declarado operacional nesta revisão. | Specs `product-management`, `product-bulk-import` |
-| Estoque C1 | Prova de runtime concluída em 04/11/2026 (exceção a E6; GO). Checkout valida disponibilidade, mas a baixa ainda não é implementada no checkout real (aguarda change própria). | Spec `checkout-orders`; [README do adiamento](deferred-changes/2026-10-23-baixa-estoque-checkout/README.md); [evidência da prova](../openspec/changes/prove-c1-atomic-decrement-synthetic/evidence/04-run-results.md) |
+| Estoque C1 | **Implementada e publicada em 05/11/2026** (change `implement-c1-atomic-decrement`). Checkout baixa estoque atomicamente com guarda `db.increment` na mesma transação; rollback multi-item verificado em prova e refletido na spec consolidada. Verificação remota somente leitura. | Spec `checkout-orders`; [README do adiamento](deferred-changes/2026-10-23-baixa-estoque-checkout/README.md); [evidência da prova](../openspec/changes/archive/2026-11-05-prove-c1-atomic-decrement-synthetic/evidence/04-run-results.md); [evidência da publicação](../openspec/changes/implement-c1-atomic-decrement/evidence/01-publish-verification.md) |
 | Consulta interna de clientes C4 | Concluída: leitura para Funcionário/Administrador, filtros, paginação, máscaras e detalhe. Acesso de Cliente e interno inativo negado; teste de ID coincidente aprovado. | [Revisão final](../openspec/changes/archive/2026-10-29-consulta-clientes-painel/evidence/final-review.md) |
 | CRM, cancelamento e gestão operacional | Consulta C4 entregue. Histórico, atendimentos, cancelamento e gestão de pedidos continuam planejados, sem entrega completa dessas capabilities. | C2, C3, C6, C7 e C10 |
 | E2E existente | Spec cobre login e navegação com leituras; não confirma compra nem simula pagamento. | `openspec/specs/e2e-playwright/spec.md` |
@@ -63,7 +63,7 @@ Concluída a [refine-internal-import-desktop](../openspec/changes/archive/2026-1
 
 O roadmap anterior registrou Xano Free com 10 requisições/20 s, 100.000 registros, um workspace, ausência de ambientes isolados e APIs/funções sujeitas a rate limit. Esses números são **registro histórico**, não verificação atual do plano ou do consumo. Esta change não consultou o dashboard nem alterou o serviço.
 
-- C1: prova de runtime concluída em 04/11/2026 (exceção a E6 autorizada pelo usuário; dados sintéticos; GO). Implementação (change própria com delta na spec `checkout-orders`) ainda não aprovada. `db.direct_query` permanece indisponível (`ERROR_CODE_ACCESS_DENIED`).
+- C1: implementação concluída e publicada em 05/11/2026. O checkout baixa estoque atomicamente com guarda `db.increment` na mesma transação; rollback multi-item verificado na prova (04/11) e na spec consolidada. `db.direct_query` permanece indisponível (`ERROR_CODE_ACCESS_DENIED`).
 - Upload de imagem principal teve HTTP 403 no plano usado; não declarar funcional sem validação específica ou decidir armazenamento alternativo nesta change.
 - Medir consumo de registros e histórico de 429 no dashboard, em leitura, antes de C7/C9.
 - Reflex continua frontend, Xano/XanoScript continuam backend/dados; nenhuma nova plataforma aprovada por este roadmap.
@@ -91,7 +91,7 @@ O rascunho `consulta-clientes-admin` restringe a ADMINISTRADOR e diverge de E2; 
 ## Ordem recomendada para propostas futuras
 
 1. C4 concluída e arquivada em 29/10/2026. Consulta de clientes somente leitura entregue; o rascunho admin-only adiado foi preservado como referência histórica e não publicado.
-2. C1: prova de runtime concluída (04/11/2026) com GO; próximo passo é a change própria de implementação (spec `checkout-orders`), com dry-run e aprovação individual, ainda não autorizada.
+2. C1 concluída e publicada em 05/11/2026. Próximo: C2 (depende de C1) → C3 → C10.
 3. Resolvida C1: C2 → C3 → C10, preservando ordem estoque, devolução, transições e agregados.
 4. Resolvidas consultas C4/C3: C6 → C7, medindo capacidade antes de criar atendimentos.
 5. C8 conforme lacunas reais e C9 somente com isolamento aprovado. Não duplicar as suítes existentes nem repetir testes sem motivo.
@@ -102,7 +102,7 @@ C5 já está concluída; não é próxima prioridade. As fotos restantes podem s
 
 | ID / proposta | Escopo, dependências e critérios preservados |
 |---|---|
-| C1 baixa-estoque-checkout | Prova de runtime CONCLUÍDA em 04/11/2026 (exceção a E6; dados sintéticos; GO). `db.increment` com guarda atômico em transação; rollback multi-item e concorrência verificados. Implementação pendente de change própria e aprovação. Sem cancelamento, reserva ou tabela de movimentação. Artefatos de prova permanecem no Xano até exclusão na UI; rotas `c1_prova/*` inalcançáveis na borda Free. |
+| C1 baixa-estoque-checkout | **CONCLUÍDA (05/11/2026)**: prova de runtime em 04/11 + implementação publicada no XanoFree em 05/11 (change `implement-c1-atomic-decrement`). `db.increment` com guarda atômico em transação; rollback multi-item e concorrência verificados. Sem cancelamento, reserva ou tabela de movimentação. Restam C2, C3, C10. |
 | C2 cancelamento-pedido | Depende de C1. Cliente/ADMIN conforme E1; devolução apenas de unidades já baixadas, idempotente; histórico e pagamento 1:1 preservados. Testar pedido alheio, estado inválido e cancelamento repetido. Definir efeito no status do pagamento e confirmação de UI. Sem reembolso real, logística ou novo painel. |
 | C3 gestao-pedidos-painel | Depende de C1/C2 no planejamento aprovado. Listar/detalhar pedidos e transições EM_PREPARACAO/ENVIADO/ENTREGUE; cancelamento reutiliza C2. Definir permissão do FUNCIONARIO, validar transições e autorização negativa no backend. Sem transportadora, CRM ou métricas. |
 | C4 consulta-clientes-painel | Leitura de lista/detalhe; depende da autenticação interna existente. Compatibilizar o rascunho adiado com E2 e schema real. Definir campos, máscara, filtros combinados, paginação/limites e detalhe. Nunca senha/hash/token, CPF mascarado; negar anônimo/cliente/interno inativo. Testar vazio, erro e 429. Sem editar/inativar cliente, exportar, histórico ou atendimento. |
@@ -205,3 +205,6 @@ O trecho do endpoint publicado, copiado pelo usuário do Xano, confirma `file? i
 
 ### Prova de runtime da baixa atômica (C1) — 04/11/2026
 Exceção documentada a E6 autorizada pelo usuário em 04/11/2026: prova executada exclusivamente com registros sintéticos (`TEST-C1-*`) na tabela `test_c1_estoque` do workspace `147981`, sem snapshot prévio (decisão explícita do usuário). `db.increment` com guarda (`quantidade_disponivel >= quantidade`, status ATIVO) dentro de `db.transaction` foi comprovado no runtime: decremento guardado atômico, rollback multi-item integral, disputa concorrente pela última unidade (1 vence, 1 recusada, estoque final 0) e concorrência reversa cross-item sem deadlock. HTTP 200 com `confirmado=false` preservado nos conflitos. Veredito: **GO para implementação da C1** como change própria (com delta na spec `checkout-orders`), ainda não aprovada. Limitações: sem carga/estresse; concorrência com 2 chamadas; workspace compartilhado. Artefatos de teste permanecem no Xano até exclusão na UI; rotas `c1_prova/*` estão inalcançáveis na borda Free (novos pushs não registram rotas via CLI). Evidência: [prove-c1-atomic-decrement-synthetic](../openspec/changes/prove-c1-atomic-decrement-synthetic/evidence/04-run-results.md).
+
+### Implementação da baixa atômica (C1) — CONCLUÍDA E PUBLICADA — 05/11/2026
+Change `implement-c1-atomic-decrement` implementada, publicada restritamente (somente `checkout_confirm_POST.xs`) e verificada no XanoFree. Pull confere; rota responde à validação esperada (400 `Missing param`); 188 testes e `openspec validate` verdes. Verificação remota = somente leitura (o usuário manteve essa decisão em 05/11/2026). Evidência: [01](../openspec/changes/implement-c1-atomic-decrement/evidence/01-publish-verification.md). Próximos: C2 → C3 → C10.
