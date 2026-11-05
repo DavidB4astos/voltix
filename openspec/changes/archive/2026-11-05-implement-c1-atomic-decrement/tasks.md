@@ -1,6 +1,6 @@
 ## 1. Preparação
 
-- [ ] 1.1 Confirmar com o usuário o escopo da verificação remota após a publicação (somente leitura vs. ciclo sintético completo com limpeza na UI) — verificação: decisão registrada na evidência
+- [x] 1.1 Confirmar com o usuário o escopo da verificação remota após a publicação (somente leitura vs. ciclo sintético completo com limpeza na UI) — verificação: decisão registrada na evidência ("Manter só leitura", escolhido em 05/11/2026)
 - [x] 1.2 Conferir spec consolidada atual de `checkout-orders` e a delta desta change — verificação: `openspec show checkout-orders --type spec --no-scenarios` coerente com a delta
 
 ## 2. Implementação local
@@ -25,11 +25,11 @@
 
 ## 5. Verificação remota mínima (conforme decisão 1.1)
 
-- [ ] 5.1 Executar apenas a verificação aprovada pelo usuário no gate 4.2; registrar evidência sanitizada (nenhuma escrita em estoque/pedido real sem autorização) — verificação: evidência em `evidence/`
+- [x] 5.1 Executar apenas a verificação aprovada pelo usuário no gate 4.2; registrar evidência sanitizada (nenhuma escrita em estoque/pedido real sem autorização) — verificação: evidência em `evidence/01-publish-verification.md` (dry-run, pull, resposta 400 esperada)
 
 ## 6. Encerramento
 
-- [ ] 6.1 Sincronizar delta spec com a spec consolidada `checkout-orders` — verificação: `openspec validate --all --strict` sem conflitos
-- [ ] 6.2 Atualizar `docs/roadmap-changes.md` (C1 concluída), `docs/deferred-changes/2026-10-23-baixa-estoque-checkout/README.md` (implementado) e `docs/AI_AGENT_HANDOFF.md` — verificação: consistente com a evidência
-- [ ] 6.3 `openspec validate --all --strict`; `git status --short --branch` — verificação: limpo
-- [ ] 6.4 Commit focado da spec sincronizada e docs; push somente com autorização explícita — verificação: `git log --oneline -1`
+- [x] 6.1 Sincronizar delta spec com a spec consolidada `checkout-orders` — verificação: `openspec validate --all --strict` sem conflitos (17 aprovadas)
+- [x] 6.2 Atualizar `docs/roadmap-changes.md` (C1 concluída), `docs/deferred-changes/2026-10-23-baixa-estoque-checkout/README.md` (implementado) e `docs/AI_AGENT_HANDOFF.md` — verificação: consistente com a evidência
+- [x] 6.3 `openspec validate --all --strict`; `git status --short --branch` — verificação: limpo
+- [x] 6.4 Commit focado da spec sincronizada e docs; push somente com autorização explícita — verificação: `git log --oneline -1` → `e462d4c`. Push pendente da autorização do usuário.
