@@ -18,9 +18,10 @@ de CRM. A arquitetura aprovada é fixa:
 Três perfis existem no produto:
 
 - **Cliente:** catálogo, conta, carrinho, checkout e pedidos próprios.
-- **Funcionário:** consulta interna de clientes.
-- **Administrador:** consulta de clientes e gestão de produtos, categorias,
-  marcas e importação.
+- **Funcionário:** dashboard de vendas e consulta interna de clientes,
+  atendimentos e pedidos.
+- **Administrador:** dashboard de vendas, consulta de clientes, atendimentos e
+  pedidos, além de gestão de produtos, categorias, marcas e importação.
 
 Leia obrigatoriamente antes de qualquer alteração:
 
@@ -84,9 +85,9 @@ importação real) exige ambiente isolado, autorizado e sem dados reais.
 
 ## 4. Estado do Git e do OpenSpec
 
-Na conferência de 09/11/2026, a C7 e sua tela, e em seguida a tela de Pedidos (C3),
-foram implementadas e verificadas. `openspec validate --all --strict` aprovou 24
-itens e a suíte `python -m unittest discover -s tests -q` aprovou 266 testes.
+Na conferência de 09/11/2026, a C7 e sua tela, a tela de Pedidos (C3) e a tela do
+Dashboard (C10) foram implementadas e verificadas. `openspec validate --all --strict`
+aprovou 25 itens e a suíte `python -m unittest discover -s tests -q` aprovou 290 testes.
 Esses resultados são um registro datado, não substituem uma nova verificação
 após mudanças.
 
@@ -158,11 +159,13 @@ As seguintes changes foram concluídas e arquivadas:
 - `implement-customer-history-panel`: histórico de Pedidos na ficha do Cliente.
 - `implement-attendance-panel`: seção de Atendimentos do CRM interno.
 - `implement-order-panel`: seção de Pedidos do painel interno.
+- `implement-sales-dashboard-panel`: seção Dashboard do painel interno (C10).
 
 O controle de seção interno deve continuar restrito no `State`:
 
-- Funcionário: `clientes`, `atendimentos`.
-- Administrador: `clientes`, `atendimentos`, `produtos`, `catalogo`, `importacao`.
+- Funcionário: `dashboard`, `clientes`, `atendimentos`, `pedidos`.
+- Administrador: `dashboard`, `clientes`, `atendimentos`, `pedidos`, `produtos`,
+  `catalogo`, `importacao`.
 
 Os refinamentos de Importação, Categorias e Marcas preservaram State, handlers,
 parsers, limites e Xano. Foram testados com dados fictícios/isolados; importação
@@ -227,8 +230,7 @@ A transição é estrita, um passo por chamada:
 `PAGAMENTO_CONFIRMADO → EM_PREPARACAO → ENVIADO → ENTREGUE`; alvo igual ao atual
 é sucesso `alterado=false` sem gravar; `CANCELADO` não é alvo aceito. `db.edit`
 grava apenas `status`/`updated_at`. Verificação remota somente leitura (pull +
-401 nas três rotas). **Não há tela no painel**: a UI de pedidos fica para uma
-change própria.
+401 nas três rotas). A tela correspondente foi entregue em `implement-order-panel`.
 
 ### Relatório de vendas
 
@@ -243,7 +245,21 @@ Período padrão de 30 dias inclusivos em UTC, com `from`/`to` opcionais em
 `YYYY-MM-DD` e limite de 366 dias. A agregação é feita em XanoScript sobre uma
 `db.query pedido` restrita a `id`, `data_pedido`, `status` e `valor_total`.
 Verificação remota somente leitura (pull + 401); sem dados sintéticos.
-**Não há tela no painel**: cartões/gráficos ficam para change própria.
+
+A **tela do Dashboard (C10)** foi entregue em 09/11/2026 pela change
+`implement-sales-dashboard-panel`, sem backend novo. **Dashboard** é a primeira
+opção da navegação interna, disponível a FUNCIONARIO e ADMINISTRADOR ativos.
+Exibe cartões de faturamento, Pedidos e ticket médio, o período aplicado, os
+status incluídos e a série diária em ordem crescente, com filtros opcionais
+`from`/`to` (`YYYY-MM-DD`, UTC, no máximo 366 dias inclusivos) e estados de
+carregamento, vazio, erro e sessão não autorizada. O contrato
+`voltix/internal_sales.py` valida chaves exatas, período, status, série e
+coerência de totais, quantizando valores monetários em duas casas; a URL vem de
+`XANO_INTERNAL_SALES_URL`, usada server-side com token interno. `401`/`403`
+encerram a sessão; `400` informa período inválido e mantém a sessão; respostas
+malformadas não renderizam. 290 testes, `openspec validate --all --strict`
+(25 itens), `git diff --check` e `reflex compile` verdes, com `reflex.lock`
+restaurado.
 
 ### Histórico do Cliente
 
@@ -353,7 +369,7 @@ Verificação de testes a partir da raiz do repositório:
 & '.\.venv-windows\Scripts\python.exe' -m unittest discover -s tests -q
 ```
 
-A suíte mais recente registrada teve **266 testes aprovados**. Execute somente
+A suíte mais recente registrada teve **290 testes aprovados**. Execute somente
 os testes pertinentes quando a change for documental; não gere ruído rodando
 toda a aplicação sem necessidade.
 
@@ -379,19 +395,19 @@ git status --short --branch
 ## 7. Próximas prioridades recomendadas
 
 1. **C1, C2, C3, C6, C7 e C10 concluídas e publicadas** (05/11/2026 e
-   09/11/2026); as telas de histórico do Cliente, de Atendimentos e de Pedidos
-   também foram entregues. A tela do dashboard (C10) pode ser change própria
-   quando aprovada. Cada mudança com escopo e aprovação próprios.
+   09/11/2026); as telas de histórico do Cliente, de Atendimentos, de Pedidos e
+   do Dashboard também foram entregues. Próxima candidata: C8 (cobertura de
+   testes/qualidade), com escopo e aprovação próprios.
 2. Manter testes de compra E2E (C9) bloqueados até haver ambiente Xano isolado
    e autorizado.
 3. Retomar o trabalho mobile somente com uma change própria.
 4. Completar as cinco imagens de produto pendentes somente quando houver fonte,
    modelo e direitos comprovados.
 
-O CRM está completo no backend. No painel já existem a consulta de clientes
-(C4), o histórico do Cliente (C6), os atendimentos (C7) e a consulta/transição
-de pedidos (C3); o relatório de vendas (C10) existe no backend, mas sua tela
-continua como change visual futura e depende da ordem de negócio documentada.
+O CRM está completo no backend e no painel: consulta de clientes (C4), histórico
+do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3) e o
+relatório de vendas (C10) com sua tela. Restam C8 (qualidade) e C9 (E2E
+bloqueada por E6).
 
 ## 8. Comandos e decisões que exigem cuidado
 

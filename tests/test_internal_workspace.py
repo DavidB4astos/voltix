@@ -15,7 +15,7 @@ class InternalWorkspaceNavigationTests(unittest.TestCase):
 
     def test_employee_cannot_select_administrative_or_unknown_section(self):
         state = self.state()
-        for section in ["clientes", "atendimentos", "pedidos"]:
+        for section in ["dashboard", "clientes", "atendimentos", "pedidos"]:
             State.select_internal_section.fn(state, section)
             self.assertEqual(state.internal_section, section)
         State.select_internal_section.fn(state, "clientes")
@@ -25,7 +25,7 @@ class InternalWorkspaceNavigationTests(unittest.TestCase):
 
     def test_administrator_selects_only_known_sections(self):
         state = self.state("ADMINISTRADOR")
-        for section in ["produtos", "catalogo", "importacao", "clientes", "atendimentos", "pedidos"]:
+        for section in ["dashboard", "produtos", "catalogo", "importacao", "clientes", "atendimentos", "pedidos"]:
             State.select_internal_section.fn(state, section)
             self.assertEqual(state.internal_section, section)
         State.select_internal_section.fn(state, "unknown")

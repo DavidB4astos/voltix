@@ -33,6 +33,8 @@ from .internal_orders import (OrderDetail as InternalOrderDetail,
                               OrderSummary as InternalOrderSummary,
                               order_detail, order_filters, order_status_result,
                               order_summary_page)
+from .internal_sales import (DailySales, SalesDashboard, dashboard_filters,
+                             sales_dashboard)
 
 try:
     from .demo_images import (
@@ -1984,13 +1986,22 @@ class State(rx.State):
     _internal_orders_generation: int = 0
     _internal_order_detail_generation: int = 0
 
+    internal_dashboard: list[SalesDashboard] = []
+    internal_dashboard_from: str = ""
+    internal_dashboard_to: str = ""
+    internal_dashboard_from_input: str = ""
+    internal_dashboard_to_input: str = ""
+    internal_dashboard_loading: bool = False
+    internal_dashboard_message: str = ""
+    _internal_dashboard_generation: int = 0
+
     internal_section: str = "clientes"
 
     @rx.event
     def select_internal_section(self, section: str):
         if not isinstance(section, str) or not self._internal_customer_allowed():
             return
-        allowed = {"clientes", "atendimentos", "pedidos"}
+        allowed = {"clientes", "atendimentos", "pedidos", "dashboard"}
         if self.user_role == "ADMINISTRADOR":
             allowed.update({"produtos", "catalogo", "importacao"})
         if section in allowed:
@@ -2000,6 +2011,8 @@ class State(rx.State):
                 return State.load_internal_attendances
             if changed and section == "pedidos":
                 return State.load_internal_orders
+            if changed and section == "dashboard":
+                return State.load_internal_dashboard
 
     def _internal_customer_allowed(self) -> bool:
         return bool(self._auth_token and self.is_authenticated and self.session_status == "success"
@@ -2042,6 +2055,9 @@ class State(rx.State):
         return self._internal_customer_allowed()
 
     def _internal_order_allowed(self) -> bool:
+        return self._internal_customer_allowed()
+
+    def _internal_dashboard_allowed(self) -> bool:
         return self._internal_customer_allowed()
 
     def _clear_internal_attendance_detail(self):
@@ -2105,6 +2121,19 @@ class State(rx.State):
         self.internal_order_feedback_error = False
         self.internal_order_saving = False
         self._reset_internal_order_filters()
+
+    def _reset_internal_dashboard_filters(self):
+        self.internal_dashboard_from = ""
+        self.internal_dashboard_to = ""
+        self.internal_dashboard_from_input = ""
+        self.internal_dashboard_to_input = ""
+
+    def _clear_internal_dashboard(self):
+        self._internal_dashboard_generation += 1
+        self.internal_dashboard = []
+        self.internal_dashboard_loading = False
+        self.internal_dashboard_message = ""
+        self._reset_internal_dashboard_filters()
 
     @rx.event
     def close_internal_customer(self):
@@ -2989,6 +3018,89 @@ class State(rx.State):
         finally:
             self.internal_order_saving = False
 
+    @rx.event
+    def set_internal_dashboard_from_input(self, value: str):
+        self.internal_dashboard_from_input = value
+
+    @rx.event
+    def set_internal_dashboard_to_input(self, value: str):
+        self.internal_dashboard_to_input = value
+
+    @rx.event
+    def apply_internal_dashboard_filters(self, form_data: dict):
+        try:
+            parameters = dashboard_filters(form_data.get("from"), form_data.get("to"))
+        except ValueError:
+            self.internal_dashboard_message = (
+                "Período inválido. Use datas YYYY-MM-DD, início até o fim e no máximo 366 dias.")
+            return
+        self.internal_dashboard_from = parameters.get("from", "")
+        self.internal_dashboard_to = parameters.get("to", "")
+        self.internal_dashboard_from_input = self.internal_dashboard_from
+        self.internal_dashboard_to_input = self.internal_dashboard_to
+        return State.load_internal_dashboard
+
+    @rx.event
+    def clear_internal_dashboard_filters(self):
+        self._reset_internal_dashboard_filters()
+        return State.load_internal_dashboard
+
+    @rx.event
+    async def load_internal_dashboard(self):
+        if not self._internal_dashboard_allowed():
+            self._clear_internal_dashboard()
+            return
+        try:
+            parameters = dashboard_filters(
+                self.internal_dashboard_from, self.internal_dashboard_to)
+        except ValueError:
+            self.internal_dashboard_message = (
+                "Período inválido. Use datas YYYY-MM-DD, início até o fim e no máximo 366 dias.")
+            return
+        self._internal_dashboard_generation += 1
+        generation = self._internal_dashboard_generation
+        token, user_id = self._auth_token, self.user_id
+        self.internal_dashboard = []
+        self.internal_dashboard_message = ""
+        self.internal_dashboard_loading = True
+        try:
+            url = _required_environment_url("XANO_INTERNAL_SALES_URL")
+            if parameters:
+                url += ("&" if "?" in url else "?") + urlencode(parameters)
+
+            async def request():
+                return await _server_side_xano_request(
+                    url, authorization="Bearer " + token, retry_rate_limit=False)
+
+            result = await bounded_read(request)
+            dashboard = sales_dashboard(result)
+            if (generation == self._internal_dashboard_generation
+                    and token == self._auth_token and user_id == self.user_id
+                    and self._internal_dashboard_allowed()):
+                self.internal_dashboard = [dashboard]
+                if dashboard.pedidos == 0:
+                    self.internal_dashboard_message = (
+                        "Nenhuma venda encontrada no período informado.")
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if (generation == self._internal_dashboard_generation
+                    and token == self._auth_token and user_id == self.user_id):
+                if isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                    self._clear_authentication_state(
+                        "Acesso interno não autorizado. Entre novamente.")
+                    return
+                if isinstance(error, urllib.error.HTTPError) and error.code == 400:
+                    self.internal_dashboard_message = (
+                        "Período inválido. Revise as datas e tente novamente.")
+                else:
+                    self.internal_dashboard_message = (
+                        "Não foi possível carregar as métricas. "
+                        "Verifique o acesso e tente novamente.")
+        finally:
+            if generation == self._internal_dashboard_generation:
+                self.internal_dashboard_loading = False
+
     integration_loading: bool = False
     integration_status: str = "idle"
     integration_message: str = "Integration check has not run."
@@ -3176,6 +3288,7 @@ class State(rx.State):
         self._clear_internal_customers()
         self._clear_internal_attendances()
         self._clear_internal_orders()
+        self._clear_internal_dashboard()
         self.internal_section = "clientes"
         self._auth_token = ""
         self.is_authenticated = False
@@ -4538,6 +4651,7 @@ class State(rx.State):
         self._clear_catalog_state()
         self._clear_internal_attendances()
         self._clear_internal_orders()
+        self._clear_internal_dashboard()
         self.login_loading = True
         self.login_status = "loading"
         self.login_message = ""
@@ -4656,6 +4770,7 @@ class State(rx.State):
             self._clear_internal_customers()
             self._clear_internal_attendances()
             self._clear_internal_orders()
+            self._clear_internal_dashboard()
         self.user_id = identity_id
         self.user_name = identity_name
         self.user_email = identity_email
@@ -7105,6 +7220,107 @@ def internal_order_panel(*, show_heading: bool = True) -> rx.Component:
         aria_label="Pedidos internos", class_name="vx-orders")
 
 
+def internal_dashboard_panel(*, show_heading: bool = True) -> rx.Component:
+    def metric_card(label, value, icon):
+        return rx.el.article(
+            rx.icon(icon, size=20, aria_hidden=True),
+            rx.el.p(label, class_name="vx-dashboard__metric-label"),
+            rx.el.p(value, class_name="vx-dashboard__metric-value"),
+            class_name="vx-dashboard__metric")
+
+    def day_row(day):
+        return rx.el.tr(
+            rx.el.td(day.data_display),
+            rx.el.td(_cart_money_text(day.faturamento)),
+            rx.el.td(day.pedidos))
+
+    def dashboard_view(item):
+        return rx.fragment(
+            rx.el.div(
+                metric_card("Faturamento", _cart_money_text(item.faturamento),
+                    "circle-dollar-sign"),
+                metric_card("Pedidos", item.pedidos, "receipt-text"),
+                metric_card("Ticket médio", _cart_money_text(item.ticket_medio),
+                    "chart-column"),
+                class_name="vx-dashboard__metrics"),
+            rx.el.dl(
+                rx.el.div(rx.el.dt("Período"), rx.el.dd(item.periodo_display),
+                    class_name="vx-dashboard__field"),
+                rx.el.div(rx.el.dt("Fuso"), rx.el.dd(item.periodo_timezone),
+                    class_name="vx-dashboard__field"),
+                rx.el.div(rx.el.dt("Status incluídos"),
+                    rx.el.dd(item.status_incluidos_display),
+                    class_name="vx-dashboard__field is-wide"),
+                class_name="vx-dashboard__period"),
+            rx.cond(item.pedidos > 0,
+                rx.el.div(rx.el.h3("Série diária"),
+                    rx.box(rx.table.root(
+                        rx.table.header(rx.table.row(
+                            rx.table.column_header_cell("Data"),
+                            rx.table.column_header_cell("Faturamento"),
+                            rx.table.column_header_cell("Pedidos"))),
+                        rx.table.body(rx.foreach(item.serie_diaria, day_row)),
+                        overflow_x="auto", width="100%",
+                        class_name="vx-customers__table")),
+                    class_name="vx-dashboard__block"),
+                rx.el.div(rx.icon("inbox", size=23),
+                    rx.el.p("Nenhuma venda no período selecionado."),
+                    class_name="vx-dashboard__empty")),
+            class_name="vx-dashboard__result")
+
+    initial = ((State.internal_dashboard.length() == 0)
+               & (State.internal_dashboard_message == "")
+               & ~State.internal_dashboard_loading)
+    return rx.el.section(
+        rx.el.h2("Dashboard", class_name="vx-customers__heading") if show_heading else rx.fragment(),
+        rx.el.div(rx.el.p("Visão de vendas", class_name="vx-customers__intro-title"),
+            rx.el.p("Acompanhe faturamento, Pedidos e ticket médio por período, em UTC.",
+                class_name="vx-customers__muted"),
+            class_name="vx-customers__intro"),
+        rx.el.form(rx.el.div(
+            rx.el.div(rx.el.label("De", html_for="internal-dashboard-from"),
+                rx.input(id="internal-dashboard-from", name="from", type="date",
+                    value=State.internal_dashboard_from_input,
+                    on_change=State.set_internal_dashboard_from_input,
+                    disabled=State.internal_dashboard_loading, width="100%", size="3"),
+                class_name="vx-dashboard__date"),
+            rx.el.div(rx.el.label("Até", html_for="internal-dashboard-to"),
+                rx.input(id="internal-dashboard-to", name="to", type="date",
+                    value=State.internal_dashboard_to_input,
+                    on_change=State.set_internal_dashboard_to_input,
+                    disabled=State.internal_dashboard_loading, width="100%", size="3"),
+                class_name="vx-dashboard__date"),
+            rx.el.button(rx.icon("filter", size=16), "Aplicar filtros", type="submit",
+                disabled=State.internal_dashboard_loading, class_name="vx-customers__primary"),
+            rx.el.button("Limpar filtros", type="button",
+                on_click=State.clear_internal_dashboard_filters,
+                disabled=State.internal_dashboard_loading, class_name="vx-customers__secondary"),
+            class_name="vx-customers__filters"),
+            on_submit=State.apply_internal_dashboard_filters, reset_on_submit=False,
+            width="100%"),
+        rx.el.div(rx.el.p(rx.icon("shield-check", size=15),
+                "Somente leitura. Nenhum dado pessoal é exibido.",
+                class_name="vx-customers__muted"),
+            rx.el.button(rx.icon("refresh-cw", size=15), "Carregar / atualizar métricas",
+                type="button", on_click=State.load_internal_dashboard,
+                disabled=State.internal_dashboard_loading, class_name="vx-customers__refresh"),
+            class_name="vx-customers__toolbar"),
+        rx.cond(State.internal_dashboard_loading,
+            rx.el.div(rx.icon("loader-circle", size=21), rx.el.p("Carregando métricas…"),
+                role="status", class_name="vx-customers__feedback")),
+        rx.cond(State.internal_dashboard_message != "",
+            rx.el.div(rx.icon("info", size=23),
+                rx.el.p(State.internal_dashboard_message), role="status",
+                class_name="vx-dashboard__message")),
+        rx.cond(initial, rx.el.div(rx.icon("layout-dashboard", size=26),
+            rx.el.p("Sua visão de vendas começa aqui",
+                class_name="vx-customers__feedback-title"),
+            rx.el.p("Use os filtros ou carregue as métricas para começar."),
+            class_name="vx-customers__feedback")),
+        rx.foreach(State.internal_dashboard, dashboard_view),
+        aria_label="Dashboard interno", class_name="vx-dashboard")
+
+
 def internal_workspace_shell(content: rx.Component) -> rx.Component:
     def navigation(label: str, key: str, icon: str):
         selected = State.internal_section == key
@@ -7116,20 +7332,23 @@ def internal_workspace_shell(content: rx.Component) -> rx.Component:
 
     title = rx.match(State.internal_section, ("produtos", "Produtos"),
         ("catalogo", "Categorias e marcas"), ("importacao", "Importação"),
-        ("atendimentos", "Atendimentos"), ("pedidos", "Pedidos"), "Clientes")
+        ("atendimentos", "Atendimentos"), ("pedidos", "Pedidos"),
+        ("dashboard", "Dashboard"), "Clientes")
     description = rx.match(State.internal_section,
         ("produtos", "Organize os produtos e suas variações."),
         ("catalogo", "Mantenha a estrutura do seu catálogo organizada."),
         ("importacao", "Prepare, confira e acompanhe a importação do catálogo."),
         ("atendimentos", "Registre e acompanhe os atendimentos do CRM."),
         ("pedidos", "Consulte pedidos e avance a etapa operacional."),
+        ("dashboard", "Acompanhe faturamento e volume de vendas por período."),
         "Uma visão clara para consultar e conhecer seus clientes.")
     return rx.el.div(
         rx.el.elements.a("Ir para o conteúdo", href="#internal-workspace-main", class_name="vx-internal__skip"),
         rx.el.aside(
             rx.link(brand_logo(on_dark=True), href="/catalogo", aria_label="Voltix — loja pública", class_name="vx-internal__brand"),
             rx.el.p("ESPAÇO DA EQUIPE", class_name="vx-internal__eyebrow"),
-            rx.el.nav(navigation("Clientes", "clientes", "users"),
+            rx.el.nav(navigation("Dashboard", "dashboard", "layout-dashboard"),
+                navigation("Clientes", "clientes", "users"),
                 navigation("Atendimentos", "atendimentos", "headset"),
                 navigation("Pedidos", "pedidos", "receipt-text"),
                 rx.cond(State.user_role == "ADMINISTRADOR", rx.fragment(
@@ -7512,6 +7731,7 @@ def index() -> rx.Component:
     )
 
     protected_area = internal_workspace_shell(rx.fragment(
+        rx.cond(State.internal_section == "dashboard", internal_dashboard_panel(show_heading=False), rx.fragment()),
         rx.cond(State.internal_section == "clientes", internal_customer_panel(show_heading=False), rx.fragment()),
         rx.cond(State.internal_section == "atendimentos", internal_attendance_panel(show_heading=False), rx.fragment()),
         rx.cond(State.internal_section == "pedidos", internal_order_panel(show_heading=False), rx.fragment()),

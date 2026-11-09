@@ -310,3 +310,21 @@
 .vx-orders :is(button,input,select):focus-visible{outline:3px solid #00b8d9;outline-offset:3px}
 @media(max-width:1150px){.vx-orders__workspace{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:800px){.vx-orders{padding:20px}.vx-orders__totals{grid-template-columns:1fr}.vx-orders__detail,.vx-orders__empty-detail{padding:18px}}
+.vx-dashboard{background:#fff;border:1px solid #e3e9ef;border-radius:16px;padding:26px;min-width:0}
+.vx-dashboard__metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:22px}
+.vx-dashboard__metric{display:flex;flex-direction:column;gap:4px;background:#f8fafc;border:1px solid #e2eaf1;border-radius:12px;padding:18px}
+.vx-dashboard__metric :is(svg){color:#0e7490}
+.vx-dashboard__metric-label{margin:6px 0 0;font-size:11px;letter-spacing:.06em;color:#637287;text-transform:uppercase}
+.vx-dashboard__metric-value{margin:0;font-size:26px;font-weight:700;color:#0f172a;line-height:1.15}
+.vx-dashboard__period{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 18px;margin:20px 0 0;padding-top:16px;border-top:1px solid #e2eaf1}
+.vx-dashboard__period .is-wide{grid-column:1/-1}
+.vx-dashboard__field dt{font-size:11px;letter-spacing:.06em;color:#637287;text-transform:uppercase;margin:0 0 4px}
+.vx-dashboard__field dd{margin:0;font-size:13px;color:#0f172a}
+.vx-dashboard__block{margin:20px 0 0;padding-top:16px;border-top:1px solid #e2eaf1}
+.vx-dashboard__block h3{margin:0 0 10px;font-size:13px;color:#0f172a}
+.vx-dashboard__empty{display:flex;align-items:center;gap:10px;margin:18px 0 0;padding:16px;border:1px dashed #cbd5e1;border-radius:10px;color:#637287;font-size:13px}
+.vx-dashboard__message{margin:14px 0 0;font-size:12px;color:#475569;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:8px;padding:10px 12px}
+.vx-dashboard__date :is(label){display:block;font-size:12px;font-weight:600;color:#334155;margin-bottom:6px}
+.vx-dashboard :is(button,input,select):focus-visible{outline:3px solid #00b8d9;outline-offset:3px}
+@media(max-width:1150px){.vx-dashboard__metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:800px){.vx-dashboard{padding:20px}.vx-dashboard__metrics{grid-template-columns:1fr}.vx-dashboard__period{grid-template-columns:1fr}}
