@@ -39,4 +39,5 @@ query "orders/{order_id}/cancel" verb=POST {
 
   response = $cancellation
   tags = ["voltix:checkout-orders"]
+  guid = "KaXivnEAM4aoFgmhzlaUJ54J1ZQ"
 }

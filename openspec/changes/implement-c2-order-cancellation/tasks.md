@@ -20,12 +20,12 @@
 ## 4. Publicação restrita
 
 - [x] 4.1 Dry-run de `function/voltix_orders/cancel_order.xs`, `api/customer/order_id_cancel_POST.xs`, `api/internal_orders/api_group.xs` e `api/internal_orders/order_id_cancel_POST.xs` — verificação: preview em `evidence/01-dry-run-preview.md` (1 função, 1 grupo, 2 endpoints; sem avisos)
-- [ ] 4.2 **GATE** — aguardar confirmação explícita para publicar qualquer um dos três documentos; publicar somente os pacotes aprovados — verificação: OK do usuário registrado
-- [ ] 4.3 Pull independente pós-publicação para cada um dos documentos publicados — verificação: diff do pull confere local
+- [x] 4.2 **GATE** — aguardar confirmação explícita para publicar qualquer um dos três documentos; publicar somente os pacotes aprovados — verificação: OK do usuário registrado em 09/11/2026 ("Sim, publicar os 4 documentos"); push restrito executado
+- [x] 4.3 Pull independente pós-publicação para cada um dos documentos publicados — verificação: `evidence/02-publish-verification.md`
 
 ## 5. Verificação remota mínima
 
-- [ ] 5.1 Execução somente de verificações aprovadas pelo usuário (leitura/estados esperados); nenhuma escrita em Pedido/ItemPedido/Pagamento/estoque real sem autorização e dados sintéticos+limpeza na UI — verificação: evidência em `evidence/`
+- [x] 5.1 Execução somente de verificações aprovadas pelo usuário (leitura/estados esperados); nenhuma escrita em Pedido/ItemPedido/Pagamento/estoque real sem autorização e dados sintéticos+limpeza na UI — verificação: `evidence/02-publish-verification.md` (pull + 401 nas duas rotas)
 
 ## 6. Encerramento
 

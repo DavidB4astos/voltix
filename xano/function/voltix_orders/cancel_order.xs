@@ -112,4 +112,5 @@ function "Voltix Orders/cancel_order" {
   }
 
   tags = ["voltix:orders"]
+  guid = "HKe2JA4ZIdhoAfBE1Oz0zsjiSTs"
 }

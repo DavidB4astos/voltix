@@ -4,4 +4,5 @@ api_group "Voltix Internal Orders" {
   description = "Administrator-only order operations."
   swagger = {active: false}
   tags = ["voltix:internal-orders"]
+  guid = "oWAMOJGZJbLdEILuMVsUWTApsWU"
 }
