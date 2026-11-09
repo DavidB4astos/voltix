@@ -1,6 +1,6 @@
 # Handoff para agente de IA — Voltix
 
-> Atualizado em 04/11/2026. Este documento resume o trabalho já realizado,
+> Atualizado em 09/11/2026. Este documento resume o trabalho já realizado,
 > o estado verificável do repositório e as regras para continuar o projeto com
 > segurança. Não contém senhas, tokens, URLs privadas de credenciais ou dados
 > pessoais de clientes.
@@ -84,11 +84,9 @@ importação real) exige ambiente isolado, autorizado e sem dados reais.
 
 ## 4. Estado do Git e do OpenSpec
 
-Na conferência de 04/11/2026, após o push da revisão anterior, `main` estava
-sincronizada com `origin/main` no commit `da94323`; `git status --short
---branch` mostrou a árvore limpa e `openspec list` não encontrou changes
-ativas. `openspec validate --all --strict` aprovou as 16 specs. A suíte
-`python -m unittest discover -s tests -q` aprovou 188 testes. Esses resultados
+Na conferência de 09/11/2026, a C7 foi implementada, publicada e verificada.
+`openspec validate --all --strict` aprovou 22 itens e a suíte
+`python -m unittest discover -s tests -q` aprovou 205 testes. Esses resultados
 são um registro datado, não substituem uma nova verificação após mudanças.
 
 Antes de prosseguir, confira o estado real com:
@@ -272,6 +270,28 @@ de `XANO_INTERNAL_CUSTOMER_ORDERS_URL` (placeholder `{customer_id}`), sempre ser
 com token interno. 205 testes, `openspec validate --all --strict` (21 itens) e
 `reflex compile` verdes.
 
+### Atendimentos (C7)
+
+A C7 (atendimentos de CRM, backend) foi **IMPLEMENTADA e PUBLICADA em
+09/11/2026** no XanoFree (change `implement-c7-attendance-management` +
+evidências). A tabela `atendimento` guarda `cliente_id`, `usuario_interno_id`,
+`pedido_id` opcional, `assunto`, `descricao`, `status`, `data_atendimento`,
+`created_at` e `updated_at`. O grupo `Voltix Internal CRM` expõe cinco endpoints
+em `/api:voltix-internal-crm/atendimentos`: `POST`, `GET` (lista com filtros
+`cliente_id`/`status` e paginação 20/50), `GET /{attendance_id}`,
+`PATCH /{attendance_id}` e `POST /{attendance_id}/status`. Todos exigem
+FUNCIONARIO ou ADMINISTRADOR `ATIVO`; a criação usa o próprio interno como
+responsável e valida Pedido do mesmo Cliente. `ABERTO`/`EM_ATENDIMENTO` são
+editáveis; `FINALIZADO`/`CANCELADO` são imutáveis. A transição
+`ABERTO → EM_ATENDIMENTO` é permitida a qualquer interno; finalizar/cancelar
+exige o responsável ou um ADMINISTRADOR; repetir o status é no-op idempotente.
+A primeira verificação de borda encontrou HTTP 400 por `filters=min:1` em campos
+opcionais; a correção foi publicada e as rotas passaram a responder 401 sem
+sessão. Pull independente confirma FKs, preconditions, enum e índices. E5:
+plano Free e 0 429 confirmados; o Xano não exibiu o consumo de registros, que
+fica como limitação monitorada. **Não há tela de atendimentos**: fica para
+change própria.
+
 ### Imagens de produto
 
 Há infraestrutura de imagens locais e créditos em `assets/demo/manifest.json`.
@@ -325,9 +345,9 @@ git status --short --branch
 
 ## 7. Próximas prioridades recomendadas
 
-1. **C1, C2, C3, C6 e C10 concluídas e publicadas** (05/11/2026 e 09/11/2026);
-   a tela de histórico do Cliente também foi entregue. Seguir a sequência do
-   roadmap: atendimentos (C7), após a medição E5. As telas de pedidos e dashboard
+1. **C1, C2, C3, C6, C7 e C10 concluídas e publicadas** (05/11/2026 e
+   09/11/2026); a tela de histórico do Cliente também foi entregue. A tela de
+   atendimentos (C7 UI), a tela de pedidos (C3) e a tela do dashboard (C10)
    podem ser changes próprias quando aprovadas. Cada mudança com escopo e
    aprovação próprios.
 2. Manter testes de compra E2E (C9) bloqueados até haver ambiente Xano isolado
@@ -336,10 +356,11 @@ git status --short --branch
 4. Completar as cinco imagens de produto pendentes somente quando houver fonte,
    modelo e direitos comprovados.
 
-CRM ainda não está completo: a consulta de clientes (C4), a consulta/transição
-de pedidos (C3), o histórico do Cliente (C6, backend + tela) e o relatório de
-vendas (C10) existem no backend; atendimentos e as telas de pedidos/dashboard
-continuam capabilities futuras e dependem da ordem de negócio documentada.
+CRM está completo no backend: a consulta de clientes (C4), a consulta/transição
+de pedidos (C3), o histórico do Cliente (C6, backend + tela), os atendimentos
+(C7, backend) e o relatório de vendas (C10) existem no backend. A tela de
+atendimentos e as telas de pedidos/dashboard continuam changes visuais futuras
+e dependem da ordem de negócio documentada.
 
 ## 8. Comandos e decisões que exigem cuidado
 

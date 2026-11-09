@@ -128,4 +128,5 @@ query "atendimentos/{attendance_id}/status" verb=POST {
     alterado: $alterado
   }
   tags = ["voltix:attendance-management"]
+  guid = "5mI3RPdbX8pY79Rq3F7JtykQgnc"
 }

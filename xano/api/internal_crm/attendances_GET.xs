@@ -3,7 +3,7 @@ query "atendimentos" verb=GET {
   auth = "user"
 
   input {
-    int cliente_id? filters=min:1
+    int cliente_id?
     text status?=TODOS filters=trim
     int page?=1
     int per_page?=20
@@ -21,7 +21,7 @@ query "atendimentos" verb=GET {
       error = "Active internal access is required."
     }
 
-    precondition (($input.status == "TODOS" || $input.status == "ABERTO" || $input.status == "EM_ATENDIMENTO" || $input.status == "FINALIZADO" || $input.status == "CANCELADO") && $input.page >= 1 && $input.per_page >= 1 && $input.per_page <= 50) {
+    precondition (($input.cliente_id == null || $input.cliente_id >= 1) && ($input.status == "TODOS" || $input.status == "ABERTO" || $input.status == "EM_ATENDIMENTO" || $input.status == "FINALIZADO" || $input.status == "CANCELADO") && $input.page >= 1 && $input.per_page >= 1 && $input.per_page <= 50) {
       error_type = "inputerror"
       error = "Invalid attendance filters or pagination."
     }
@@ -75,4 +75,5 @@ query "atendimentos" verb=GET {
     total_pages: $total_pages
   }
   tags = ["voltix:attendance-management"]
+  guid = "nFCAzxgRwLtLIOd_YsfAhoBk5pQ"
 }

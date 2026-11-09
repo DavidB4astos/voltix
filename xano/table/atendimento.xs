@@ -40,4 +40,5 @@ table atendimento {
   ]
 
   tags = ["voltix:attendance-management"]
+  guid = "tuUsTN1wH7wh6iOW8Z74r6eQcQA"
 }

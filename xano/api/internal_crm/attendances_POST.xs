@@ -4,7 +4,7 @@ query "atendimentos" verb=POST {
 
   input {
     int cliente_id filters=min:1
-    int pedido_id? filters=min:1
+    int pedido_id?
     text assunto filters=trim
     text descricao filters=trim
     timestamp data_atendimento?
@@ -25,6 +25,11 @@ query "atendimentos" verb=POST {
     precondition ($input.assunto != null && ($input.assunto|strlen) >= 1 && ($input.assunto|strlen) <= 200) {
       error_type = "inputerror"
       error = "Attendance subject must have between 1 and 200 characters."
+    }
+
+    precondition ($input.pedido_id == null || $input.pedido_id >= 1) {
+      error_type = "inputerror"
+      error = "Invalid order id."
     }
 
     precondition ($input.descricao != null && ($input.descricao|strlen) >= 1 && ($input.descricao|strlen) <= 2000) {
@@ -113,4 +118,5 @@ query "atendimentos" verb=POST {
 
   response = $attendance
   tags = ["voltix:attendance-management"]
+  guid = "MTwvlzJ9cWlYaSJTuTOIVFQXpaA"
 }

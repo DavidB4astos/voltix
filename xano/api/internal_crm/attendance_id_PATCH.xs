@@ -82,4 +82,5 @@ query "atendimentos/{attendance_id}" verb=PATCH {
 
   response = $updated_attendance
   tags = ["voltix:attendance-management"]
+  guid = "S_PIZBbZshHyMWDUDrM3rDFc27Y"
 }

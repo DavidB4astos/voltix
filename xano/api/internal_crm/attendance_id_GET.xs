@@ -31,4 +31,5 @@ query "atendimentos/{attendance_id}" verb=GET {
 
   response = $attendance
   tags = ["voltix:attendance-management"]
+  guid = "XwbqC-3eUD4eyF7_thTfrplxuGo"
 }
