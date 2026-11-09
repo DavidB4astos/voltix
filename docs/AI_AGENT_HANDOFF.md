@@ -243,6 +243,23 @@ Período padrão de 30 dias inclusivos em UTC, com `from`/`to` opcionais em
 Verificação remota somente leitura (pull + 401); sem dados sintéticos.
 **Não há tela no painel**: cartões/gráficos ficam para change própria.
 
+### Histórico do Cliente
+
+A C6 (histórico de Pedidos por Cliente) foi **IMPLEMENTADA e PUBLICADA em
+09/11/2026** no XanoFree (change `implement-c6-customer-order-history` +
+evidência). `GET /api:voltix-internal-customers/customers/{customer_id}/orders`
+é somente leitura, exige FUNCIONARIO ou ADMINISTRADOR `ATIVO`, valida que o
+Cliente existe (`notfound`) e responde `cliente_id`, `items`, `page`,
+`per_page`, `total_items` e `total_pages`. Cada Pedido traz `id`, `codigo`,
+`data_pedido`, `status`, `subtotal`, `valor_frete`, `valor_total` e `itens` com
+`variacao_id`, `sku`, `nome_ou_descricao`, `quantidade`, `preco_unitario` e
+`subtotal`. Filtros opcionais `status` (seis estados), `from`/`to`
+(`YYYY-MM-DD`, UTC, inclusivos) e paginação 20/50; ordenação
+`data_pedido desc, id desc`. As consultas de itens e variações são agrupadas por
+página (`in`), sem N+1. Nenhum dado pessoal do Cliente na resposta. Verificação
+remota somente leitura (pull + 401); sem dados sintéticos. **Não há tela no
+painel**: a seção de histórico fica para change própria.
+
 ### Imagens de produto
 
 Há infraestrutura de imagens locais e créditos em `assets/demo/manifest.json`.
@@ -296,9 +313,9 @@ git status --short --branch
 
 ## 7. Próximas prioridades recomendadas
 
-1. **C1, C2, C3 e C10 concluídas e publicadas** (05/11/2026 e 09/11/2026);
-   seguir a sequência do roadmap: histórico CRM (C6) e atendimentos (C7).
-   A tela de pedidos e a tela do dashboard podem ser changes próprias quando
+1. **C1, C2, C3, C6 e C10 concluídas e publicadas** (05/11/2026 e 09/11/2026);
+   seguir a sequência do roadmap: atendimentos (C7), após a medição E5.
+   As telas de pedidos, dashboard e histórico podem ser changes próprias quando
    aprovadas. Cada mudança com escopo e aprovação próprios.
 2. Manter testes de compra E2E (C9) bloqueados até haver ambiente Xano isolado
    e autorizado.
@@ -307,9 +324,9 @@ git status --short --branch
    modelo e direitos comprovados.
 
 CRM ainda não está completo: a consulta de clientes (C4), a consulta/transição
-de pedidos (C3) e o relatório de vendas (C10) existem no backend; histórico de
-cliente, atendimentos e as telas de pedidos/dashboard continuam capabilities
-futuras e dependem da ordem de negócio documentada.
+de pedidos (C3), o histórico do Cliente (C6) e o relatório de vendas (C10)
+existem no backend; atendimentos e as telas de pedidos/dashboard/histórico
+continuam capabilities futuras e dependem da ordem de negócio documentada.
 
 ## 8. Comandos e decisões que exigem cuidado
 

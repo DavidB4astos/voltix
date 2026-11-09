@@ -323,4 +323,5 @@ query "customers/{customer_id}/orders" verb=GET {
     total_pages: $total_pages
   }
   tags = ["voltix:internal-customers"]
+  guid = "QMKTnSUPm-1AD2LrR-GxyKhKCPA"
 }

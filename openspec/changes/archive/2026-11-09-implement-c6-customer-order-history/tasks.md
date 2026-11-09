@@ -21,17 +21,17 @@
 
 ## 4. Publicação restrita
 
-- [ ] 4.1 Dry-run somente do arquivo novo — verificação: preview anexado à evidência
-- [ ] 4.2 **GATE** — aguardar confirmação explícita do usuário antes de publicar — verificação: OK registrado
-- [ ] 4.3 Pull independente pós-publicação — verificação: diff confere com o local
+- [x] 4.1 Dry-run somente do arquivo novo — verificação: preview anexado à evidência
+- [x] 4.2 **GATE** — aguardar confirmação explícita do usuário antes de publicar — verificação: OK registrado
+- [x] 4.3 Pull independente pós-publicação — verificação: diff confere com o local
 
 ## 5. Verificação remota mínima
 
-- [ ] 5.1 Checagem somente leitura (rota sem sessão → 401), sem executar consulta autenticada — verificação: evidência em `evidence/`
+- [x] 5.1 Checagem somente leitura (rota sem sessão → 401), sem executar consulta autenticada — verificação: evidência em `evidence/`
 
 ## 6. Encerramento
 
-- [ ] 6.1 Arquivar a change e consolidar a capability `customer-order-history` — verificação: `openspec validate --all --strict`
-- [ ] 6.2 Atualizar `docs/roadmap-changes.md` (C6 concluída, matriz de autorização) e `docs/AI_AGENT_HANDOFF.md` — verificação: consistente com a evidência
-- [ ] 6.3 `git status --short --branch` limpo — verificação: nada pendente
-- [ ] 6.4 Commit focado + push somente com autorização explícita — verificação: `git log --oneline -1`
+- [x] 6.1 Arquivar a change e consolidar a capability `customer-order-history` — verificação: `openspec validate --all --strict`
+- [x] 6.2 Atualizar `docs/roadmap-changes.md` (C6 concluída, matriz de autorização) e `docs/AI_AGENT_HANDOFF.md` — verificação: consistente com a evidência
+- [x] 6.3 `git status --short --branch` limpo — verificação: nada pendente
+- [x] 6.4 Commit focado + push somente com autorização explícita — verificação: `git log --oneline -1`
