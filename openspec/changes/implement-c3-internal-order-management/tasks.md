@@ -20,12 +20,12 @@
 ## 4. Publicação restrita
 
 - [x] 4.1 Dry-run somente dos três arquivos novos — verificação: `evidence/01-dry-run-preview.md` (3 endpoints, nada fora do escopo)
-- [ ] 4.2 **GATE** — aguardar confirmação explícita do usuário antes de publicar — verificação: OK registrado
-- [ ] 4.3 Pull independente pós-publicação dos três documentos — verificação: diff confere com o local
+- [x] 4.2 **GATE** — aguardar confirmação explícita do usuário antes de publicar — verificação: OK do usuário registrado em 09/11/2026 ("Sim, publicar os 3 endpoints")
+- [x] 4.3 Pull independente pós-publicação dos três documentos — verificação: `evidence/02-publish-verification.md` (3 documentos conferem)
 
 ## 5. Verificação remota mínima
 
-- [ ] 5.1 Checagens somente leitura (rotas sem sessão → 401; papéis negados se houver credencial), sem escrita em Pedido/estoque real — verificação: evidência em `evidence/`
+- [x] 5.1 Checagens somente leitura (rotas sem sessão → 401; papéis negados se houver credencial), sem escrita em Pedido/estoque real — verificação: `evidence/02-publish-verification.md` (401 nas três rotas; nenhuma escrita)
 
 ## 6. Encerramento
 

@@ -149,4 +149,5 @@ query "orders/{order_id}" verb=GET {
     }
   }
   tags = ["voltix:internal-orders"]
+  guid = "bKoog0ceqOFnT6b-t-KNoIRNDYA"
 }

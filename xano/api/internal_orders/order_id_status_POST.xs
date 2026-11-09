@@ -131,4 +131,5 @@ query "orders/{order_id}/status" verb=POST {
     alterado: $alterado
   }
   tags = ["voltix:internal-orders"]
+  guid = "fI2zXn8RiO-j_mVymCxgccA6FiM"
 }

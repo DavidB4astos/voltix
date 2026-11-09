@@ -104,4 +104,5 @@ query "orders" verb=GET {
     page_total: $page_result.pageTotal
   }
   tags = ["voltix:internal-orders"]
+  guid = "tUE2qV0smb9WtKkQOylnyL_PSVQ"
 }
