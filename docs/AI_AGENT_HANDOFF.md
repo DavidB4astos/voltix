@@ -84,9 +84,9 @@ importação real) exige ambiente isolado, autorizado e sem dados reais.
 
 ## 4. Estado do Git e do OpenSpec
 
-Na conferência de 09/11/2026, a C7 foi implementada, publicada e verificada.
-`openspec validate --all --strict` aprovou 22 itens e a suíte
-`python -m unittest discover -s tests -q` aprovou 205 testes. Esses resultados
+Na conferência de 09/11/2026, a C7 e sua tela foram implementadas e verificadas.
+`openspec validate --all --strict` aprovou 23 itens e a suíte
+`python -m unittest discover -s tests -q` aprovou 235 testes. Esses resultados
 são um registro datado, não substituem uma nova verificação após mudanças.
 
 Antes de prosseguir, confira o estado real com:
@@ -154,11 +154,13 @@ As seguintes changes foram concluídas e arquivadas:
 - `refine-internal-products-desktop`: gestão de produtos e variações.
 - `refine-internal-catalog-desktop`: categorias e marcas.
 - `refine-internal-import-desktop`: apresentação da importação em massa.
+- `implement-customer-history-panel`: histórico de Pedidos na ficha do Cliente.
+- `implement-attendance-panel`: seção de Atendimentos do CRM interno.
 
 O controle de seção interno deve continuar restrito no `State`:
 
-- Funcionário: somente `clientes`.
-- Administrador: `clientes`, `produtos`, `catalogo`, `importacao`.
+- Funcionário: `clientes`, `atendimentos`.
+- Administrador: `clientes`, `atendimentos`, `produtos`, `catalogo`, `importacao`.
 
 Os refinamentos de Importação, Categorias e Marcas preservaram State, handlers,
 parsers, limites e Xano. Foram testados com dados fictícios/isolados; importação
@@ -289,8 +291,21 @@ A primeira verificação de borda encontrou HTTP 400 por `filters=min:1` em camp
 opcionais; a correção foi publicada e as rotas passaram a responder 401 sem
 sessão. Pull independente confirma FKs, preconditions, enum e índices. E5:
 plano Free e 0 429 confirmados; o Xano não exibiu o consumo de registros, que
-fica como limitação monitorada. **Não há tela de atendimentos**: fica para
-change própria.
+fica como limitação monitorada.
+
+A **tela de atendimentos** foi entregue em 09/11/2026 pela change
+`implement-attendance-panel`, sem backend novo. A seção **Atendimentos** está
+disponível a FUNCIONARIO e ADMINISTRADOR ativos, com listagem por
+`cliente_id`/`status` e paginação de 20, criação usando o interno autenticado
+como responsável, detalhe com vínculos somente leitura, edição apenas em
+`ABERTO`/`EM_ATENDIMENTO` e controles de status limitados por responsável/papel.
+O contrato `voltix/internal_attendances.py` valida chaves exatas, status, datas e
+totais antes do navegador; `XANO_INTERNAL_ATTENDANCES_URL`,
+`XANO_INTERNAL_ATTENDANCE_DETAILS_URL` e `XANO_INTERNAL_ATTENDANCE_STATUS_URL`
+vêm do ambiente e são usadas server-side. `401` encerra a sessão; `403` em
+leitura/criação/edição também, enquanto `403` de transição é negação de operação
+e mantém a sessão. 235 testes, `openspec validate --all --strict` (23 itens),
+`git diff --check` e `reflex compile` verdes.
 
 ### Imagens de produto
 
@@ -320,7 +335,7 @@ Verificação de testes a partir da raiz do repositório:
 & '.\.venv-windows\Scripts\python.exe' -m unittest discover -s tests -q
 ```
 
-A suíte mais recente registrada teve **205 testes aprovados**. Execute somente
+A suíte mais recente registrada teve **235 testes aprovados**. Execute somente
 os testes pertinentes quando a change for documental; não gere ruído rodando
 toda a aplicação sem necessidade.
 
@@ -346,21 +361,20 @@ git status --short --branch
 ## 7. Próximas prioridades recomendadas
 
 1. **C1, C2, C3, C6, C7 e C10 concluídas e publicadas** (05/11/2026 e
-   09/11/2026); a tela de histórico do Cliente também foi entregue. A tela de
-   atendimentos (C7 UI), a tela de pedidos (C3) e a tela do dashboard (C10)
-   podem ser changes próprias quando aprovadas. Cada mudança com escopo e
-   aprovação próprios.
+   09/11/2026); as telas de histórico do Cliente e de Atendimentos também foram
+   entregues. A tela de pedidos (C3) e a tela do dashboard (C10) podem ser
+   changes próprias quando aprovadas. Cada mudança com escopo e aprovação
+   próprios.
 2. Manter testes de compra E2E (C9) bloqueados até haver ambiente Xano isolado
    e autorizado.
 3. Retomar o trabalho mobile somente com uma change própria.
 4. Completar as cinco imagens de produto pendentes somente quando houver fonte,
    modelo e direitos comprovados.
 
-CRM está completo no backend: a consulta de clientes (C4), a consulta/transição
-de pedidos (C3), o histórico do Cliente (C6, backend + tela), os atendimentos
-(C7, backend) e o relatório de vendas (C10) existem no backend. A tela de
-atendimentos e as telas de pedidos/dashboard continuam changes visuais futuras
-e dependem da ordem de negócio documentada.
+O CRM está completo no backend. No painel já existem a consulta de clientes
+(C4), o histórico do Cliente (C6) e os atendimentos (C7); a consulta/transição
+de pedidos (C3) e o relatório de vendas (C10) existem no backend, mas suas telas
+continuam changes visuais futuras e dependem da ordem de negócio documentada.
 
 ## 8. Comandos e decisões que exigem cuidado
 

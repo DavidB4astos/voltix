@@ -27,6 +27,8 @@ from rxconfig import config
 from .internal_customers import (InternalCustomer, InternalOrder, history_parameters,
                                  order_history_page, query_parameters, customer_page,
                                  customer_record, bounded_read)
+from .internal_attendances import (Attendance, attendance_filters, attendance_page,
+                                   attendance_record, status_result)
 
 try:
     from .demo_images import (
@@ -1934,17 +1936,46 @@ class State(rx.State):
     _internal_detail_generation: int = 0
     _internal_history_generation: int = 0
 
+    internal_attendances: list[Attendance] = []
+    internal_attendance_detail: list[Attendance] = []
+    internal_attendances_cliente_id: str = ""
+    internal_attendances_status: str = "TODOS"
+    internal_attendances_cliente_id_input: str = ""
+    internal_attendances_status_input: str = "TODOS"
+    internal_attendances_page: int = 1
+    internal_attendances_total: int = 0
+    internal_attendances_pages: int = 0
+    internal_attendances_loading: bool = False
+    internal_attendance_loading: bool = False
+    internal_attendances_message: str = ""
+    internal_attendance_feedback: str = ""
+    internal_attendance_feedback_error: bool = False
+    internal_attendance_form_cliente_id: str = ""
+    internal_attendance_form_pedido_id: str = ""
+    internal_attendance_form_assunto: str = ""
+    internal_attendance_form_descricao: str = ""
+    internal_attendance_form_data_atendimento: str = ""
+    internal_attendance_edit_assunto: str = ""
+    internal_attendance_edit_descricao: str = ""
+    internal_attendance_edit_data_atendimento: str = ""
+    internal_attendance_saving: bool = False
+    _internal_attendances_generation: int = 0
+    _internal_attendance_detail_generation: int = 0
+
     internal_section: str = "clientes"
 
     @rx.event
     def select_internal_section(self, section: str):
         if not isinstance(section, str) or not self._internal_customer_allowed():
             return
-        allowed = {"clientes"}
+        allowed = {"clientes", "atendimentos"}
         if self.user_role == "ADMINISTRADOR":
             allowed.update({"produtos", "catalogo", "importacao"})
         if section in allowed:
+            changed = section != self.internal_section
             self.internal_section = section
+            if changed and section == "atendimentos":
+                return State.load_internal_attendances
 
     def _internal_customer_allowed(self) -> bool:
         return bool(self._auth_token and self.is_authenticated and self.session_status == "success"
@@ -1982,6 +2013,42 @@ class State(rx.State):
         self.internal_customer_loading = False
         self.internal_customers_message = ""
         self._clear_internal_customer_history()
+
+    def _internal_attendance_allowed(self) -> bool:
+        return self._internal_customer_allowed()
+
+    def _clear_internal_attendance_detail(self):
+        self._internal_attendance_detail_generation += 1
+        self.internal_attendance_detail = []
+        self.internal_attendance_loading = False
+        self.internal_attendance_edit_assunto = ""
+        self.internal_attendance_edit_descricao = ""
+        self.internal_attendance_edit_data_atendimento = ""
+
+    def _reset_internal_attendance_filters(self):
+        self.internal_attendances_cliente_id = ""
+        self.internal_attendances_status = "TODOS"
+        self.internal_attendances_cliente_id_input = ""
+        self.internal_attendances_status_input = "TODOS"
+        self.internal_attendances_page = 1
+
+    def _clear_internal_attendances(self):
+        self._internal_attendances_generation += 1
+        self._clear_internal_attendance_detail()
+        self.internal_attendances = []
+        self.internal_attendances_total = 0
+        self.internal_attendances_pages = 0
+        self.internal_attendances_loading = False
+        self.internal_attendances_message = ""
+        self.internal_attendance_feedback = ""
+        self.internal_attendance_feedback_error = False
+        self.internal_attendance_form_cliente_id = ""
+        self.internal_attendance_form_pedido_id = ""
+        self.internal_attendance_form_assunto = ""
+        self.internal_attendance_form_descricao = ""
+        self.internal_attendance_form_data_atendimento = ""
+        self.internal_attendance_saving = False
+        self._reset_internal_attendance_filters()
 
     @rx.event
     def close_internal_customer(self):
@@ -2234,6 +2301,421 @@ class State(rx.State):
             if generation == self._internal_history_generation:
                 self.internal_customer_history_loading = False
 
+    def _attendance_feedback(self, message: str, *, error: bool = False):
+        self.internal_attendance_feedback = message
+        self.internal_attendance_feedback_error = error
+
+    @rx.event
+    def set_internal_attendance_cliente_id_input(self, value: str):
+        self.internal_attendances_cliente_id_input = value
+
+    @rx.event
+    def set_internal_attendance_status_input(self, value: str):
+        self.internal_attendances_status_input = value
+
+    @rx.event
+    def set_internal_attendance_form_cliente_id(self, value: str):
+        self.internal_attendance_form_cliente_id = value
+
+    @rx.event
+    def set_internal_attendance_form_pedido_id(self, value: str):
+        self.internal_attendance_form_pedido_id = value
+
+    @rx.event
+    def set_internal_attendance_form_assunto(self, value: str):
+        self.internal_attendance_form_assunto = value
+
+    @rx.event
+    def set_internal_attendance_form_descricao(self, value: str):
+        self.internal_attendance_form_descricao = value
+
+    @rx.event
+    def set_internal_attendance_form_data_atendimento(self, value: str):
+        self.internal_attendance_form_data_atendimento = value
+
+    @rx.event
+    def set_internal_attendance_edit_assunto(self, value: str):
+        self.internal_attendance_edit_assunto = value
+
+    @rx.event
+    def set_internal_attendance_edit_descricao(self, value: str):
+        self.internal_attendance_edit_descricao = value
+
+    @rx.event
+    def set_internal_attendance_edit_data_atendimento(self, value: str):
+        self.internal_attendance_edit_data_atendimento = value
+
+    @rx.event
+    def apply_internal_attendance_filters(self, form_data: dict):
+        try:
+            cliente_raw = str(form_data.get("cliente_id") or "").strip()
+            cliente_id = int(cliente_raw) if cliente_raw else None
+            parameters = attendance_filters(
+                cliente_id,
+                str(form_data.get("status") or "TODOS"),
+                1,
+            )
+        except ValueError:
+            self.internal_attendances_message = (
+                "Filtros inválidos. Informe um cliente válido e um status permitido.")
+            return
+        self.internal_attendances_cliente_id = (
+            "" if parameters.get("cliente_id") is None else str(parameters["cliente_id"]))
+        self.internal_attendances_status = parameters["status"]
+        self.internal_attendances_cliente_id_input = self.internal_attendances_cliente_id
+        self.internal_attendances_status_input = self.internal_attendances_status
+        self.internal_attendances_page = 1
+        return State.load_internal_attendances
+
+    @rx.event
+    def clear_internal_attendance_filters(self):
+        self._reset_internal_attendance_filters()
+        return State.load_internal_attendances
+
+    @rx.event
+    def internal_attendances_previous(self):
+        if self.internal_attendances_page > 1 and not self.internal_attendances_loading:
+            self.internal_attendances_page -= 1
+            return State.load_internal_attendances
+
+    @rx.event
+    def internal_attendances_next(self):
+        if (self.internal_attendances_page < self.internal_attendances_pages
+                and not self.internal_attendances_loading):
+            self.internal_attendances_page += 1
+            return State.load_internal_attendances
+
+    @rx.event
+    async def load_internal_attendances(self):
+        if not self._internal_attendance_allowed():
+            self._clear_internal_attendances()
+            return
+        try:
+            cliente_raw = self.internal_attendances_cliente_id.strip()
+            cliente_id = int(cliente_raw) if cliente_raw else None
+            parameters = attendance_filters(
+                cliente_id,
+                self.internal_attendances_status,
+                self.internal_attendances_page,
+            )
+        except ValueError:
+            self.internal_attendances_message = (
+                "Filtros inválidos. Informe um cliente válido e um status permitido.")
+            return
+        self._internal_attendances_generation += 1
+        generation = self._internal_attendances_generation
+        token, user_id = self._auth_token, self.user_id
+        self.internal_attendances = []
+        self.internal_attendances_total = 0
+        self.internal_attendances_pages = 0
+        self.internal_attendances_message = ""
+        self.internal_attendances_loading = True
+        try:
+            url = _required_environment_url("XANO_INTERNAL_ATTENDANCES_URL")
+            url += ("&" if "?" in url else "?") + urlencode(parameters)
+
+            async def request():
+                return await _server_side_xano_request(
+                    url, authorization="Bearer " + token, retry_rate_limit=False)
+
+            result = await bounded_read(request)
+            items, total, pages = attendance_page(result, page=parameters["page"])
+            if (generation == self._internal_attendances_generation
+                    and token == self._auth_token and user_id == self.user_id
+                    and self._internal_attendance_allowed()):
+                self.internal_attendances = items
+                self.internal_attendances_total = total
+                self.internal_attendances_pages = pages
+                if not items:
+                    self.internal_attendances_message = (
+                        "Nenhum atendimento encontrado para os filtros informados.")
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if (generation == self._internal_attendances_generation
+                    and token == self._auth_token and user_id == self.user_id):
+                if isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                    self._clear_authentication_state(
+                        "Acesso interno não autorizado. Entre novamente.")
+                    return
+                self.internal_attendances_message = (
+                    "Não foi possível carregar os atendimentos. "
+                    "Verifique o acesso e tente novamente.")
+        finally:
+            if generation == self._internal_attendances_generation:
+                self.internal_attendances_loading = False
+
+    @rx.event
+    def close_internal_attendance(self):
+        self._clear_internal_attendance_detail()
+        self._attendance_feedback("")
+
+    @rx.event
+    async def select_internal_attendance(self, attendance_id: int):
+        if not self._internal_attendance_allowed():
+            self._clear_internal_attendances()
+            return
+        self._clear_internal_attendance_detail()
+        self._internal_attendance_detail_generation += 1
+        generation = self._internal_attendance_detail_generation
+        list_generation = self._internal_attendances_generation
+        token, user_id = self._auth_token, self.user_id
+        self.internal_attendance_loading = True
+        self._attendance_feedback("")
+        try:
+            if type(attendance_id) is not int or attendance_id < 1:
+                raise ValueError("Invalid id")
+            url = _required_environment_url("XANO_INTERNAL_ATTENDANCE_DETAILS_URL")
+            if "{attendance_id}" not in url:
+                raise ValueError("Missing attendance placeholder")
+            url = url.replace("{attendance_id}", str(attendance_id))
+
+            async def request():
+                return await _server_side_xano_request(
+                    url, authorization="Bearer " + token, retry_rate_limit=False)
+
+            record = attendance_record(await bounded_read(request))
+            if record.id != attendance_id:
+                raise ValueError("Unexpected attendance")
+            if (generation == self._internal_attendance_detail_generation
+                    and list_generation == self._internal_attendances_generation
+                    and token == self._auth_token and user_id == self.user_id
+                    and self._internal_attendance_allowed()):
+                self.internal_attendance_detail = [record]
+                self.internal_attendance_edit_assunto = record.assunto
+                self.internal_attendance_edit_descricao = record.descricao
+                self.internal_attendance_edit_data_atendimento = record.data_atendimento_input
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if (generation == self._internal_attendance_detail_generation
+                    and token == self._auth_token and user_id == self.user_id):
+                if isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                    self._clear_authentication_state(
+                        "Acesso interno não autorizado. Entre novamente.")
+                    return
+                if isinstance(error, urllib.error.HTTPError) and error.code == 404:
+                    self._attendance_feedback("Atendimento não encontrado.", error=True)
+                else:
+                    self._attendance_feedback(
+                        "Não foi possível consultar este atendimento. Tente novamente.",
+                        error=True)
+        finally:
+            if generation == self._internal_attendance_detail_generation:
+                self.internal_attendance_loading = False
+
+    @rx.event
+    async def create_internal_attendance(self, form_data: dict):
+        if not self._internal_attendance_allowed():
+            self._clear_internal_attendances()
+            return
+        cliente_raw = str(form_data.get("cliente_id") or "").strip()
+        pedido_raw = str(form_data.get("pedido_id") or "").strip()
+        assunto = str(form_data.get("assunto") or "").strip()
+        descricao = str(form_data.get("descricao") or "").strip()
+        data_atendimento = str(form_data.get("data_atendimento") or "").strip()
+        try:
+            if not cliente_raw.isdigit() or int(cliente_raw) < 1:
+                raise ValueError("Invalid customer")
+            cliente_id = int(cliente_raw)
+            pedido_id = None
+            if pedido_raw:
+                if not pedido_raw.isdigit() or int(pedido_raw) < 1:
+                    raise ValueError("Invalid order")
+                pedido_id = int(pedido_raw)
+            if not 1 <= len(assunto) <= 200:
+                raise ValueError("Invalid subject")
+            if not 1 <= len(descricao) <= 2000:
+                raise ValueError("Invalid description")
+        except ValueError:
+            self._attendance_feedback(
+                "Revise o cliente, o pedido, o assunto e a descrição.", error=True)
+            return
+        payload: dict[str, object] = {
+            "cliente_id": cliente_id,
+            "assunto": assunto,
+            "descricao": descricao,
+        }
+        if pedido_id is not None:
+            payload["pedido_id"] = pedido_id
+        if data_atendimento:
+            payload["data_atendimento"] = data_atendimento
+        token, user_id = self._auth_token, self.user_id
+        self.internal_attendance_saving = True
+        try:
+            url = _required_environment_url("XANO_INTERNAL_ATTENDANCES_URL")
+            created = attendance_record(await _server_side_xano_request(
+                url,
+                method="POST",
+                payload=payload,
+                authorization="Bearer " + token,
+                retry_rate_limit=False,
+            ))
+            if token == self._auth_token and user_id == self.user_id and self._internal_attendance_allowed():
+                self.internal_attendance_form_cliente_id = ""
+                self.internal_attendance_form_pedido_id = ""
+                self.internal_attendance_form_assunto = ""
+                self.internal_attendance_form_descricao = ""
+                self.internal_attendance_form_data_atendimento = ""
+                self.internal_attendance_detail = [created]
+                self.internal_attendance_edit_assunto = created.assunto
+                self.internal_attendance_edit_descricao = created.descricao
+                self.internal_attendance_edit_data_atendimento = created.data_atendimento_input
+                self._attendance_feedback("Atendimento criado com sucesso.")
+                return State.load_internal_attendances
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if isinstance(error, urllib.error.HTTPError):
+                error.close()
+            if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                self._clear_authentication_state(
+                    "Acesso interno não autorizado. Entre novamente.")
+                return
+            if isinstance(error, urllib.error.HTTPError) and error.code == 404:
+                self._attendance_feedback("Cliente ou pedido não encontrado.", error=True)
+            elif isinstance(error, urllib.error.HTTPError) and error.code == 400:
+                self._attendance_feedback(
+                    "O pedido não pertence ao cliente ou os dados são inválidos.",
+                    error=True)
+            else:
+                self._attendance_feedback(
+                    "Não foi possível criar o atendimento. Tente novamente.", error=True)
+        finally:
+            self.internal_attendance_saving = False
+
+    @rx.event
+    async def save_internal_attendance(self, form_data: dict):
+        if not self._internal_attendance_allowed():
+            self._clear_internal_attendances()
+            return
+        if not self.internal_attendance_detail:
+            return
+        current = self.internal_attendance_detail[0]
+        if current.status not in {"ABERTO", "EM_ATENDIMENTO"}:
+            self._attendance_feedback(
+                "Atendimentos encerrados são somente leitura.", error=True)
+            return
+        assunto = str(form_data.get("assunto") or "").strip()
+        descricao = str(form_data.get("descricao") or "").strip()
+        data_atendimento = str(form_data.get("data_atendimento") or "").strip()
+        if not 1 <= len(assunto) <= 200 or not 1 <= len(descricao) <= 2000:
+            self._attendance_feedback(
+                "Revise o assunto e a descrição.", error=True)
+            return
+        payload: dict[str, object] = {
+            "assunto": assunto,
+            "descricao": descricao,
+        }
+        if data_atendimento:
+            payload["data_atendimento"] = data_atendimento
+        token, user_id = self._auth_token, self.user_id
+        self.internal_attendance_saving = True
+        try:
+            url = _required_environment_url("XANO_INTERNAL_ATTENDANCE_DETAILS_URL")
+            if "{attendance_id}" not in url:
+                raise ValueError("Missing attendance placeholder")
+            url = url.replace("{attendance_id}", str(current.id))
+            updated = attendance_record(await _server_side_xano_request(
+                url,
+                method="PATCH",
+                payload=payload,
+                authorization="Bearer " + token,
+                retry_rate_limit=False,
+            ))
+            if token == self._auth_token and user_id == self.user_id and self._internal_attendance_allowed():
+                self.internal_attendance_detail = [updated]
+                self.internal_attendance_edit_assunto = updated.assunto
+                self.internal_attendance_edit_descricao = updated.descricao
+                self.internal_attendance_edit_data_atendimento = updated.data_atendimento_input
+                self._attendance_feedback("Atendimento atualizado com sucesso.")
+                return State.load_internal_attendances
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if isinstance(error, urllib.error.HTTPError):
+                error.close()
+            if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                self._clear_authentication_state(
+                    "Acesso interno não autorizado. Entre novamente.")
+                return
+            if isinstance(error, urllib.error.HTTPError) and error.code == 404:
+                self._attendance_feedback("Atendimento não encontrado.", error=True)
+            elif isinstance(error, urllib.error.HTTPError) and error.code == 400:
+                self._attendance_feedback(
+                    "Atendimentos encerrados não podem ser editados ou os dados são inválidos.",
+                    error=True)
+            else:
+                self._attendance_feedback(
+                    "Não foi possível atualizar o atendimento. Tente novamente.",
+                    error=True)
+        finally:
+            self.internal_attendance_saving = False
+
+    @rx.event
+    async def change_internal_attendance_status(self, status: str):
+        if not self._internal_attendance_allowed():
+            self._clear_internal_attendances()
+            return
+        if not self.internal_attendance_detail:
+            return
+        current = self.internal_attendance_detail[0]
+        if status not in {"EM_ATENDIMENTO", "FINALIZADO", "CANCELADO"}:
+            return
+        if status == current.status:
+            self._attendance_feedback("O atendimento já está neste status.")
+            return
+        valid = (
+            (current.status == "ABERTO" and status == "EM_ATENDIMENTO")
+            or (current.status in {"ABERTO", "EM_ATENDIMENTO"}
+                and status in {"FINALIZADO", "CANCELADO"})
+        )
+        if not valid:
+            self._attendance_feedback(
+                "A transição de status não é permitida.", error=True)
+            return
+        if (status in {"FINALIZADO", "CANCELADO"}
+                and self.user_role != "ADMINISTRADOR"
+                and current.usuario_interno_id != self.user_id):
+            self._attendance_feedback(
+                "Somente o responsável ou um administrador pode finalizar ou cancelar.",
+                error=True)
+            return
+        token, user_id = self._auth_token, self.user_id
+        self.internal_attendance_saving = True
+        try:
+            url = _required_environment_url("XANO_INTERNAL_ATTENDANCE_STATUS_URL")
+            if "{attendance_id}" not in url:
+                raise ValueError("Missing attendance placeholder")
+            url = url.replace("{attendance_id}", str(current.id))
+            result = status_result(await _server_side_xano_request(
+                url,
+                method="POST",
+                payload={"status": status},
+                authorization="Bearer " + token,
+                retry_rate_limit=False,
+            ))
+            if token == self._auth_token and user_id == self.user_id and self._internal_attendance_allowed():
+                current.status = result.status_atual
+                self.internal_attendance_detail = [current]
+                self._attendance_feedback(
+                    "Status atualizado com sucesso." if result.alterado
+                    else "O atendimento já estava neste status.")
+                return State.load_internal_attendances
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if isinstance(error, urllib.error.HTTPError):
+                error.close()
+            if isinstance(error, urllib.error.HTTPError) and error.code == 401:
+                self._clear_authentication_state(
+                    "Acesso interno não autorizado. Entre novamente.")
+                return
+            if isinstance(error, urllib.error.HTTPError) and error.code == 404:
+                self._attendance_feedback("Atendimento não encontrado.", error=True)
+            elif isinstance(error, urllib.error.HTTPError) and error.code in {400, 403}:
+                self._attendance_feedback(
+                    "A transição de status não é permitida.", error=True)
+            else:
+                self._attendance_feedback(
+                    "Não foi possível alterar o status. Tente novamente.", error=True)
+        finally:
+            self.internal_attendance_saving = False
+
     integration_loading: bool = False
     integration_status: str = "idle"
     integration_message: str = "Integration check has not run."
@@ -2419,6 +2901,7 @@ class State(rx.State):
         session_status: str = "error",
     ):
         self._clear_internal_customers()
+        self._clear_internal_attendances()
         self.internal_section = "clientes"
         self._auth_token = ""
         self.is_authenticated = False
@@ -3779,6 +4262,7 @@ class State(rx.State):
     async def login(self, email: str, password: str):
         self.internal_section = "clientes"
         self._clear_catalog_state()
+        self._clear_internal_attendances()
         self.login_loading = True
         self.login_status = "loading"
         self.login_message = ""
@@ -3895,6 +4379,7 @@ class State(rx.State):
 
         if self.user_id != identity_id or self.user_role != identity_role:
             self._clear_internal_customers()
+            self._clear_internal_attendances()
         self.user_id = identity_id
         self.user_name = identity_name
         self.user_email = identity_email
@@ -5863,6 +6348,269 @@ def internal_customer_panel(*, show_heading: bool = True) -> rx.Component:
         aria_label="Consulta de clientes", class_name="vx-customers")
 
 
+def internal_attendance_panel(*, show_heading: bool = True) -> rx.Component:
+    def status_label(status):
+        return rx.match(status,
+            ("ABERTO", "Aberto"), ("EM_ATENDIMENTO", "Em atendimento"),
+            ("FINALIZADO", "Finalizado"), ("CANCELADO", "Cancelado"),
+            "Indisponível")
+
+    def status_badge(status):
+        scheme = rx.match(status,
+            ("ABERTO", "amber"), ("EM_ATENDIMENTO", "cyan"),
+            ("FINALIZADO", "green"), ("CANCELADO", "red"), "gray")
+        return rx.badge(status_label(status), color_scheme=scheme, variant="soft",
+            radius="full", size="2")
+
+    def attendance_row(item):
+        return rx.el.tr(
+            rx.el.td("#" + item.id.to_string()),
+            rx.el.td(item.cliente_display),
+            rx.el.td(item.pedido_display),
+            rx.el.td(item.assunto, class_name="vx-attendance__subject"),
+            rx.el.td(status_badge(item.status)),
+            rx.el.td(item.data_atendimento_display),
+            rx.el.td(rx.el.button("Abrir", rx.icon("arrow-up-right", size=15),
+                on_click=State.select_internal_attendance(item.id), type="button",
+                aria_label="Abrir atendimento " + item.id.to_string(),
+                disabled=State.internal_attendances_loading | State.internal_attendance_loading,
+                class_name="vx-customers__detail-action")))
+
+    def filtered_field(label, control, css_class=""):
+        return rx.el.div(rx.el.label(label), control, class_name=css_class)
+
+    def detail(item):
+        editable = (item.status == "ABERTO") | (item.status == "EM_ATENDIMENTO")
+        can_finish = (State.user_role == "ADMINISTRADOR") | (item.usuario_interno_id == State.user_id)
+
+        def info(label, value):
+            return rx.el.div(rx.el.dt(label), rx.el.dd(value),
+                class_name="vx-customers__field")
+
+        def edit_form():
+            return rx.el.form(
+                rx.el.div(
+                    filtered_field("Assunto",
+                        rx.input(name="assunto", value=State.internal_attendance_edit_assunto,
+                            on_change=State.set_internal_attendance_edit_assunto, max_length=200,
+                            disabled=State.internal_attendance_saving, width="100%"),
+                        "vx-attendance__field"),
+                    filtered_field("Descrição",
+                        rx.text_area(name="descricao", value=State.internal_attendance_edit_descricao,
+                            on_change=State.set_internal_attendance_edit_descricao, max_length=2000,
+                            rows="4", disabled=State.internal_attendance_saving, width="100%"),
+                        "vx-attendance__field"),
+                    filtered_field("Data do atendimento (UTC)",
+                        rx.input(name="data_atendimento", type="datetime-local",
+                            value=State.internal_attendance_edit_data_atendimento,
+                            on_change=State.set_internal_attendance_edit_data_atendimento,
+                            disabled=State.internal_attendance_saving, width="100%"),
+                        "vx-attendance__field"),
+                    class_name="vx-attendance__form-grid"),
+                rx.el.button(rx.icon("save", size=16), "Salvar alterações", type="submit",
+                    disabled=State.internal_attendance_saving, class_name="vx-customers__primary"),
+                on_submit=State.save_internal_attendance, reset_on_submit=False,
+                class_name="vx-attendance__form")
+
+        def status_actions():
+            return rx.el.div(
+                rx.cond(item.status == "ABERTO",
+                    rx.el.button(rx.icon("play", size=16), "Iniciar atendimento", type="button",
+                        on_click=State.change_internal_attendance_status("EM_ATENDIMENTO"),
+                        disabled=State.internal_attendance_saving,
+                        class_name="vx-customers__primary"),
+                    rx.fragment()),
+                rx.cond(can_finish,
+                    rx.fragment(
+                        rx.el.button(rx.icon("check", size=16), "Finalizar", type="button",
+                            on_click=State.change_internal_attendance_status("FINALIZADO"),
+                            disabled=State.internal_attendance_saving,
+                            class_name="vx-customers__secondary"),
+                        rx.el.button(rx.icon("x", size=16), "Cancelar", type="button",
+                            on_click=State.change_internal_attendance_status("CANCELADO"),
+                            disabled=State.internal_attendance_saving,
+                            class_name="vx-attendance__danger")),
+                    rx.el.p("Somente o responsável ou um administrador pode finalizar ou cancelar.",
+                        class_name="vx-attendance__hint")),
+                class_name="vx-attendance__actions")
+
+        return rx.el.section(
+            rx.el.div(
+                rx.el.div(rx.el.p("ATENDIMENTO SELECIONADO", class_name="vx-customers__eyebrow"),
+                    rx.el.h3("Atendimento #" + item.id.to_string(),
+                        class_name="vx-customers__detail-title")),
+                rx.el.button(rx.icon("x", size=18), on_click=State.close_internal_attendance,
+                    type="button", aria_label="Fechar atendimento selecionado",
+                    class_name="vx-customers__close"),
+                class_name="vx-customers__detail-header"),
+            status_badge(item.status),
+            rx.el.dl(
+                info("Cliente", item.cliente_display),
+                info("Responsável", item.responsavel_display),
+                info("Pedido", item.pedido_display),
+                info("Data do atendimento", item.data_atendimento_display),
+                info("Criado em", item.created_at_display),
+                info("Atualizado em", item.updated_at_display)),
+            rx.el.div(rx.el.h4("Descrição"), rx.el.p(item.descricao),
+                class_name="vx-attendance__description"),
+            rx.cond(State.internal_attendance_feedback != "",
+                rx.el.p(State.internal_attendance_feedback, role="status",
+                    class_name=rx.cond(State.internal_attendance_feedback_error,
+                        "vx-attendance__feedback is-error", "vx-attendance__feedback"))),
+            rx.cond(editable, edit_form(),
+                rx.el.p(rx.icon("lock-keyhole", size=15),
+                    "Atendimento encerrado. O registro é histórico e somente leitura.",
+                    class_name="vx-customers__privacy")),
+            rx.cond(editable, status_actions(), rx.fragment()),
+            aria_label="Detalhe do atendimento", class_name="vx-customers__detail vx-attendance__detail")
+
+    def create_form():
+        return rx.el.section(
+            rx.el.div(rx.el.p("NOVO ATENDIMENTO", class_name="vx-customers__eyebrow"),
+                rx.el.h3("Registrar atendimento", class_name="vx-history__title"),
+                rx.el.p("O responsável será o usuário interno autenticado.",
+                    class_name="vx-customers__muted"),
+                class_name="vx-history__heading"),
+            rx.el.form(
+                rx.el.div(
+                    filtered_field("Cliente (id)",
+                        rx.input(name="cliente_id", type="number", min="1",
+                            value=State.internal_attendance_form_cliente_id,
+                            on_change=State.set_internal_attendance_form_cliente_id,
+                            disabled=State.internal_attendance_saving, width="100%"),
+                        "vx-attendance__field"),
+                    filtered_field("Pedido (id, opcional)",
+                        rx.input(name="pedido_id", type="number", min="1",
+                            value=State.internal_attendance_form_pedido_id,
+                            on_change=State.set_internal_attendance_form_pedido_id,
+                            disabled=State.internal_attendance_saving, width="100%"),
+                        "vx-attendance__field"),
+                    filtered_field("Assunto",
+                        rx.input(name="assunto", max_length=200,
+                            value=State.internal_attendance_form_assunto,
+                            on_change=State.set_internal_attendance_form_assunto,
+                            disabled=State.internal_attendance_saving, width="100%"),
+                        "vx-attendance__field"),
+                    filtered_field("Data do atendimento (UTC, opcional)",
+                        rx.input(name="data_atendimento", type="datetime-local",
+                            value=State.internal_attendance_form_data_atendimento,
+                            on_change=State.set_internal_attendance_form_data_atendimento,
+                            disabled=State.internal_attendance_saving, width="100%"),
+                        "vx-attendance__field"),
+                    filtered_field("Descrição",
+                        rx.text_area(name="descricao", rows="4", max_length=2000,
+                            value=State.internal_attendance_form_descricao,
+                            on_change=State.set_internal_attendance_form_descricao,
+                            disabled=State.internal_attendance_saving, width="100%"),
+                        "vx-attendance__field is-wide"),
+                    class_name="vx-attendance__form-grid"),
+                rx.el.button(rx.icon("plus", size=16), "Criar atendimento", type="submit",
+                    disabled=State.internal_attendance_saving,
+                    class_name="vx-customers__primary"),
+                on_submit=State.create_internal_attendance, reset_on_submit=False,
+                class_name="vx-attendance__form"),
+            rx.cond(State.internal_attendance_feedback != "",
+                rx.el.p(State.internal_attendance_feedback, role="status",
+                    class_name=rx.cond(State.internal_attendance_feedback_error,
+                        "vx-attendance__feedback is-error", "vx-attendance__feedback"))),
+            class_name="vx-attendance__create")
+
+    empty_message = (State.internal_attendances_message
+                     == "Nenhum atendimento encontrado para os filtros informados.")
+    initial = ((State.internal_attendances.length() == 0)
+               & (State.internal_attendances_message == "")
+               & ~State.internal_attendances_loading)
+    status_options = [("TODOS", "Todos"), ("ABERTO", "Aberto"),
+        ("EM_ATENDIMENTO", "Em atendimento"), ("FINALIZADO", "Finalizado"),
+        ("CANCELADO", "Cancelado")]
+    return rx.el.section(
+        rx.el.h2("Atendimentos", class_name="vx-customers__heading") if show_heading else rx.fragment(),
+        rx.el.div(rx.el.p("Acompanhe os atendimentos do CRM", class_name="vx-customers__intro-title"),
+            rx.el.p("Registre solicitações e acompanhe o status. O Cliente é referenciado pelo id.",
+                class_name="vx-customers__muted"),
+            class_name="vx-customers__intro"),
+        rx.el.form(rx.el.div(
+            rx.el.div(rx.el.label("Cliente (id)", html_for="internal-attendance-customer"),
+                rx.input(id="internal-attendance-customer", name="cliente_id", type="number",
+                    min="1", value=State.internal_attendances_cliente_id_input,
+                    on_change=State.set_internal_attendance_cliente_id_input,
+                    placeholder="Opcional", disabled=State.internal_attendances_loading,
+                    width="100%", size="3"), class_name="vx-customers__search"),
+            rx.el.div(rx.el.label("Status", html_for="internal-attendance-status"),
+                rx.el.select(*[rx.el.option(label, value=value) for value, label in status_options],
+                    id="internal-attendance-status", name="status",
+                    value=State.internal_attendances_status_input,
+                    on_change=State.set_internal_attendance_status_input,
+                    disabled=State.internal_attendances_loading),
+                class_name="vx-customers__status-filter"),
+            rx.el.button(rx.icon("filter", size=16), "Aplicar filtros", type="submit",
+                disabled=State.internal_attendances_loading, class_name="vx-customers__primary"),
+            rx.el.button("Limpar filtros", type="button",
+                on_click=State.clear_internal_attendance_filters,
+                disabled=State.internal_attendances_loading, class_name="vx-customers__secondary"),
+            class_name="vx-customers__filters"),
+            on_submit=State.apply_internal_attendance_filters, reset_on_submit=False,
+            width="100%"),
+        rx.el.div(rx.el.p(rx.icon("shield-check", size=15),
+                "Somente ids do Cliente e do Pedido são exibidos.",
+                class_name="vx-customers__muted"),
+            rx.el.button(rx.icon("refresh-cw", size=15), "Carregar / atualizar atendimentos",
+                type="button", on_click=State.load_internal_attendances,
+                disabled=State.internal_attendances_loading, class_name="vx-customers__refresh"),
+            class_name="vx-customers__toolbar"),
+        rx.cond(State.internal_attendances_loading,
+            rx.el.div(rx.icon("loader-circle", size=21), rx.el.p("Carregando atendimentos…"),
+                role="status", class_name="vx-customers__feedback")),
+        rx.cond(State.internal_attendances_message != "",
+            rx.el.div(rx.cond(empty_message, rx.icon("inbox", size=23), rx.icon("circle-alert", size=23)),
+                rx.el.p(rx.cond(empty_message, "Nenhum atendimento encontrado",
+                    "Não foi possível concluir a consulta"), class_name="vx-customers__feedback-title"),
+                rx.el.p(State.internal_attendances_message), role="status",
+                class_name=rx.cond(empty_message,
+                    "vx-customers__feedback", "vx-customers__feedback is-error"))),
+        rx.cond(initial, rx.el.div(rx.icon("headset", size=26),
+            rx.el.p("Sua consulta começa aqui", class_name="vx-customers__feedback-title"),
+            rx.el.p("Use os filtros ou carregue os atendimentos para começar."),
+            class_name="vx-customers__feedback")),
+        rx.cond(State.internal_attendances.length() > 0,
+            rx.el.div(rx.el.div(rx.el.h2("Resultados da consulta"),
+                rx.el.p(State.internal_attendances_total, " atendimentos encontrados"),
+                class_name="vx-customers__results-heading"),
+                rx.box(rx.table.root(rx.table.header(rx.table.row(*[
+                    rx.table.column_header_cell(label)
+                    for label in ["Atendimento", "Cliente", "Pedido", "Assunto",
+                                  "Status", "Data", "Consulta"]])),
+                    rx.table.body(rx.foreach(State.internal_attendances, attendance_row))),
+                    overflow_x="auto", width="100%", class_name="vx-customers__table")),
+            rx.fragment()),
+        rx.cond(State.internal_attendances_pages > 0,
+            rx.el.nav(rx.el.p("Página ", State.internal_attendances_page, " de ",
+                    State.internal_attendances_pages),
+                rx.el.div(rx.el.button(rx.icon("chevron-left", size=16), "Anterior",
+                        type="button", aria_label="Página anterior dos atendimentos",
+                        on_click=State.internal_attendances_previous,
+                        disabled=(State.internal_attendances_page <= 1) | State.internal_attendances_loading,
+                        class_name="vx-customers__secondary"),
+                    rx.el.button("Próxima", rx.icon("chevron-right", size=16), type="button",
+                        aria_label="Próxima página dos atendimentos",
+                        on_click=State.internal_attendances_next,
+                        disabled=(State.internal_attendances_page >= State.internal_attendances_pages) | State.internal_attendances_loading,
+                        class_name="vx-customers__secondary")),
+                aria_label="Paginação dos atendimentos", class_name="vx-customers__pagination")),
+        rx.el.div(
+            create_form(),
+            rx.cond(State.internal_attendance_loading,
+                rx.el.div(rx.icon("loader-circle", size=20), "Carregando detalhe…",
+                    role="status", class_name="vx-customers__feedback")),
+            rx.cond(State.internal_attendance_detail.length() > 0,
+                rx.foreach(State.internal_attendance_detail, detail),
+                rx.el.section(rx.el.p("Selecione um atendimento na lista para ver o detalhe.",
+                        class_name="vx-customers__muted"),
+                    class_name="vx-attendance__empty-detail")),
+            class_name="vx-attendance__workspace"),
+        aria_label="Atendimentos internos", class_name="vx-attendance")
+
+
 def internal_workspace_shell(content: rx.Component) -> rx.Component:
     def navigation(label: str, key: str, icon: str):
         selected = State.internal_section == key
@@ -5873,11 +6621,13 @@ def internal_workspace_shell(content: rx.Component) -> rx.Component:
             class_name=rx.cond(selected, "vx-internal__nav-item is-selected", "vx-internal__nav-item"))
 
     title = rx.match(State.internal_section, ("produtos", "Produtos"),
-        ("catalogo", "Categorias e marcas"), ("importacao", "Importação"), "Clientes")
+        ("catalogo", "Categorias e marcas"), ("importacao", "Importação"),
+        ("atendimentos", "Atendimentos"), "Clientes")
     description = rx.match(State.internal_section,
         ("produtos", "Organize os produtos e suas variações."),
         ("catalogo", "Mantenha a estrutura do seu catálogo organizada."),
         ("importacao", "Prepare, confira e acompanhe a importação do catálogo."),
+        ("atendimentos", "Registre e acompanhe os atendimentos do CRM."),
         "Uma visão clara para consultar e conhecer seus clientes.")
     return rx.el.div(
         rx.el.elements.a("Ir para o conteúdo", href="#internal-workspace-main", class_name="vx-internal__skip"),
@@ -5885,6 +6635,7 @@ def internal_workspace_shell(content: rx.Component) -> rx.Component:
             rx.link(brand_logo(on_dark=True), href="/catalogo", aria_label="Voltix — loja pública", class_name="vx-internal__brand"),
             rx.el.p("ESPAÇO DA EQUIPE", class_name="vx-internal__eyebrow"),
             rx.el.nav(navigation("Clientes", "clientes", "users"),
+                navigation("Atendimentos", "atendimentos", "headset"),
                 rx.cond(State.user_role == "ADMINISTRADOR", rx.fragment(
                     navigation("Produtos", "produtos", "package"),
                     navigation("Categorias e marcas", "catalogo", "tags"),
@@ -6266,6 +7017,7 @@ def index() -> rx.Component:
 
     protected_area = internal_workspace_shell(rx.fragment(
         rx.cond(State.internal_section == "clientes", internal_customer_panel(show_heading=False), rx.fragment()),
+        rx.cond(State.internal_section == "atendimentos", internal_attendance_panel(show_heading=False), rx.fragment()),
         rx.cond(State.user_role == "ADMINISTRADOR", rx.fragment(
             rx.cond(State.internal_section == "catalogo", catalog_management, rx.fragment()),
             rx.cond(State.internal_section == "produtos", product_management, rx.fragment()),

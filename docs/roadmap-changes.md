@@ -23,12 +23,12 @@ Atualizado em 03/11/2026 por conferência do repositório local. Fontes: [AGENTS
 | Estoque C1 | **Implementada e publicada em 05/11/2026** (change `implement-c1-atomic-decrement`). Checkout baixa estoque atomicamente com guarda `db.increment` na mesma transação; rollback multi-item verificado em prova e refletido na spec consolidada. Verificação remota somente leitura. | Spec `checkout-orders`; [README do adiamento](deferred-changes/2026-10-23-baixa-estoque-checkout/README.md); [evidência da prova](../openspec/changes/archive/2026-11-05-prove-c1-atomic-decrement-synthetic/evidence/04-run-results.md); [evidência da publicação](../openspec/changes/archive/2026-11-05-implement-c1-atomic-decrement/evidence/01-publish-verification.md) |
 | Cancelamento C2 | **Implementado e publicado em 09/11/2026** (change `implement-c2-order-cancellation`). Cliente cancela o próprio Pedido em `AGUARDANDO_PAGAMENTO`; ADMINISTRADOR cancela em `AGUARDANDO_PAGAMENTO` e `PAGAMENTO_CONFIRMADO`. Devolução de estoque, Pedido e Pagamento `CANCELADO` na mesma transação; repetição é idempotente. Verificação remota somente leitura. | Spec `order-cancellation`; [evidência](../openspec/changes/archive/2026-11-09-implement-c2-order-cancellation/evidence/02-publish-verification.md) |
 | Consulta interna de clientes C4 | Concluída: leitura para Funcionário/Administrador, filtros, paginação, máscaras e detalhe. Acesso de Cliente e interno inativo negado; teste de ID coincidente aprovado. | [Revisão final](../openspec/changes/archive/2026-10-29-consulta-clientes-painel/evidence/final-review.md) |
-| CRM, cancelamento e gestão operacional | Cancelamento C2, consulta/transição de pedidos C3, histórico do Cliente C6 (backend + tela), relatório de vendas C10 e atendimentos C7 (backend) entregues em 09/11/2026. A tela de atendimentos fica para change própria. | C7 (tela), C8, C9 |
+| CRM, cancelamento e gestão operacional | Cancelamento C2, consulta/transição de pedidos C3, histórico do Cliente C6 (backend + tela), relatório de vendas C10 e atendimentos C7 (backend + tela) entregues em 09/11/2026. A tela de pedidos (C3) e o dashboard (C10) ficam para changes próprias. | C3 (tela), C8, C9, C10 (tela) |
 | E2E existente | Spec cobre login e navegação com leituras; não confirma compra nem simula pagamento. | `openspec/specs/e2e-playwright/spec.md` |
 
 Os lotes de fotos até ASUS estão nos commits `18e7919`, `d215ce8`, `b4dfb46`, `ef0b6c7`, `f41ef3f` e `064e66b`; a pesquisa sem foto nova é `1f29f3b`. Preservam arquivos originais, fontes, licenças, avisos e evidências. Cinco pendentes: G203 LIGHTSYNC, M90, WD SN580 1TB, Ryzen 5 5600 e Archer C6. Não usar modelos parecidos, imagens geradas por IA para SKU ou conteúdo sem direitos demonstrados.
 
-**C4 concluída e arquivada:** [consulta-clientes-painel](../openspec/changes/archive/2026-10-29-consulta-clientes-painel/proposal.md). Spec internal-customers consolidada após publicação restrita, validação autenticada e restauração da conta fictícia usada no teste de status. Limites das verificações registrados na revisão final. Concluída e arquivada em 30/10/2026: [refine-internal-workspace](../openspec/changes/archive/2026-10-30-refine-internal-workspace/evidence/final-review.md), shell desktop e navegação por perfil verificados como Administrador e Funcionário. Consulta e detalhe de Clientes refinados e arquivados em 30/10/2026: [refine-internal-customers-desktop](../openspec/changes/archive/2026-10-30-refine-internal-customers-desktop/evidence/final-review.md), com QA visual isolada e contratos/handlers preservados. Gestão de Produtos refinada e arquivada em 30/10/2026: [refine-internal-products-desktop](../openspec/changes/archive/2026-10-30-refine-internal-products-desktop/evidence/final-review.md), com formulários rotulados, tabela de variações e QA isolada sem mutações reais. Próxima etapa visual sugerida: Categorias e marcas. A tela de histórico do Cliente foi entregue em [implement-customer-history-panel](../openspec/changes/archive/2026-11-09-implement-customer-history-panel/proposal.md); atendimentos de CRM foram entregues no backend (C7); a tela dedicada segue como capability própria. Consultar `openspec list` para o estado corrente.
+**C4 concluída e arquivada:** [consulta-clientes-painel](../openspec/changes/archive/2026-10-29-consulta-clientes-painel/proposal.md). Spec internal-customers consolidada após publicação restrita, validação autenticada e restauração da conta fictícia usada no teste de status. Limites das verificações registrados na revisão final. Concluída e arquivada em 30/10/2026: [refine-internal-workspace](../openspec/changes/archive/2026-10-30-refine-internal-workspace/evidence/final-review.md), shell desktop e navegação por perfil verificados como Administrador e Funcionário. Consulta e detalhe de Clientes refinados e arquivados em 30/10/2026: [refine-internal-customers-desktop](../openspec/changes/archive/2026-10-30-refine-internal-customers-desktop/evidence/final-review.md), com QA visual isolada e contratos/handlers preservados. Gestão de Produtos refinada e arquivada em 30/10/2026: [refine-internal-products-desktop](../openspec/changes/archive/2026-10-30-refine-internal-products-desktop/evidence/final-review.md), com formulários rotulados, tabela de variações e QA isolada sem mutações reais. Próxima etapa visual sugerida: Categorias e marcas. A tela de histórico do Cliente foi entregue em [implement-customer-history-panel](../openspec/changes/archive/2026-11-09-implement-customer-history-panel/proposal.md); atendimentos de CRM foram entregues no backend (C7) e sua tela em [implement-attendance-panel](../openspec/changes/archive/2026-11-09-implement-attendance-panel/proposal.md). Consultar `openspec list` para o estado corrente.
 
 ## Prioridade após auditoria de sincronização — 30/10/2026
 
@@ -96,9 +96,9 @@ O rascunho `consulta-clientes-admin` restringe a ADMINISTRADOR e diverge de E2; 
 ## Ordem recomendada para propostas futuras
 
 1. C4 concluída e arquivada em 29/10/2026. Consulta de clientes somente leitura entregue; o rascunho admin-only adiado foi preservado como referência histórica e não publicado.
-2. C1 concluída e publicada em 05/11/2026; C2, C3, C6, C7 e C10 concluídas e publicadas em 09/11/2026. Próximo: tela de atendimentos (C7 UI) ou C8.
+2. C1 concluída e publicada em 05/11/2026; C2, C3, C6, C7 e C10 concluídas e publicadas em 09/11/2026. Próximo: tela de pedidos (C3), tela do dashboard (C10) ou C8.
 3. Resolvidas C1, C2, C3, C6, C7 e C10; agregados de vendas preservam a ordem de transições da C3, o histórico reutiliza Cliente/Pedido e os atendimentos preservam vínculos e imutabilidade.
-4. Resolvidas consultas C4/C3/C6 e atendimentos C7; a próxima entrega visual de CRM é a tela de atendimentos.
+4. Resolvidas consultas C4/C3/C6 e atendimentos C7; a tela de atendimentos foi entregue e a próxima entrega visual de CRM pode ser a tela de pedidos.
 5. C8 conforme lacunas reais e C9 somente com isolamento aprovado. Não duplicar as suítes existentes nem repetir testes sem motivo.
 
 C5 já está concluída; não é próxima prioridade. As fotos restantes podem ser fornecidas como conteúdo em uma change específica quando houver modelo e direitos confirmados. Nenhum item desta sequência é autorização para execução.
@@ -113,7 +113,7 @@ C5 já está concluída; não é próxima prioridade. As fotos restantes podem s
 | C4 consulta-clientes-painel | Leitura de lista/detalhe; depende da autenticação interna existente. Compatibilizar o rascunho adiado com E2 e schema real. Definir campos, máscara, filtros combinados, paginação/limites e detalhe. Nunca senha/hash/token, CPF mascarado; negar anônimo/cliente/interno inativo. Testar vazio, erro e 429. Sem editar/inativar cliente, exportar, histórico ou atendimento. |
 | C5 pesquisa-catalogo | Concluída e arquivada. Reutiliza products_GET com q por nome, filtro de categoria, cache e UI; correções futuras exigem nova justificativa, sem recriar capability. |
 | C6 crm-cliente-historico | **CONCLUÍDA (09/11/2026)**: change `implement-c6-customer-order-history` publicada no XanoFree. `GET customers/{customer_id}/orders` para FUNCIONARIO/ADMINISTRADOR ativos, somente leitura, com Pedidos do Cliente ordenados do mais recente ao mais antigo, itens inline com valores persistidos, filtros de status e período (`from`/`to` em UTC, inclusivos) e paginação 20/50. Tela entregue na change `implement-customer-history-panel` (09/11/2026), sem backend novo. Sem atendimentos, edição de cliente ou métricas. |
-| C7 crm-atendimentos | **CONCLUÍDA (09/11/2026)**: change `implement-c7-attendance-management` publicada no XanoFree. Tabela `atendimento` e grupo `Voltix Internal CRM` com `POST atendimentos`, `GET atendimentos`, `GET atendimentos/{attendance_id}`, `PATCH atendimentos/{attendance_id}` e `POST atendimentos/{attendance_id}/status`, para FUNCIONARIO/ADMINISTRADOR ativos. Atendimento vinculado ao Cliente e ao responsável criador; Pedido opcional do mesmo Cliente. `ABERTO`/`EM_ATENDIMENTO` editáveis; `FINALIZADO`/`CANCELADO` imutáveis. `ABERTO → EM_ATENDIMENTO` por qualquer interno; finalizar/cancelar pelo responsável ou ADMINISTRADOR; mesmo status é no-op idempotente. Sem tela, mensagens, SLA ou automação. |
+| C7 crm-atendimentos | **CONCLUÍDA (09/11/2026)**: change `implement-c7-attendance-management` publicada no XanoFree. Tabela `atendimento` e grupo `Voltix Internal CRM` com `POST atendimentos`, `GET atendimentos`, `GET atendimentos/{attendance_id}`, `PATCH atendimentos/{attendance_id}` e `POST atendimentos/{attendance_id}/status`, para FUNCIONARIO/ADMINISTRADOR ativos. Atendimento vinculado ao Cliente e ao responsável criador; Pedido opcional do mesmo Cliente. `ABERTO`/`EM_ATENDIMENTO` editáveis; `FINALIZADO`/`CANCELADO` imutáveis. `ABERTO → EM_ATENDIMENTO` por qualquer interno; finalizar/cancelar pelo responsável ou ADMINISTRADOR; mesmo status é no-op idempotente. Tela entregue na change `implement-attendance-panel` (09/11/2026), sem backend novo. Sem mensagens, SLA ou automação. |
 | C8 cobertura-testes-qualidade | Reavaliar lacunas antes de criar testes; não existem arquivos dedicados test_internal_access.py/test_integration_health.py no inventário desta revisão, o que não prova ausência total de cobertura indireta. Preservar objetivo de cobrir specs, sem duplicação ou teste que espelhe implementação. Originalmente posterior a C1–C7; focar behavior aprovado e suíte aplicável sem regressões. Sem nova feature ou axe-core automaticamente. |
 | C9 e2e-compra-completa | Bloqueada por E6; depende de C1/C2 e ambiente isolado aprovado. Jornada de cadastro/login/endereço/catálogo/carrinho/checkout/pedidos/pagamento simulado, cancelamento se disponível. workers=1 e throttle conforme limites reconfirmados; nunca mutar catálogo real. Segredos por ambiente, não Git; sem pagamentos reais ou CI novo. Diferente da navegação de leitura existente. Evidências devem excluir dados pessoais e credenciais. |
 | C10 dashboard-vendas | **CONCLUÍDA (09/11/2026)**: change `implement-c10-sales-dashboard` publicada no XanoFree. `GET reports/sales` para FUNCIONARIO/ADMINISTRADOR ativos, somente leitura, com faturamento, quantidade, ticket médio e série diária dos Pedidos em `PAGAMENTO_CONFIRMADO`/`EM_PREPARACAO`/`ENVIADO`/`ENTREGUE`; período padrão de 30 dias em UTC, `from`/`to` inclusivos e limite de 366 dias. Sem tela no painel, previsões, metas, gráficos avançados, exportação ou CRM. Verificação remota somente leitura. |
@@ -122,7 +122,7 @@ C5 já está concluída; não é próxima prioridade. As fotos restantes podem s
 
 - Falha parcial não pode persistir pedido com baixa incompleta. Uma venda da última unidade não pode permitir estoque negativo.
 - Cancelamento repetido não pode duplicar estoque; devolver apenas o que foi efetivamente baixado.
-- C3 consome C2; C6 usa C4 e consultas de pedidos; C7 usa C4/C6 e cria o grupo `internal-crm`; a tela de atendimentos é a próxima change visual de CRM. C5 não cria outro grupo de catálogo. Evitar endpoints e regras duplicados.
+- C3 consome C2; C6 usa C4 e consultas de pedidos; C7 usa C4/C6 e cria o grupo `internal-crm`; a tela de atendimentos foi entregue sem backend novo. A tela de pedidos permanece pendente. C5 não cria outro grupo de catálogo. Evitar endpoints e regras duplicados.
 - Cliente não acessa CRM interno. Autorizações são do backend, não somente da interface.
 - Não recriar catálogo, sessões, endereços, carrinho, checkout, pedidos próprios, pagamento simulado ou gestão já existente.
 - Dados reais de clientes nunca entram em fixtures, capturas ou relatórios versionados.
@@ -133,18 +133,26 @@ Os nomes abaixo foram conferidos no repositório; os detalhes de escopo, aceite 
 
 ### Specs consolidadas
 
+- `attendance-management`
 - `catalog-management`
 - `checkout-orders`
 - `customer-access`
 - `customer-addresses`
+- `customer-history-panel`
+- `customer-order-history`
 - `e2e-playwright`
 - `internal-access`
+- `internal-customers`
+- `internal-workspace`
+- `order-cancellation`
+- `order-management`
 - `order-payment`
 - `product-bulk-import`
 - `product-management`
 - `public-catalog`
 - `public-home`
 - `reflex-xano-integration`
+- `sales-dashboard`
 - `shopping-cart`
 - `visual-interface`
 
@@ -225,3 +233,6 @@ Change `implement-c7-attendance-management` implementada, publicada restritament
 
 ### Tela de histórico do Cliente — CONCLUÍDA — 09/11/2026
 Change `implement-customer-history-panel` implementada sem backend novo. A ficha do Cliente ganhou uma seção de histórico em largura total, carregada automaticamente a partir de `GET customers/{customer_id}/orders`. Filtros de status e período (`from`/`to` em UTC, inclusivos), paginação de 20, Pedidos com resumo e itens sempre expandidos, estados de carregamento/vazio/erro e limpeza em logout/401/403. Contrato Python estrito valida a resposta antes do navegador; a nova variável `XANO_INTERNAL_CUSTOMER_ORDERS_URL` aponta para o endpoint já publicado. 205 testes, `openspec validate --all --strict` (21 itens) e `reflex compile` verdes. Evidência: [01](../openspec/changes/archive/2026-11-09-implement-customer-history-panel/evidence/01-local-verification.md).
+
+### Tela de atendimentos (C7 UI) — CONCLUÍDA — 09/11/2026
+Change `implement-attendance-panel` implementada sem backend novo. A seção **Atendimentos** foi liberada a FUNCIONARIO e ADMINISTRADOR ativos, com listagem filtrável por `cliente_id`/`status` e paginação de 20, criação com o interno autenticado como responsável, detalhe com vínculos somente leitura, edição apenas em `ABERTO`/`EM_ATENDIMENTO` e controles de status limitados por responsável/papel. O contrato `voltix/internal_attendances.py` valida chaves exatas, status, datas e totais; três variáveis server-side apontam para os endpoints C7 já publicados. `401` encerra a sessão; `403` em leitura/criação/edição também, enquanto `403` de transição é negação de operação e mantém a sessão. 235 testes, `openspec validate --all --strict` (23 itens), `git diff --check` e `reflex compile` verdes, com `reflex.lock` restaurado. Evidência: [01](../openspec/changes/archive/2026-11-09-implement-attendance-panel/evidence/01-local-verification.md).
