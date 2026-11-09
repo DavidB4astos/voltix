@@ -14,12 +14,12 @@
 
 - [x] 3.1 `openspec validate implement-c2-order-cancellation --strict` — verificação: válido
 - [x] 3.2 Suíte `python -m unittest discover -s tests -q` preservada — verificação: 188 aprovados (exit 0)
-- [ ] 3.3 `git diff --check` limpo — verificação: sem conflitos/whitespace
-- [ ] 3.4 Commit focado com a implementação — verificação: `git log --oneline -1`
+- [x] 3.3 `git diff --check` limpo — verificação: sem conflitos/whitespace
+- [x] 3.4 Commit focado com a implementação — verificação: `git log --oneline -1` → `968481c`
 
 ## 4. Publicação restrita
 
-- [ ] 4.1 Dry-run de `function/voltix_orders/cancel_order.xs`, `api/customer/order_id_cancel_POST.xs`, `api/internal_orders/api_group.xs` e `api/internal_orders/order_id_cancel_POST.xs` — verificação: preview de criação anexado à evidência
+- [x] 4.1 Dry-run de `function/voltix_orders/cancel_order.xs`, `api/customer/order_id_cancel_POST.xs`, `api/internal_orders/api_group.xs` e `api/internal_orders/order_id_cancel_POST.xs` — verificação: preview em `evidence/01-dry-run-preview.md` (1 função, 1 grupo, 2 endpoints; sem avisos)
 - [ ] 4.2 **GATE** — aguardar confirmação explícita para publicar qualquer um dos três documentos; publicar somente os pacotes aprovados — verificação: OK do usuário registrado
 - [ ] 4.3 Pull independente pós-publicação para cada um dos documentos publicados — verificação: diff do pull confere local
 
