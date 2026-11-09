@@ -197,6 +197,21 @@ tabela remota temporária que não deve ser excluída por suposição. Consulte:
 
 A C1 (baixa/reserva atômica de estoque no checkout) foi **IMPLEMENTADA e PUBLICADA em 05/11/2026** no XanoFree (change `implement-c1-atomic-decrement`, commits `854fa8b`, `af2e959`). O checkout revalida e baixa estoque atomicamente por item dentro da mesma transação que cria Pedido/ItemPedido/Pagamento; em falta → HTTP 200 `confirmado=false`, nada persiste, Carrinho intacto. Pull confere; rota responde à validação esperada; 188 testes e `openspec validate` verdes. A spec consolidada `checkout-orders` traz o delta; a transação e guarda seguem exatamente o modelo aprovado na prova de 04/11 (dados sintéticos, E6 exceção). Verificação remota = somente leitura (decisão do usuário em 05/11). Artefatos de prova foram excluídos em 05/11; nenhum consumo de estoque real ou pedido foi escrito.
 
+### Cancelamento de pedidos
+
+A C2 (cancelamento de pedido) foi **IMPLEMENTADA e PUBLICADA em 09/11/2026** no
+XanoFree (change `implement-c2-order-cancellation`, commit `968481c` + evidências).
+A função `Voltix Orders/cancel_order` devolve o estoque item a item dentro de uma
+transação, marca Pedido e Pagamento como `CANCELADO` e é idempotente quando chamada
+de novo. `POST /api:voltix-customer/orders/{order_id}/cancel` (auth CLIENTE, só o
+próprio Pedido em `AGUARDANDO_PAGAMENTO`) e
+`POST /api:voltix-internal-orders/orders/{order_id}/cancel` (auth `user`, exige
+ADMINISTRADOR ATIVO, aceita `AGUARDANDO_PAGAMENTO` e `PAGAMENTO_CONFIRMADO`).
+Verificação remota somente leitura (pull + 401 nas duas rotas); nenhum Pedido,
+Pagamento ou estoque real foi alterado. Limite conhecido: `db.edit` no XanoScript
+não aceita `where`, então o risco de devolução dupla em cancelamentos
+*simultâneos* do mesmo Pedido permanece documentado no design.
+
 ### Imagens de produto
 
 Há infraestrutura de imagens locais e créditos em `assets/demo/manifest.json`.
@@ -250,10 +265,9 @@ git status --short --branch
 
 ## 7. Próximas prioridades recomendadas
 
-1. **C1 concluída e publicada (05/11/2026)**; seguir a sequência do roadmap:
-   cancelamento de pedido (C2), gestão de pedidos (C3), dashboard (C10),
-   histórico CRM (C6) e atendimentos (C7). Cada mudança com escopo e aprovação
-   próprios.
+1. **C1 e C2 concluídas e publicadas** (05/11/2026 e 09/11/2026); seguir a
+   sequência do roadmap: gestão de pedidos (C3), dashboard (C10), histórico CRM
+   (C6) e atendimentos (C7). Cada mudança com escopo e aprovação próprios.
 2. Manter testes de compra E2E (C9) bloqueados até haver ambiente Xano isolado
    e autorizado.
 3. Retomar o trabalho mobile somente com uma change própria.

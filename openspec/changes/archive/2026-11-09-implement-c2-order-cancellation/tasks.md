@@ -29,7 +29,7 @@
 
 ## 6. Encerramento
 
-- [ ] 6.1 Arquivar a delta spec como nova capability `order-cancellation` — verificação: `openspec validate --all --strict` sem conflitos
-- [ ] 6.2 Atualizar `docs/roadmap-changes.md`, `docs/AI_AGENT_HANDOFF.md` e defer/decisions (E1) — verificação: consistente com a evidência
-- [ ] 6.3 `git status --short --branch` limpo — verificação: nada pendente
+- [x] 6.1 Arquivar a delta spec como nova capability `order-cancellation` — verificação: `openspec validate --all --strict` sem conflitos
+- [x] 6.2 Atualizar `docs/roadmap-changes.md`, `docs/AI_AGENT_HANDOFF.md` e defer/decisions (E1) — verificação: consistente com a evidência
+- [x] 6.3 `git status --short --branch` limpo — verificação: nada pendente
 - [ ] 6.4 Commit focado + push somente com autorização explícita do usuário — verificação: `git log --oneline -1`
