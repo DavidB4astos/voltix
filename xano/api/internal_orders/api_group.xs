@@ -1,7 +1,7 @@
-// Administrator-only order cancellation.
+// Internal order consultation, cancellation and sales reporting.
 api_group "Voltix Internal Orders" {
   canonical = "voltix-internal-orders"
-  description = "Administrator-only order operations."
+  description = "Internal order consultation, cancellation and sales reporting."
   swagger = {active: false}
   tags = ["voltix:internal-orders"]
   guid = "oWAMOJGZJbLdEILuMVsUWTApsWU"
