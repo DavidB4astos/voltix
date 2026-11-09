@@ -28,7 +28,7 @@
 
 - [ ] 4.1 Medir plano/consumo atual no dashboard Xano e registrar a evidência — verificação: dados do dashboard anexados
 - [ ] 4.2 Apresentar impacto estimado da C7 e **GATE** — aguardar autorização explícita antes de publicar — verificação: OK registrado
-- [ ] 4.3 Dry-run restrito à tabela e aos endpoints novos — verificação: preview anexado à evidência
+- [x] 4.3 Dry-run restrito à tabela e aos endpoints novos — verificação: preview anexado à evidência
 - [ ] 4.4 Publicar somente após o gate — verificação: saída da CLI registrada
 - [ ] 4.5 Pull independente pós-publicação — verificação: diff confere com o local
 
