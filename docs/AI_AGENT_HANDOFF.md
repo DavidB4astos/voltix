@@ -84,10 +84,11 @@ importação real) exige ambiente isolado, autorizado e sem dados reais.
 
 ## 4. Estado do Git e do OpenSpec
 
-Na conferência de 09/11/2026, a C7 e sua tela foram implementadas e verificadas.
-`openspec validate --all --strict` aprovou 23 itens e a suíte
-`python -m unittest discover -s tests -q` aprovou 235 testes. Esses resultados
-são um registro datado, não substituem uma nova verificação após mudanças.
+Na conferência de 09/11/2026, a C7 e sua tela, e em seguida a tela de Pedidos (C3),
+foram implementadas e verificadas. `openspec validate --all --strict` aprovou 24
+itens e a suíte `python -m unittest discover -s tests -q` aprovou 266 testes.
+Esses resultados são um registro datado, não substituem uma nova verificação
+após mudanças.
 
 Antes de prosseguir, confira o estado real com:
 
@@ -156,6 +157,7 @@ As seguintes changes foram concluídas e arquivadas:
 - `refine-internal-import-desktop`: apresentação da importação em massa.
 - `implement-customer-history-panel`: histórico de Pedidos na ficha do Cliente.
 - `implement-attendance-panel`: seção de Atendimentos do CRM interno.
+- `implement-order-panel`: seção de Pedidos do painel interno.
 
 O controle de seção interno deve continuar restrito no `State`:
 
@@ -307,6 +309,22 @@ leitura/criação/edição também, enquanto `403` de transição é negação d
 e mantém a sessão. 235 testes, `openspec validate --all --strict` (23 itens),
 `git diff --check` e `reflex compile` verdes.
 
+A **tela de Pedidos (C3)** foi entregue em 09/11/2026 pela change
+`implement-order-panel`, sem backend novo. A seção **Pedidos** está disponível a
+FUNCIONARIO e ADMINISTRADOR ativos, com busca por código/nome do Cliente, filtro
+de status, paginação de 20 e consumo de `GET orders`. O detalhe mostra Cliente e
+e-mail mascarado, itens, endereço, Pagamento e valores; CPF, telefone, senha,
+hash e token não são exibidos. Apenas ADMINISTRADOR avança o status, um passo por
+vez (`PAGAMENTO_CONFIRMADO → EM_PREPARACAO → ENVIADO → ENTREGUE`), com repetição
+idempotente e transições inválidas bloqueadas localmente e no backend. O contrato
+`voltix/internal_orders.py` valida chaves exatas, status, datas, totais e máscara;
+`XANO_INTERNAL_ORDERS_URL`, `XANO_INTERNAL_ORDER_DETAILS_URL` e
+`XANO_INTERNAL_ORDER_STATUS_URL` vêm do ambiente e são usadas server-side. `401`
+encerra a sessão; `403` em leitura também, enquanto `403`/`400` no avanço são
+negação de operação e mantêm a sessão e o Pedido. 266 testes,
+`openspec validate --all --strict` (24 itens), `git diff --check` e
+`reflex compile` verdes, com `reflex.lock` restaurado.
+
 ### Imagens de produto
 
 Há infraestrutura de imagens locais e créditos em `assets/demo/manifest.json`.
@@ -335,7 +353,7 @@ Verificação de testes a partir da raiz do repositório:
 & '.\.venv-windows\Scripts\python.exe' -m unittest discover -s tests -q
 ```
 
-A suíte mais recente registrada teve **235 testes aprovados**. Execute somente
+A suíte mais recente registrada teve **266 testes aprovados**. Execute somente
 os testes pertinentes quando a change for documental; não gere ruído rodando
 toda a aplicação sem necessidade.
 
@@ -361,10 +379,9 @@ git status --short --branch
 ## 7. Próximas prioridades recomendadas
 
 1. **C1, C2, C3, C6, C7 e C10 concluídas e publicadas** (05/11/2026 e
-   09/11/2026); as telas de histórico do Cliente e de Atendimentos também foram
-   entregues. A tela de pedidos (C3) e a tela do dashboard (C10) podem ser
-   changes próprias quando aprovadas. Cada mudança com escopo e aprovação
-   próprios.
+   09/11/2026); as telas de histórico do Cliente, de Atendimentos e de Pedidos
+   também foram entregues. A tela do dashboard (C10) pode ser change própria
+   quando aprovada. Cada mudança com escopo e aprovação próprios.
 2. Manter testes de compra E2E (C9) bloqueados até haver ambiente Xano isolado
    e autorizado.
 3. Retomar o trabalho mobile somente com uma change própria.
@@ -372,9 +389,9 @@ git status --short --branch
    modelo e direitos comprovados.
 
 O CRM está completo no backend. No painel já existem a consulta de clientes
-(C4), o histórico do Cliente (C6) e os atendimentos (C7); a consulta/transição
-de pedidos (C3) e o relatório de vendas (C10) existem no backend, mas suas telas
-continuam changes visuais futuras e dependem da ordem de negócio documentada.
+(C4), o histórico do Cliente (C6), os atendimentos (C7) e a consulta/transição
+de pedidos (C3); o relatório de vendas (C10) existe no backend, mas sua tela
+continua como change visual futura e depende da ordem de negócio documentada.
 
 ## 8. Comandos e decisões que exigem cuidado
 

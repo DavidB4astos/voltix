@@ -29,6 +29,10 @@ from .internal_customers import (InternalCustomer, InternalOrder, history_parame
                                  customer_record, bounded_read)
 from .internal_attendances import (Attendance, attendance_filters, attendance_page,
                                    attendance_record, status_result)
+from .internal_orders import (OrderDetail as InternalOrderDetail,
+                              OrderSummary as InternalOrderSummary,
+                              order_detail, order_filters, order_status_result,
+                              order_summary_page)
 
 try:
     from .demo_images import (
@@ -1962,13 +1966,31 @@ class State(rx.State):
     _internal_attendances_generation: int = 0
     _internal_attendance_detail_generation: int = 0
 
+    internal_orders: list[InternalOrderSummary] = []
+    internal_order_detail: list[InternalOrderDetail] = []
+    internal_orders_query: str = ""
+    internal_orders_status: str = "TODOS"
+    internal_orders_query_input: str = ""
+    internal_orders_status_input: str = "TODOS"
+    internal_orders_page: int = 1
+    internal_orders_total: int = 0
+    internal_orders_pages: int = 0
+    internal_orders_loading: bool = False
+    internal_order_loading: bool = False
+    internal_orders_message: str = ""
+    internal_order_feedback: str = ""
+    internal_order_feedback_error: bool = False
+    internal_order_saving: bool = False
+    _internal_orders_generation: int = 0
+    _internal_order_detail_generation: int = 0
+
     internal_section: str = "clientes"
 
     @rx.event
     def select_internal_section(self, section: str):
         if not isinstance(section, str) or not self._internal_customer_allowed():
             return
-        allowed = {"clientes", "atendimentos"}
+        allowed = {"clientes", "atendimentos", "pedidos"}
         if self.user_role == "ADMINISTRADOR":
             allowed.update({"produtos", "catalogo", "importacao"})
         if section in allowed:
@@ -1976,6 +1998,8 @@ class State(rx.State):
             self.internal_section = section
             if changed and section == "atendimentos":
                 return State.load_internal_attendances
+            if changed and section == "pedidos":
+                return State.load_internal_orders
 
     def _internal_customer_allowed(self) -> bool:
         return bool(self._auth_token and self.is_authenticated and self.session_status == "success"
@@ -2017,6 +2041,9 @@ class State(rx.State):
     def _internal_attendance_allowed(self) -> bool:
         return self._internal_customer_allowed()
 
+    def _internal_order_allowed(self) -> bool:
+        return self._internal_customer_allowed()
+
     def _clear_internal_attendance_detail(self):
         self._internal_attendance_detail_generation += 1
         self.internal_attendance_detail = []
@@ -2049,6 +2076,35 @@ class State(rx.State):
         self.internal_attendance_form_data_atendimento = ""
         self.internal_attendance_saving = False
         self._reset_internal_attendance_filters()
+
+    def _order_feedback(self, message: str, *, error: bool = False):
+        self.internal_order_feedback = message
+        self.internal_order_feedback_error = error
+
+    def _reset_internal_order_filters(self):
+        self.internal_orders_query = ""
+        self.internal_orders_status = "TODOS"
+        self.internal_orders_query_input = ""
+        self.internal_orders_status_input = "TODOS"
+        self.internal_orders_page = 1
+
+    def _clear_internal_order_detail(self):
+        self._internal_order_detail_generation += 1
+        self.internal_order_detail = []
+        self.internal_order_loading = False
+
+    def _clear_internal_orders(self):
+        self._internal_orders_generation += 1
+        self._clear_internal_order_detail()
+        self.internal_orders = []
+        self.internal_orders_total = 0
+        self.internal_orders_pages = 0
+        self.internal_orders_loading = False
+        self.internal_orders_message = ""
+        self.internal_order_feedback = ""
+        self.internal_order_feedback_error = False
+        self.internal_order_saving = False
+        self._reset_internal_order_filters()
 
     @rx.event
     def close_internal_customer(self):
@@ -2716,6 +2772,223 @@ class State(rx.State):
         finally:
             self.internal_attendance_saving = False
 
+    @rx.event
+    def set_internal_orders_query_input(self, value: str):
+        self.internal_orders_query_input = value
+
+    @rx.event
+    def set_internal_orders_status_input(self, value: str):
+        self.internal_orders_status_input = value
+
+    @rx.event
+    def apply_internal_order_filters(self, form_data: dict):
+        try:
+            parameters = order_filters(
+                str(form_data.get("q") or ""),
+                str(form_data.get("status") or "TODOS"),
+                1,
+            )
+        except ValueError:
+            self.internal_orders_message = (
+                "Filtros inválidos. Use até 100 caracteres e um status permitido.")
+            return
+        self.internal_orders_query = parameters["q"]
+        self.internal_orders_status = parameters["status"]
+        self.internal_orders_query_input = self.internal_orders_query
+        self.internal_orders_status_input = self.internal_orders_status
+        self.internal_orders_page = 1
+        return State.load_internal_orders
+
+    @rx.event
+    def clear_internal_order_filters(self):
+        self._reset_internal_order_filters()
+        return State.load_internal_orders
+
+    @rx.event
+    def internal_orders_previous(self):
+        if self.internal_orders_page > 1 and not self.internal_orders_loading:
+            self.internal_orders_page -= 1
+            return State.load_internal_orders
+
+    @rx.event
+    def internal_orders_next(self):
+        if (self.internal_orders_page < self.internal_orders_pages
+                and not self.internal_orders_loading):
+            self.internal_orders_page += 1
+            return State.load_internal_orders
+
+    @rx.event
+    async def load_internal_orders(self):
+        if not self._internal_order_allowed():
+            self._clear_internal_orders()
+            return
+        try:
+            parameters = order_filters(
+                self.internal_orders_query,
+                self.internal_orders_status,
+                self.internal_orders_page,
+            )
+        except ValueError:
+            self.internal_orders_message = (
+                "Filtros inválidos. Use até 100 caracteres e um status permitido.")
+            return
+        self._internal_orders_generation += 1
+        generation = self._internal_orders_generation
+        token, user_id = self._auth_token, self.user_id
+        self.internal_orders = []
+        self.internal_orders_total = 0
+        self.internal_orders_pages = 0
+        self.internal_orders_message = ""
+        self.internal_orders_loading = True
+        try:
+            url = _required_environment_url("XANO_INTERNAL_ORDERS_URL")
+            url += ("&" if "?" in url else "?") + urlencode(parameters)
+
+            async def request():
+                return await _server_side_xano_request(
+                    url, authorization="Bearer " + token, retry_rate_limit=False)
+
+            result = await bounded_read(request)
+            items, total, pages = order_summary_page(result, page=parameters["page"])
+            if (generation == self._internal_orders_generation
+                    and token == self._auth_token and user_id == self.user_id
+                    and self._internal_order_allowed()):
+                self.internal_orders = items
+                self.internal_orders_total = total
+                self.internal_orders_pages = pages
+                if not items:
+                    self.internal_orders_message = (
+                        "Nenhum pedido encontrado para os filtros informados.")
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if (generation == self._internal_orders_generation
+                    and token == self._auth_token and user_id == self.user_id):
+                if isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                    self._clear_authentication_state(
+                        "Acesso interno não autorizado. Entre novamente.")
+                    return
+                self.internal_orders_message = (
+                    "Não foi possível carregar os pedidos. "
+                    "Verifique o acesso e tente novamente.")
+        finally:
+            if generation == self._internal_orders_generation:
+                self.internal_orders_loading = False
+
+    @rx.event
+    def close_internal_order(self):
+        self._clear_internal_order_detail()
+        self._order_feedback("")
+
+    @rx.event
+    async def select_internal_order(self, order_id: int):
+        if not self._internal_order_allowed():
+            self._clear_internal_orders()
+            return
+        self._clear_internal_order_detail()
+        generation = self._internal_order_detail_generation
+        list_generation = self._internal_orders_generation
+        token, user_id = self._auth_token, self.user_id
+        self.internal_order_loading = True
+        self._order_feedback("")
+        try:
+            if type(order_id) is not int or order_id < 1:
+                raise ValueError("Invalid id")
+            url = _required_environment_url("XANO_INTERNAL_ORDER_DETAILS_URL")
+            if "{order_id}" not in url:
+                raise ValueError("Missing order placeholder")
+            url = url.replace("{order_id}", str(order_id))
+
+            async def request():
+                return await _server_side_xano_request(
+                    url, authorization="Bearer " + token, retry_rate_limit=False)
+
+            record = order_detail(await bounded_read(request), order_id=order_id)
+            if (generation == self._internal_order_detail_generation
+                    and list_generation == self._internal_orders_generation
+                    and token == self._auth_token and user_id == self.user_id
+                    and self._internal_order_allowed()):
+                self.internal_order_detail = [record]
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if (generation == self._internal_order_detail_generation
+                    and token == self._auth_token and user_id == self.user_id):
+                if isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                    self._clear_authentication_state(
+                        "Acesso interno não autorizado. Entre novamente.")
+                    return
+                if isinstance(error, urllib.error.HTTPError) and error.code == 404:
+                    self._order_feedback("Pedido não encontrado.", error=True)
+                else:
+                    self._order_feedback(
+                        "Não foi possível consultar este pedido. Tente novamente.",
+                        error=True)
+        finally:
+            if generation == self._internal_order_detail_generation:
+                self.internal_order_loading = False
+
+    @rx.event
+    async def advance_internal_order_status(self):
+        if not self._internal_order_allowed():
+            self._clear_internal_orders()
+            return
+        if not self.internal_order_detail:
+            return
+        current = self.internal_order_detail[0]
+        if self.user_role != "ADMINISTRADOR":
+            self._order_feedback(
+                "Somente um administrador pode avançar o status do pedido.",
+                error=True)
+            return
+        target = {
+            "PAGAMENTO_CONFIRMADO": "EM_PREPARACAO",
+            "EM_PREPARACAO": "ENVIADO",
+            "ENVIADO": "ENTREGUE",
+        }.get(current.status)
+        if target is None:
+            self._order_feedback(
+                "Este pedido não possui próximo status operacional.", error=True)
+            return
+        token, user_id = self._auth_token, self.user_id
+        self.internal_order_saving = True
+        try:
+            url = _required_environment_url("XANO_INTERNAL_ORDER_STATUS_URL")
+            if "{order_id}" not in url:
+                raise ValueError("Missing order placeholder")
+            url = url.replace("{order_id}", str(current.id))
+            result = order_status_result(await _server_side_xano_request(
+                url,
+                method="POST",
+                payload={"status": target},
+                authorization="Bearer " + token,
+                retry_rate_limit=False,
+            ), order_id=current.id)
+            if token == self._auth_token and user_id == self.user_id and self._internal_order_allowed():
+                current.status = result.status_atual
+                self.internal_order_detail = [current]
+                self._order_feedback(
+                    "Status atualizado com sucesso." if result.alterado
+                    else "O pedido já estava neste status.")
+                return State.load_internal_orders
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if isinstance(error, urllib.error.HTTPError):
+                error.close()
+            if isinstance(error, urllib.error.HTTPError) and error.code == 401:
+                self._clear_authentication_state(
+                    "Acesso interno não autorizado. Entre novamente.")
+                return
+            if isinstance(error, urllib.error.HTTPError) and error.code == 404:
+                self._order_feedback("Pedido não encontrado.", error=True)
+            elif isinstance(error, urllib.error.HTTPError) and error.code in {400, 403}:
+                self._order_feedback(
+                    "A transição de status não é permitida.", error=True)
+            else:
+                self._order_feedback(
+                    "Não foi possível alterar o status. Tente novamente.", error=True)
+        finally:
+            self.internal_order_saving = False
+
     integration_loading: bool = False
     integration_status: str = "idle"
     integration_message: str = "Integration check has not run."
@@ -2902,6 +3175,7 @@ class State(rx.State):
     ):
         self._clear_internal_customers()
         self._clear_internal_attendances()
+        self._clear_internal_orders()
         self.internal_section = "clientes"
         self._auth_token = ""
         self.is_authenticated = False
@@ -4263,6 +4537,7 @@ class State(rx.State):
         self.internal_section = "clientes"
         self._clear_catalog_state()
         self._clear_internal_attendances()
+        self._clear_internal_orders()
         self.login_loading = True
         self.login_status = "loading"
         self.login_message = ""
@@ -4380,6 +4655,7 @@ class State(rx.State):
         if self.user_id != identity_id or self.user_role != identity_role:
             self._clear_internal_customers()
             self._clear_internal_attendances()
+            self._clear_internal_orders()
         self.user_id = identity_id
         self.user_name = identity_name
         self.user_email = identity_email
@@ -6611,6 +6887,224 @@ def internal_attendance_panel(*, show_heading: bool = True) -> rx.Component:
         aria_label="Atendimentos internos", class_name="vx-attendance")
 
 
+def internal_order_panel(*, show_heading: bool = True) -> rx.Component:
+    def status_label(status):
+        return rx.match(status,
+            ("AGUARDANDO_PAGAMENTO", "Aguardando pagamento"),
+            ("PAGAMENTO_CONFIRMADO", "Pagamento confirmado"),
+            ("EM_PREPARACAO", "Em preparação"), ("ENVIADO", "Enviado"),
+            ("ENTREGUE", "Entregue"), ("CANCELADO", "Cancelado"),
+            "Indisponível")
+
+    def status_badge(status):
+        scheme = rx.match(status,
+            ("AGUARDANDO_PAGAMENTO", "amber"),
+            ("PAGAMENTO_CONFIRMADO", "cyan"), ("EM_PREPARACAO", "blue"),
+            ("ENVIADO", "indigo"), ("ENTREGUE", "green"),
+            ("CANCELADO", "red"), "gray")
+        return rx.badge(status_label(status), color_scheme=scheme, variant="soft",
+            radius="full", size="2")
+
+    def order_row(item):
+        return rx.el.tr(
+            rx.el.td(item.codigo),
+            rx.el.td(item.cliente_nome),
+            rx.el.td(status_badge(item.status)),
+            rx.el.td(item.data_pedido_display),
+            rx.el.td(item.itens_count_display),
+            rx.el.td(_cart_money_text(item.valor_total)),
+            rx.el.td(rx.el.button("Abrir", rx.icon("arrow-up-right", size=15),
+                on_click=State.select_internal_order(item.id), type="button",
+                aria_label="Abrir pedido " + item.codigo,
+                disabled=State.internal_orders_loading | State.internal_order_loading,
+                class_name="vx-customers__detail-action")))
+
+    def filtered_field(label, control, css_class=""):
+        return rx.el.div(rx.el.label(label), control, class_name=css_class)
+
+    def detail(item):
+        has_next = ((item.status == "PAGAMENTO_CONFIRMADO")
+                    | (item.status == "EM_PREPARACAO") | (item.status == "ENVIADO"))
+        next_label = rx.match(item.status,
+            ("PAGAMENTO_CONFIRMADO", "Avançar para Em preparação"),
+            ("EM_PREPARACAO", "Avançar para Enviado"),
+            ("ENVIADO", "Avançar para Entregue"),
+            "Sem próximo status")
+
+        def info(label, value):
+            return rx.el.div(rx.el.dt(label), rx.el.dd(value),
+                class_name="vx-customers__field")
+
+        def item_row(product):
+            name = rx.cond(product.nome_ou_descricao != "",
+                           product.nome_ou_descricao, product.sku)
+            return rx.el.tr(
+                rx.el.td(name),
+                rx.el.td(product.sku),
+                rx.el.td(product.quantidade),
+                rx.el.td(_cart_money_text(product.preco_unitario)),
+                rx.el.td(_cart_money_text(product.subtotal)))
+
+        return rx.el.section(
+            rx.el.div(
+                rx.el.div(rx.el.p("PEDIDO SELECIONADO", class_name="vx-customers__eyebrow"),
+                    rx.el.h3(item.codigo, class_name="vx-customers__detail-title")),
+                rx.el.button(rx.icon("x", size=18), on_click=State.close_internal_order,
+                    type="button", aria_label="Fechar pedido selecionado",
+                    class_name="vx-customers__close"),
+                class_name="vx-customers__detail-header"),
+            status_badge(item.status),
+            rx.el.dl(
+                info("Cliente", item.cliente_nome),
+                info("E-mail", rx.cond(item.cliente_email_masked != "",
+                    item.cliente_email_masked, "Indisponível")),
+                info("Data do pedido", item.data_pedido_display)),
+            rx.el.div(rx.el.h4("Itens"),
+                rx.el.div(rx.table.root(
+                    rx.table.header(rx.table.row(
+                        rx.table.column_header_cell("Produto"),
+                        rx.table.column_header_cell("SKU"),
+                        rx.table.column_header_cell("Qtd."),
+                        rx.table.column_header_cell("Preço"),
+                        rx.table.column_header_cell("Subtotal"))),
+                    rx.table.body(rx.foreach(item.itens, item_row)),
+                    overflow_x="auto", width="100%", class_name="vx-customers__table")),
+                class_name="vx-orders__block"),
+            rx.el.div(rx.el.h4("Entrega"),
+                rx.el.dl(
+                    info("Endereço", item.endereco_linha),
+                    info("Bairro / cidade", item.endereco_cidade),
+                    info("CEP", item.cep_display),
+                    info("Identificação", item.identificacao_display)),
+                class_name="vx-orders__block"),
+            rx.el.div(rx.el.h4("Pagamento"),
+                rx.el.dl(
+                    info("Método", item.pagamento_metodo_display),
+                    info("Valor", _cart_money_text(item.pagamento_valor)),
+                    info("Status", item.pagamento_status_display)),
+                class_name="vx-orders__block"),
+            rx.el.dl(
+                info("Subtotal", _cart_money_text(item.subtotal)),
+                info("Frete", _cart_money_text(item.valor_frete)),
+                info("Total", _cart_money_text(item.valor_total)),
+                class_name="vx-orders__totals"),
+            rx.cond(State.internal_order_feedback != "",
+                rx.el.p(State.internal_order_feedback, role="status",
+                    class_name=rx.cond(State.internal_order_feedback_error,
+                        "vx-orders__feedback is-error", "vx-orders__feedback"))),
+            rx.cond(State.user_role == "ADMINISTRADOR",
+                rx.el.div(
+                    rx.cond(has_next,
+                        rx.el.button(rx.icon("arrow-right", size=16), next_label,
+                            type="button",
+                            on_click=State.advance_internal_order_status,
+                            disabled=State.internal_order_saving,
+                            class_name="vx-customers__primary"),
+                        rx.el.p("Pedido sem próximo status operacional.",
+                            class_name="vx-orders__hint")),
+                    class_name="vx-orders__actions"),
+                rx.el.p("Somente administradores avançam o status.",
+                    class_name="vx-orders__hint")),
+            aria_label="Detalhe do pedido", class_name="vx-customers__detail vx-orders__detail")
+
+    empty_message = (State.internal_orders_message
+                     == "Nenhum pedido encontrado para os filtros informados.")
+    initial = ((State.internal_orders.length() == 0)
+               & (State.internal_orders_message == "")
+               & ~State.internal_orders_loading)
+    status_options = [("TODOS", "Todos"),
+        ("AGUARDANDO_PAGAMENTO", "Aguardando pagamento"),
+        ("PAGAMENTO_CONFIRMADO", "Pagamento confirmado"),
+        ("EM_PREPARACAO", "Em preparação"), ("ENVIADO", "Enviado"),
+        ("ENTREGUE", "Entregue"), ("CANCELADO", "Cancelado")]
+    return rx.el.section(
+        rx.el.h2("Pedidos", class_name="vx-customers__heading") if show_heading else rx.fragment(),
+        rx.el.div(rx.el.p("Acompanhe os pedidos do CRM", class_name="vx-customers__intro-title"),
+            rx.el.p("Consulte Cliente, itens, entrega e Pagamento. O administrador avança "
+                "o status em sequência.", class_name="vx-customers__muted"),
+            class_name="vx-customers__intro"),
+        rx.el.form(rx.el.div(
+            rx.el.div(rx.el.label("Buscar", html_for="internal-order-query"),
+                rx.input(id="internal-order-query", name="q", type="search", max_length=100,
+                    value=State.internal_orders_query_input,
+                    on_change=State.set_internal_orders_query_input,
+                    placeholder="Código do pedido ou nome do Cliente",
+                    disabled=State.internal_orders_loading, width="100%", size="3"),
+                class_name="vx-customers__search"),
+            rx.el.div(rx.el.label("Status", html_for="internal-order-status"),
+                rx.el.select(*[rx.el.option(label, value=value) for value, label in status_options],
+                    id="internal-order-status", name="status",
+                    value=State.internal_orders_status_input,
+                    on_change=State.set_internal_orders_status_input,
+                    disabled=State.internal_orders_loading),
+                class_name="vx-customers__status-filter"),
+            rx.el.button(rx.icon("filter", size=16), "Aplicar filtros", type="submit",
+                disabled=State.internal_orders_loading, class_name="vx-customers__primary"),
+            rx.el.button("Limpar filtros", type="button",
+                on_click=State.clear_internal_order_filters,
+                disabled=State.internal_orders_loading, class_name="vx-customers__secondary"),
+            class_name="vx-customers__filters"),
+            on_submit=State.apply_internal_order_filters, reset_on_submit=False,
+            width="100%"),
+        rx.el.div(rx.el.p(rx.icon("shield-check", size=15),
+                "CPF, telefone, senha, hash e token não são exibidos.",
+                class_name="vx-customers__muted"),
+            rx.el.button(rx.icon("refresh-cw", size=15), "Carregar / atualizar pedidos",
+                type="button", on_click=State.load_internal_orders,
+                disabled=State.internal_orders_loading, class_name="vx-customers__refresh"),
+            class_name="vx-customers__toolbar"),
+        rx.cond(State.internal_orders_loading,
+            rx.el.div(rx.icon("loader-circle", size=21), rx.el.p("Carregando pedidos…"),
+                role="status", class_name="vx-customers__feedback")),
+        rx.cond(State.internal_orders_message != "",
+            rx.el.div(rx.cond(empty_message, rx.icon("inbox", size=23), rx.icon("circle-alert", size=23)),
+                rx.el.p(rx.cond(empty_message, "Nenhum pedido encontrado",
+                    "Não foi possível concluir a consulta"), class_name="vx-customers__feedback-title"),
+                rx.el.p(State.internal_orders_message), role="status",
+                class_name=rx.cond(empty_message,
+                    "vx-customers__feedback", "vx-customers__feedback is-error"))),
+        rx.cond(initial, rx.el.div(rx.icon("receipt-text", size=26),
+            rx.el.p("Sua consulta começa aqui", class_name="vx-customers__feedback-title"),
+            rx.el.p("Use os filtros ou carregue os pedidos para começar."),
+            class_name="vx-customers__feedback")),
+        rx.cond(State.internal_orders.length() > 0,
+            rx.el.div(rx.el.div(rx.el.h2("Resultados da consulta"),
+                rx.el.p(State.internal_orders_total, " pedidos encontrados"),
+                class_name="vx-customers__results-heading"),
+                rx.box(rx.table.root(rx.table.header(rx.table.row(*[
+                    rx.table.column_header_cell(label)
+                    for label in ["Pedido", "Cliente", "Status", "Data", "Itens",
+                                  "Total", "Consulta"]])),
+                    rx.table.body(rx.foreach(State.internal_orders, order_row))),
+                    overflow_x="auto", width="100%", class_name="vx-customers__table")),
+            rx.fragment()),
+        rx.cond(State.internal_orders_pages > 0,
+            rx.el.nav(rx.el.p("Página ", State.internal_orders_page, " de ",
+                    State.internal_orders_pages),
+                rx.el.div(rx.el.button(rx.icon("chevron-left", size=16), "Anterior",
+                        type="button", aria_label="Página anterior dos pedidos",
+                        on_click=State.internal_orders_previous,
+                        disabled=(State.internal_orders_page <= 1) | State.internal_orders_loading,
+                        class_name="vx-customers__secondary"),
+                    rx.el.button("Próxima", rx.icon("chevron-right", size=16), type="button",
+                        aria_label="Próxima página dos pedidos",
+                        on_click=State.internal_orders_next,
+                        disabled=(State.internal_orders_page >= State.internal_orders_pages) | State.internal_orders_loading,
+                        class_name="vx-customers__secondary")),
+                aria_label="Paginação dos pedidos", class_name="vx-customers__pagination")),
+        rx.el.div(
+            rx.cond(State.internal_order_loading,
+                rx.el.div(rx.icon("loader-circle", size=20), "Carregando detalhe…",
+                    role="status", class_name="vx-customers__feedback")),
+            rx.cond(State.internal_order_detail.length() > 0,
+                rx.foreach(State.internal_order_detail, detail),
+                rx.el.section(rx.el.p("Selecione um pedido na lista para ver o detalhe.",
+                        class_name="vx-customers__muted"),
+                    class_name="vx-orders__empty-detail")),
+            class_name="vx-orders__workspace"),
+        aria_label="Pedidos internos", class_name="vx-orders")
+
+
 def internal_workspace_shell(content: rx.Component) -> rx.Component:
     def navigation(label: str, key: str, icon: str):
         selected = State.internal_section == key
@@ -6622,12 +7116,13 @@ def internal_workspace_shell(content: rx.Component) -> rx.Component:
 
     title = rx.match(State.internal_section, ("produtos", "Produtos"),
         ("catalogo", "Categorias e marcas"), ("importacao", "Importação"),
-        ("atendimentos", "Atendimentos"), "Clientes")
+        ("atendimentos", "Atendimentos"), ("pedidos", "Pedidos"), "Clientes")
     description = rx.match(State.internal_section,
         ("produtos", "Organize os produtos e suas variações."),
         ("catalogo", "Mantenha a estrutura do seu catálogo organizada."),
         ("importacao", "Prepare, confira e acompanhe a importação do catálogo."),
         ("atendimentos", "Registre e acompanhe os atendimentos do CRM."),
+        ("pedidos", "Consulte pedidos e avance a etapa operacional."),
         "Uma visão clara para consultar e conhecer seus clientes.")
     return rx.el.div(
         rx.el.elements.a("Ir para o conteúdo", href="#internal-workspace-main", class_name="vx-internal__skip"),
@@ -6636,6 +7131,7 @@ def internal_workspace_shell(content: rx.Component) -> rx.Component:
             rx.el.p("ESPAÇO DA EQUIPE", class_name="vx-internal__eyebrow"),
             rx.el.nav(navigation("Clientes", "clientes", "users"),
                 navigation("Atendimentos", "atendimentos", "headset"),
+                navigation("Pedidos", "pedidos", "receipt-text"),
                 rx.cond(State.user_role == "ADMINISTRADOR", rx.fragment(
                     navigation("Produtos", "produtos", "package"),
                     navigation("Categorias e marcas", "catalogo", "tags"),
@@ -7018,6 +7514,7 @@ def index() -> rx.Component:
     protected_area = internal_workspace_shell(rx.fragment(
         rx.cond(State.internal_section == "clientes", internal_customer_panel(show_heading=False), rx.fragment()),
         rx.cond(State.internal_section == "atendimentos", internal_attendance_panel(show_heading=False), rx.fragment()),
+        rx.cond(State.internal_section == "pedidos", internal_order_panel(show_heading=False), rx.fragment()),
         rx.cond(State.user_role == "ADMINISTRADOR", rx.fragment(
             rx.cond(State.internal_section == "catalogo", catalog_management, rx.fragment()),
             rx.cond(State.internal_section == "produtos", product_management, rx.fragment()),
