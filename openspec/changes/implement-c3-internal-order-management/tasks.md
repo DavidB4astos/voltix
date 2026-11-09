@@ -15,11 +15,11 @@
 - [x] 3.1 `openspec validate implement-c3-internal-order-management --strict` — verificação: válido
 - [x] 3.2 Suíte `python -m unittest discover -s tests -q` preservada — verificação: 188 aprovados (exit 0)
 - [x] 3.3 `git diff --check` limpo — verificação: `git diff --cached --check` exit 0 (apenas warnings CRLF)
-- [ ] 3.4 Commit focado com a implementação — verificação: `git log --oneline -1`
+- [x] 3.4 Commit focado com a implementação — verificação: `git log --oneline -1` → `20c195f`
 
 ## 4. Publicação restrita
 
-- [ ] 4.1 Dry-run somente dos três arquivos novos — verificação: preview anexado à evidência
+- [x] 4.1 Dry-run somente dos três arquivos novos — verificação: `evidence/01-dry-run-preview.md` (3 endpoints, nada fora do escopo)
 - [ ] 4.2 **GATE** — aguardar confirmação explícita do usuário antes de publicar — verificação: OK registrado
 - [ ] 4.3 Pull independente pós-publicação dos três documentos — verificação: diff confere com o local
 
