@@ -257,8 +257,20 @@ Cliente existe (`notfound`) e responde `cliente_id`, `items`, `page`,
 (`YYYY-MM-DD`, UTC, inclusivos) e paginação 20/50; ordenação
 `data_pedido desc, id desc`. As consultas de itens e variações são agrupadas por
 página (`in`), sem N+1. Nenhum dado pessoal do Cliente na resposta. Verificação
-remota somente leitura (pull + 401); sem dados sintéticos. **Não há tela no
-painel**: a seção de histórico fica para change própria.
+remota somente leitura (pull + 401); sem dados sintéticos.
+
+A **tela do histórico** foi entregue em 09/11/2026 pela change
+`implement-customer-history-panel`, sem backend novo. A ficha do Cliente no painel
+interno agora carrega automaticamente o histórico em uma seção de largura total abaixo
+da lista/detalhe, com filtros de status (`TODOS` por padrão) e período (`from`/`to` em
+UTC, inclusivos), paginação de 20, Pedidos com resumo e itens sempre expandidos, e
+estados distintos de carregamento/vazio/erro. Fechar/trocar o Cliente, atualizar a
+lista ou logout limpa o histórico; 401/403 encerram a sessão; respostas obsoletas são
+descartadas por geração. O contrato de `voltix/internal_customers.py` valida chaves
+exatas, status, datas, valores e totais antes de levar os dados ao navegador. A URL vem
+de `XANO_INTERNAL_CUSTOMER_ORDERS_URL` (placeholder `{customer_id}`), sempre server-side
+com token interno. 205 testes, `openspec validate --all --strict` (21 itens) e
+`reflex compile` verdes.
 
 ### Imagens de produto
 
@@ -288,7 +300,7 @@ Verificação de testes a partir da raiz do repositório:
 & '.\.venv-windows\Scripts\python.exe' -m unittest discover -s tests -q
 ```
 
-A suíte mais recente registrada teve **188 testes aprovados**. Execute somente
+A suíte mais recente registrada teve **205 testes aprovados**. Execute somente
 os testes pertinentes quando a change for documental; não gere ruído rodando
 toda a aplicação sem necessidade.
 
@@ -314,9 +326,10 @@ git status --short --branch
 ## 7. Próximas prioridades recomendadas
 
 1. **C1, C2, C3, C6 e C10 concluídas e publicadas** (05/11/2026 e 09/11/2026);
-   seguir a sequência do roadmap: atendimentos (C7), após a medição E5.
-   As telas de pedidos, dashboard e histórico podem ser changes próprias quando
-   aprovadas. Cada mudança com escopo e aprovação próprios.
+   a tela de histórico do Cliente também foi entregue. Seguir a sequência do
+   roadmap: atendimentos (C7), após a medição E5. As telas de pedidos e dashboard
+   podem ser changes próprias quando aprovadas. Cada mudança com escopo e
+   aprovação próprios.
 2. Manter testes de compra E2E (C9) bloqueados até haver ambiente Xano isolado
    e autorizado.
 3. Retomar o trabalho mobile somente com uma change própria.
@@ -324,8 +337,8 @@ git status --short --branch
    modelo e direitos comprovados.
 
 CRM ainda não está completo: a consulta de clientes (C4), a consulta/transição
-de pedidos (C3), o histórico do Cliente (C6) e o relatório de vendas (C10)
-existem no backend; atendimentos e as telas de pedidos/dashboard/histórico
+de pedidos (C3), o histórico do Cliente (C6, backend + tela) e o relatório de
+vendas (C10) existem no backend; atendimentos e as telas de pedidos/dashboard
 continuam capabilities futuras e dependem da ordem de negócio documentada.
 
 ## 8. Comandos e decisões que exigem cuidado

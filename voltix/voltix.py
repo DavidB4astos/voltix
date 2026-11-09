@@ -24,7 +24,9 @@ import reflex as rx
 from dotenv import load_dotenv
 
 from rxconfig import config
-from .internal_customers import InternalCustomer, query_parameters, customer_page, customer_record, bounded_read
+from .internal_customers import (InternalCustomer, InternalOrder, history_parameters,
+                                 order_history_page, query_parameters, customer_page,
+                                 customer_record, bounded_read)
 
 try:
     from .demo_images import (
@@ -1915,8 +1917,22 @@ class State(rx.State):
     internal_customers_loading: bool = False
     internal_customer_loading: bool = False
     internal_customers_message: str = ""
+    internal_customer_history: list[InternalOrder] = []
+    internal_customer_history_customer_id: int = 0
+    internal_customer_history_status: str = "TODOS"
+    internal_customer_history_from: str = ""
+    internal_customer_history_to: str = ""
+    internal_customer_history_status_input: str = "TODOS"
+    internal_customer_history_from_input: str = ""
+    internal_customer_history_to_input: str = ""
+    internal_customer_history_page: int = 1
+    internal_customer_history_total: int = 0
+    internal_customer_history_pages: int = 0
+    internal_customer_history_loading: bool = False
+    internal_customer_history_message: str = ""
     _internal_customers_generation: int = 0
     _internal_detail_generation: int = 0
+    _internal_history_generation: int = 0
 
     internal_section: str = "clientes"
 
@@ -1934,6 +1950,22 @@ class State(rx.State):
         return bool(self._auth_token and self.is_authenticated and self.session_status == "success"
                     and self.user_status == "ATIVO" and self.user_role in {"FUNCIONARIO", "ADMINISTRADOR"})
 
+    def _clear_internal_customer_history(self):
+        self._internal_history_generation += 1
+        self.internal_customer_history = []
+        self.internal_customer_history_customer_id = 0
+        self.internal_customer_history_status = "TODOS"
+        self.internal_customer_history_from = ""
+        self.internal_customer_history_to = ""
+        self.internal_customer_history_status_input = "TODOS"
+        self.internal_customer_history_from_input = ""
+        self.internal_customer_history_to_input = ""
+        self.internal_customer_history_page = 1
+        self.internal_customer_history_total = 0
+        self.internal_customer_history_pages = 0
+        self.internal_customer_history_loading = False
+        self.internal_customer_history_message = ""
+
     def _clear_internal_customers(self):
         self._internal_customers_generation += 1
         self._internal_detail_generation += 1
@@ -1949,12 +1981,14 @@ class State(rx.State):
         self.internal_customers_loading = False
         self.internal_customer_loading = False
         self.internal_customers_message = ""
+        self._clear_internal_customer_history()
 
     @rx.event
     def close_internal_customer(self):
         self._internal_detail_generation += 1
         self.internal_customer_detail = []
         self.internal_customer_loading = False
+        self._clear_internal_customer_history()
 
     @rx.event
     def set_internal_customers_search_input(self, value: str):
@@ -2051,6 +2085,8 @@ class State(rx.State):
                 raise ValueError("Unexpected customer")
             if generation == self._internal_detail_generation and list_generation == self._internal_customers_generation and token == self._auth_token and user_id == self.user_id and self._internal_customer_allowed():
                 self.internal_customer_detail = [record]
+                self.internal_customer_history_customer_id = record.id
+                return State.load_internal_customer_history
         except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
             if generation == self._internal_detail_generation and token == self._auth_token and user_id == self.user_id:
                 if isinstance(error, urllib.error.HTTPError):
@@ -2062,6 +2098,141 @@ class State(rx.State):
         finally:
             if generation == self._internal_detail_generation:
                 self.internal_customer_loading = False
+
+    @rx.event
+    def set_internal_customer_history_status_input(self, value: str):
+        self.internal_customer_history_status_input = value
+
+    @rx.event
+    def set_internal_customer_history_from_input(self, value: str):
+        self.internal_customer_history_from_input = value
+
+    @rx.event
+    def set_internal_customer_history_to_input(self, value: str):
+        self.internal_customer_history_to_input = value
+
+    @rx.event
+    def apply_internal_customer_history_filters(self, form_data: dict):
+        if self.internal_customer_history_customer_id < 1:
+            return
+        try:
+            parameters = history_parameters(
+                str(form_data.get("status") or "TODOS"),
+                str(form_data.get("from") or ""),
+                str(form_data.get("to") or ""),
+                1,
+            )
+        except ValueError:
+            self.internal_customer_history_message = (
+                "Filtros inválidos. Use datas no formato AAAA-MM-DD e um período válido."
+            )
+            return
+        self.internal_customer_history_status = parameters["status"]
+        self.internal_customer_history_from = parameters.get("from", "")
+        self.internal_customer_history_to = parameters.get("to", "")
+        self.internal_customer_history_status_input = parameters["status"]
+        self.internal_customer_history_from_input = parameters.get("from", "")
+        self.internal_customer_history_to_input = parameters.get("to", "")
+        self.internal_customer_history_page = 1
+        return State.load_internal_customer_history
+
+    @rx.event
+    def clear_internal_customer_history_filters(self):
+        if self.internal_customer_history_customer_id < 1:
+            return
+        self.internal_customer_history_status = "TODOS"
+        self.internal_customer_history_from = ""
+        self.internal_customer_history_to = ""
+        self.internal_customer_history_status_input = "TODOS"
+        self.internal_customer_history_from_input = ""
+        self.internal_customer_history_to_input = ""
+        self.internal_customer_history_page = 1
+        return State.load_internal_customer_history
+
+    @rx.event
+    def internal_customer_history_previous(self):
+        if self.internal_customer_history_page > 1 and not self.internal_customer_history_loading:
+            self.internal_customer_history_page -= 1
+            return State.load_internal_customer_history
+
+    @rx.event
+    def internal_customer_history_next(self):
+        if (self.internal_customer_history_page < self.internal_customer_history_pages
+                and not self.internal_customer_history_loading):
+            self.internal_customer_history_page += 1
+            return State.load_internal_customer_history
+
+    @rx.event
+    async def load_internal_customer_history(self):
+        customer_id = self.internal_customer_history_customer_id
+        if not self._internal_customer_allowed() or type(customer_id) is not int or customer_id < 1:
+            self._clear_internal_customer_history()
+            return
+        if not self.internal_customer_detail or self.internal_customer_detail[0].id != customer_id:
+            return
+        try:
+            parameters = history_parameters(
+                self.internal_customer_history_status,
+                self.internal_customer_history_from,
+                self.internal_customer_history_to,
+                self.internal_customer_history_page,
+            )
+        except ValueError:
+            self.internal_customer_history_message = (
+                "Filtros inválidos. Use datas no formato AAAA-MM-DD e um período válido."
+            )
+            return
+        self._internal_history_generation += 1
+        generation = self._internal_history_generation
+        list_generation = self._internal_customers_generation
+        detail_generation = self._internal_detail_generation
+        token, user_id = self._auth_token, self.user_id
+        self.internal_customer_history = []
+        self.internal_customer_history_total = 0
+        self.internal_customer_history_pages = 0
+        self.internal_customer_history_message = ""
+        self.internal_customer_history_loading = True
+        try:
+            url = _required_environment_url("XANO_INTERNAL_CUSTOMER_ORDERS_URL")
+            if "{customer_id}" not in url:
+                raise ValueError("Missing customer placeholder")
+            url = url.replace("{customer_id}", str(customer_id))
+            url += ("&" if "?" in url else "?") + urlencode(parameters)
+            async def request():
+                return await _server_side_xano_request(
+                    url, authorization="Bearer " + token, retry_rate_limit=False)
+            result = await bounded_read(request)
+            items, total, pages = order_history_page(
+                result, customer_id=customer_id, page=parameters["page"])
+            if (generation == self._internal_history_generation
+                    and list_generation == self._internal_customers_generation
+                    and detail_generation == self._internal_detail_generation
+                    and token == self._auth_token and user_id == self.user_id
+                    and self.internal_customer_history_customer_id == customer_id
+                    and self._internal_customer_allowed()):
+                self.internal_customer_history = items
+                self.internal_customer_history_total = total
+                self.internal_customer_history_pages = pages
+                if not items:
+                    self.internal_customer_history_message = (
+                        "Nenhum pedido encontrado para este cliente."
+                    )
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if (generation == self._internal_history_generation and token == self._auth_token
+                    and user_id == self.user_id
+                    and self.internal_customer_history_customer_id == customer_id):
+                if isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                    self._clear_internal_customers()
+                    self._clear_authentication_state("Acesso interno não autorizado. Entre novamente.")
+                    return
+                self.internal_customer_history_message = (
+                    "Histórico indisponível. Verifique o acesso e tente novamente."
+                )
+        finally:
+            if generation == self._internal_history_generation:
+                self.internal_customer_history_loading = False
 
     integration_loading: bool = False
     integration_status: str = "idle"
@@ -5511,6 +5682,118 @@ def internal_customer_panel(*, show_heading: bool = True) -> rx.Component:
                 class_name="vx-customers__privacy"),
             aria_label="Detalhes do cliente", class_name="vx-customers__detail")
 
+    def history_status_badge(status):
+        scheme = rx.match(status,
+            ("AGUARDANDO_PAGAMENTO", "amber"), ("PAGAMENTO_CONFIRMADO", "green"),
+            ("EM_PREPARACAO", "cyan"), ("ENVIADO", "blue"), ("ENTREGUE", "green"),
+            ("CANCELADO", "red"), "gray")
+        return rx.badge(_order_display_label(status), color_scheme=scheme, variant="soft",
+            radius="full", size="2")
+
+    def history_item_row(item):
+        return rx.el.tr(
+            rx.el.td(rx.cond(item.sku != "", item.sku, "Indisponível")),
+            rx.el.td(rx.cond(item.nome_ou_descricao != "", item.nome_ou_descricao, "Indisponível")),
+            rx.el.td(item.quantidade.to_string()),
+            rx.el.td(_cart_money_text(item.preco_unitario)),
+            rx.el.td(_cart_money_text(item.subtotal)))
+
+    def history_order(order):
+        return rx.el.article(
+            rx.el.div(
+                rx.el.div(rx.el.p("#" + order.codigo, class_name="vx-history__code"),
+                    rx.el.p(order.data_pedido_display, class_name="vx-history__date"),
+                    class_name="vx-history__order-heading"),
+                history_status_badge(order.status), class_name="vx-history__order-top"),
+            rx.el.dl(
+                rx.el.div(rx.el.dt("Subtotal"), rx.el.dd(_cart_money_text(order.subtotal)),
+                    class_name="vx-history__amount"),
+                rx.el.div(rx.el.dt("Frete"), rx.el.dd(_cart_money_text(order.valor_frete)),
+                    class_name="vx-history__amount"),
+                rx.el.div(rx.el.dt("Total"), rx.el.dd(_cart_money_text(order.valor_total)),
+                    class_name="vx-history__amount is-total"),
+                class_name="vx-history__amounts"),
+            rx.cond(order.itens.length() > 0,
+                rx.el.div(rx.el.table(
+                    rx.el.thead(rx.el.tr(rx.el.th("SKU", scope="col"),
+                        rx.el.th("Descrição", scope="col"), rx.el.th("Qtd.", scope="col"),
+                        rx.el.th("Preço unitário", scope="col"), rx.el.th("Subtotal", scope="col"))),
+                    rx.el.tbody(rx.foreach(order.itens, history_item_row)),
+                    aria_label="Itens do pedido " + order.codigo), class_name="vx-history__items"),
+                rx.el.p("Itens não disponíveis para este pedido.",
+                    class_name="vx-history__items-empty")),
+            class_name="vx-history__order", aria_label="Pedido " + order.codigo)
+
+    def history_section():
+        status_options = [("TODOS", "Todos"), ("AGUARDANDO_PAGAMENTO", "Aguardando pagamento"),
+            ("PAGAMENTO_CONFIRMADO", "Pagamento confirmado"), ("EM_PREPARACAO", "Em preparação"),
+            ("ENVIADO", "Enviado"), ("ENTREGUE", "Entregue"), ("CANCELADO", "Cancelado")]
+        empty_history = State.internal_customer_history_message == "Nenhum pedido encontrado para este cliente."
+        return rx.el.section(
+            rx.el.header(
+                rx.el.div(rx.el.p("HISTÓRICO DE PEDIDOS", class_name="vx-customers__eyebrow"),
+                    rx.el.h3("Pedidos do cliente", class_name="vx-history__title"),
+                    rx.el.p("Compras do mais recente para o mais antigo. Somente leitura.",
+                        class_name="vx-customers__muted")),
+                rx.el.p(State.internal_customer_history_total, " no histórico",
+                    class_name="vx-history__count"),
+                class_name="vx-history__heading"),
+            rx.form(rx.el.div(
+                rx.el.div(rx.el.label("Status", html_for="internal-history-status"),
+                    rx.el.select(*[rx.el.option(label, value=value) for value, label in status_options],
+                        id="internal-history-status", name="status",
+                        value=State.internal_customer_history_status_input,
+                        on_change=State.set_internal_customer_history_status_input,
+                        disabled=State.internal_customer_history_loading),
+                    class_name="vx-history__filter"),
+                rx.el.div(rx.el.label("De", html_for="internal-history-from"),
+                    rx.input(id="internal-history-from", name="from", type="date",
+                        value=State.internal_customer_history_from_input,
+                        on_change=State.set_internal_customer_history_from_input,
+                        disabled=State.internal_customer_history_loading),
+                    class_name="vx-history__filter"),
+                rx.el.div(rx.el.label("Até", html_for="internal-history-to"),
+                    rx.input(id="internal-history-to", name="to", type="date",
+                        value=State.internal_customer_history_to_input,
+                        on_change=State.set_internal_customer_history_to_input,
+                        disabled=State.internal_customer_history_loading),
+                    class_name="vx-history__filter"),
+                rx.el.button(rx.icon("filter", size=16), "Aplicar filtros", type="submit",
+                    disabled=State.internal_customer_history_loading, class_name="vx-customers__primary"),
+                rx.el.button("Limpar filtros", type="button",
+                    on_click=State.clear_internal_customer_history_filters,
+                    disabled=State.internal_customer_history_loading, class_name="vx-customers__secondary"),
+                class_name="vx-history__filters"),
+                on_submit=State.apply_internal_customer_history_filters, reset_on_submit=False,
+                width="100%"),
+            rx.cond(State.internal_customer_history_loading,
+                rx.el.div(rx.icon("loader-circle", size=21), rx.el.p("Carregando histórico…"),
+                    role="status", class_name="vx-customers__feedback")),
+            rx.cond(State.internal_customer_history_message != "",
+                rx.el.div(rx.cond(empty_history, rx.icon("receipt", size=23), rx.icon("circle-alert", size=23)),
+                    rx.el.p(rx.cond(empty_history, "Nenhum pedido encontrado",
+                        "Não foi possível carregar o histórico"), class_name="vx-customers__feedback-title"),
+                    rx.el.p(State.internal_customer_history_message), role="status",
+                    class_name=rx.cond(empty_history, "vx-customers__feedback", "vx-customers__feedback is-error"))),
+            rx.cond(State.internal_customer_history.length() > 0,
+                rx.el.div(rx.foreach(State.internal_customer_history, history_order),
+                    class_name="vx-history__orders")),
+            rx.cond(State.internal_customer_history_pages > 0,
+                rx.el.nav(rx.el.p("Página ", State.internal_customer_history_page, " de ",
+                        State.internal_customer_history_pages),
+                    rx.el.div(rx.el.button(rx.icon("chevron-left", size=16), "Anterior", type="button",
+                            aria_label="Página anterior do histórico",
+                            on_click=State.internal_customer_history_previous,
+                            disabled=(State.internal_customer_history_page <= 1) | State.internal_customer_history_loading,
+                            class_name="vx-customers__secondary"),
+                        rx.el.button("Próxima", rx.icon("chevron-right", size=16), type="button",
+                            aria_label="Próxima página do histórico",
+                            on_click=State.internal_customer_history_next,
+                            disabled=(State.internal_customer_history_page >= State.internal_customer_history_pages) | State.internal_customer_history_loading,
+                            class_name="vx-customers__secondary")),
+                    aria_label="Paginação do histórico de pedidos", class_name="vx-customers__pagination")),
+            aria_label="Histórico de pedidos do cliente", class_name="vx-history")
+
     empty_message = State.internal_customers_message == "Nenhum cliente nesta página. Ajuste os filtros ou volte à página anterior."
     initial = ((State.internal_customers.length() == 0) & (State.internal_customers_message == "")
                & ~State.internal_customers_loading)
@@ -5576,6 +5859,7 @@ def internal_customer_panel(*, show_heading: bool = True) -> rx.Component:
             rx.foreach(State.internal_customer_detail, detail),
             class_name=rx.cond((State.internal_customer_detail.length() > 0) | State.internal_customer_loading,
                 "vx-customers__results has-detail", "vx-customers__results")),
+        rx.cond(State.internal_customer_detail.length() > 0, history_section(), rx.fragment()),
         aria_label="Consulta de clientes", class_name="vx-customers")
 
 

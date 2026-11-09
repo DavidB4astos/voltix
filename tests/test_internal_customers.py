@@ -5,13 +5,38 @@ import urllib.error
 from types import SimpleNamespace, MethodType
 from unittest.mock import AsyncMock, patch
 
-from voltix.internal_customers import customer_record, customer_page, query_parameters, bounded_read, customer_date_display
+from voltix.internal_customers import (customer_record, customer_page, query_parameters,
+    bounded_read, customer_date_display, history_parameters, order_history_page, order_record)
 import voltix.voltix as app
 
 
 def record(**extra):
-    return dict(id=1, nome_completo="Cliente fictício", email_masked="mar*****",
-                telefone_masked="*****1234", status="ATIVO", created_at=1, **extra)
+    value = dict(id=1, nome_completo="Cliente fictício", email_masked="mar*****",
+                 telefone_masked="*****1234", status="ATIVO", created_at=1)
+    value.update(extra)
+    return value
+
+
+def order_item(**extra):
+    value = dict(variacao_id=11, sku="SKU-1", nome_ou_descricao="Camiseta",
+                 quantidade=2, preco_unitario="49.90", subtotal="99.80")
+    value.update(extra)
+    return value
+
+
+def order(**extra):
+    value = dict(id=1, codigo="PED-1", data_pedido=1704067200000, status="ENTREGUE",
+                 subtotal="99.80", valor_frete="10.00", valor_total="109.80",
+                 itens=[order_item()])
+    value.update(extra)
+    return value
+
+
+def history_payload(**extra):
+    value = dict(cliente_id=42, items=[order()], page=1, per_page=20,
+                 total_items=1, total_pages=1)
+    value.update(extra)
+    return value
 
 
 class CustomerContractTests(unittest.TestCase):
@@ -58,6 +83,64 @@ class CustomerContractTests(unittest.TestCase):
         payload["total_pages"] = 1
         with self.assertRaises(ValueError): customer_page(payload,page=2)
 
+    def test_history_parameters_defaults_dates_and_normalization(self):
+        self.assertEqual(history_parameters("TODOS", "", "", 1),
+                         {"status": "TODOS", "page": 1, "per_page": 20})
+        self.assertEqual(history_parameters("ENTREGUE", " 2026-10-01 ", "2026-10-31", 2),
+                         {"status": "ENTREGUE", "page": 2, "per_page": 20,
+                          "from": "2026-10-01", "to": "2026-10-31"})
+        self.assertEqual(history_parameters("TODOS", None, "", 1, 50)["per_page"], 50)
+
+    def test_history_parameters_reject_invalid_values(self):
+        for status, start, end, page, size in [
+                ("PAGO", "", "", 1, 20), ("TODOS", "2026-2-01", "", 1, 20),
+                ("TODOS", "2026-02-31", "", 1, 20), ("TODOS", "2026-10-31", "2026-10-01", 1, 20),
+                ("TODOS", "", "", 0, 20), ("TODOS", "", "", True, 20),
+                ("TODOS", "", "", 1, 51)]:
+            with self.assertRaises(ValueError):
+                history_parameters(status, start, end, page, size)
+
+    def test_order_record_preserves_persisted_values(self):
+        record_value = order_record(order())
+        self.assertEqual((record_value.id, record_value.status, record_value.valor_total),
+                         (1, "ENTREGUE", "109.80"))
+        self.assertEqual(record_value.data_pedido_display, "01/01/2024 às 00:00 (UTC)")
+        self.assertEqual(record_value.itens[0].subtotal, "99.80")
+
+    def test_order_record_prefers_table_without_mutating_values(self):
+        value = order(subtotal=10, valor_frete=0, valor_total=10)
+        parsed = order_record(value)
+        self.assertEqual((parsed.subtotal, parsed.valor_frete, parsed.valor_total),
+                         ("10", "0", "10"))
+        empty_sku = order(itens=[order_item(sku=None, nome_ou_descricao=None)])
+        self.assertEqual(order_record(empty_sku).itens[0].sku, "")
+        self.assertEqual(order_record(empty_sku).itens[0].nome_ou_descricao, "")
+
+    def test_order_record_rejects_unexpected_or_invalid_fields(self):
+        for value in [order(extra=1), order(status="PAGO"), order(itens={}),
+                      order(subtotal=True), order(subtotal="1e3"),
+                      order(itens=[order_item(extra=1)]), order(itens=[order_item(quantidade=0)]),
+                      order(itens=[order_item(variacao_id=True)]), order(codigo="")]:
+            with self.assertRaises(ValueError):
+                order_record(value)
+
+    def test_order_history_page_contract_and_empty_page(self):
+        items, total, pages = order_history_page(history_payload(), customer_id=42, page=1)
+        self.assertEqual((len(items), total, pages), (1, 1, 1))
+        empty = history_payload(items=[], total_items=0, total_pages=0, page=2)
+        self.assertEqual(order_history_page(empty, customer_id=42, page=2)[1:], (0, 0))
+        for value in [history_payload(cliente_id=41), history_payload(page=2),
+                      history_payload(total_pages=2), history_payload(extra=1),
+                      history_payload(items=[order()], total_items=2, total_pages=1),
+                      history_payload(items=[order(), order()])]:
+            with self.assertRaises(ValueError):
+                order_history_page(value, customer_id=42, page=1)
+
+    def test_order_history_rejects_duplicate_orders(self):
+        value = history_payload(items=[order(), order()], total_items=2, total_pages=1)
+        with self.assertRaises(ValueError):
+            order_history_page(value, customer_id=42, page=1)
+
 
 class CustomerWorkflowTests(unittest.IsolatedAsyncioTestCase):
     def state(self, role="FUNCIONARIO"):
@@ -65,8 +148,13 @@ class CustomerWorkflowTests(unittest.IsolatedAsyncioTestCase):
             user_status="ATIVO",user_role=role,user_id=9, internal_customers_search="",internal_customers_status="ATIVO",
             internal_customers_page=1,_internal_customers_generation=0,_internal_detail_generation=0,
             internal_customers=[],internal_customer_detail=[],internal_customers_loading=False,
-            internal_customer_loading=False,internal_customers_message="",internal_customers_total=0,internal_customers_pages=0)
-        for method in ["_internal_customer_allowed","_clear_internal_customers"]:
+            internal_customer_loading=False,internal_customers_message="",internal_customers_total=0,internal_customers_pages=0,
+            internal_customer_history=[],internal_customer_history_customer_id=0,
+            internal_customer_history_status="TODOS",internal_customer_history_from="",internal_customer_history_to="",
+            internal_customer_history_status_input="TODOS",internal_customer_history_from_input="",internal_customer_history_to_input="",
+            internal_customer_history_page=1,internal_customer_history_total=0,internal_customer_history_pages=0,
+            internal_customer_history_loading=False,internal_customer_history_message="",_internal_history_generation=0)
+        for method in ["_internal_customer_allowed","_clear_internal_customers","_clear_internal_customer_history"]:
             setattr(state,method,MethodType(getattr(app.State,method),state))
         state.close_internal_customer=MethodType(app.State.close_internal_customer.fn,state)
         def clear(message):
@@ -137,6 +225,107 @@ class CustomerWorkflowTests(unittest.IsolatedAsyncioTestCase):
         app.State.clear_internal_customer_filters.fn(state)
         self.assertEqual((state.internal_customers_page,state.internal_customers_search_input,state.internal_customers_status_input),(1,"","ATIVO"))
         self.assertEqual(state.internal_customer_detail,[])
+
+    def history_state(self, customer_id=42):
+        state=self.state()
+        state.internal_customer_history_customer_id=customer_id
+        state.internal_customer_detail=[customer_record(record(id=customer_id))]
+        return state
+
+    async def test_history_uses_orders_url_and_internal_token(self):
+        state=self.history_state()
+        with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}/orders"), patch.object(app,"_server_side_xano_request",AsyncMock(return_value=history_payload())) as request:
+            await app.State.load_internal_customer_history.fn(state)
+        self.assertEqual(state.internal_customer_history_total,1)
+        url=request.await_args.args[0]
+        self.assertIn("/customers/42/orders?",url)
+        self.assertIn("status=TODOS",url)
+        self.assertIn("page=1",url)
+        self.assertEqual(request.await_args.kwargs["authorization"],"Bearer internal-fixture")
+        self.assertFalse(request.await_args.kwargs["retry_rate_limit"])
+
+    async def test_history_invalid_filters_never_request(self):
+        state=self.history_state();state.internal_customer_history_status="PAGO"
+        with patch.object(app,"_server_side_xano_request",AsyncMock()) as request:
+            await app.State.load_internal_customer_history.fn(state)
+        request.assert_not_awaited()
+        self.assertIn("Filtros inválidos",state.internal_customer_history_message)
+
+    async def test_history_wrong_customer_response_is_rejected(self):
+        state=self.history_state()
+        with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}/orders"), patch.object(app,"_server_side_xano_request",AsyncMock(return_value=history_payload(cliente_id=41))):
+            await app.State.load_internal_customer_history.fn(state)
+        self.assertEqual(state.internal_customer_history,[])
+        self.assertIn("Histórico indisponível",state.internal_customer_history_message)
+
+    async def test_history_logout_discards_result(self):
+        state=self.history_state()
+        async def request(*args,**kwargs):
+            state._clear_authentication_state("logout")
+            return history_payload()
+        with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}/orders"), patch.object(app,"_server_side_xano_request",side_effect=request):
+            await app.State.load_internal_customer_history.fn(state)
+        self.assertEqual(state.internal_customer_history,[])
+
+    async def test_history_unauthorized_clears_customer_and_history(self):
+        state=self.history_state()
+        error=urllib.error.HTTPError("https://example.test",403,"forbidden",{},io.BytesIO())
+        with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}/orders"), patch.object(app,"_server_side_xano_request",AsyncMock(side_effect=error)):
+            await app.State.load_internal_customer_history.fn(state)
+        self.assertFalse(state.is_authenticated)
+        self.assertEqual(state.internal_customer_history,[])
+        self.assertEqual(state.internal_customer_detail,[])
+
+    async def test_apply_history_filters_resets_page_and_commits_values(self):
+        state=self.history_state();state.internal_customer_history_page=3
+        app.State.apply_internal_customer_history_filters.fn(state,{"status":"ENTREGUE","from":"2026-10-01","to":"2026-10-31"})
+        self.assertEqual((state.internal_customer_history_status,state.internal_customer_history_from,
+            state.internal_customer_history_to,state.internal_customer_history_page),
+            ("ENTREGUE","2026-10-01","2026-10-31",1))
+
+    async def test_invalid_history_filters_keep_previous_values(self):
+        state=self.history_state();state.internal_customer_history_status="ENTREGUE"
+        state.internal_customer_history_page=2
+        app.State.apply_internal_customer_history_filters.fn(state,{"status":"ENTREGUE","from":"2026-10-31","to":"2026-10-01"})
+        self.assertEqual((state.internal_customer_history_status,state.internal_customer_history_page),
+                         ("ENTREGUE",2))
+        self.assertIn("Filtros inválidos",state.internal_customer_history_message)
+
+    async def test_clear_history_filters_restores_defaults(self):
+        state=self.history_state();state.internal_customer_history_status="ENTREGUE"
+        state.internal_customer_history_from="2026-10-01";state.internal_customer_history_to="2026-10-31"
+        state.internal_customer_history_page=2
+        app.State.clear_internal_customer_history_filters.fn(state)
+        self.assertEqual((state.internal_customer_history_status,state.internal_customer_history_from,
+            state.internal_customer_history_to,state.internal_customer_history_page),
+            ("TODOS","","",1))
+
+    async def test_history_pagination_is_bounded(self):
+        state=self.history_state();state.internal_customer_history_pages=2
+        app.State.internal_customer_history_next.fn(state)
+        self.assertEqual(state.internal_customer_history_page,2)
+        app.State.internal_customer_history_next.fn(state)
+        self.assertEqual(state.internal_customer_history_page,2)
+        app.State.internal_customer_history_previous.fn(state)
+        self.assertEqual(state.internal_customer_history_page,1)
+        app.State.internal_customer_history_previous.fn(state)
+        self.assertEqual(state.internal_customer_history_page,1)
+        state.internal_customer_history_loading=True
+        app.State.internal_customer_history_next.fn(state)
+        self.assertEqual(state.internal_customer_history_page,1)
+
+    async def test_show_customer_prepares_history_and_close_clears_it(self):
+        state=self.state()
+        with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}"), patch.object(app,"_server_side_xano_request",AsyncMock(return_value=record(cpf_masked="***.***.***-09"))):
+            await app.State.show_internal_customer.fn(state,1)
+        self.assertEqual(state.internal_customer_history_customer_id,1)
+        self.assertEqual(state.internal_customer_history_status,"TODOS")
+        state.internal_customer_history=[order_record(order())];state.internal_customer_history_total=1
+        state.internal_customer_history_pages=1
+        state.close_internal_customer()
+        self.assertEqual(state.internal_customer_history,[])
+        self.assertEqual(state.internal_customer_history_customer_id,0)
+        self.assertEqual(state.internal_customer_history_total,0)
 
     async def test_rate_limit_is_bounded_and_auth_never_retries(self):
         error=lambda code,delay:urllib.error.HTTPError("https://example.test",code,"error",{"Retry-After":delay},io.BytesIO())
