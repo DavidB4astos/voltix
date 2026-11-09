@@ -26,7 +26,7 @@
 
 ## 4. Medição E5 e publicação restrita
 
-- [ ] 4.1 Medir plano/consumo atual no dashboard Xano e registrar a evidência — verificação: dados do dashboard anexados
+- [x] 4.1 Medir plano/consumo atual no dashboard Xano e registrar a evidência — verificação: plano Free e 0 429 confirmados; consumo de registros não exposto pelo Xano (limitação registrada)
 - [ ] 4.2 Apresentar impacto estimado da C7 e **GATE** — aguardar autorização explícita antes de publicar — verificação: OK registrado
 - [x] 4.3 Dry-run restrito à tabela e aos endpoints novos — verificação: preview anexado à evidência
 - [ ] 4.4 Publicar somente após o gate — verificação: saída da CLI registrada
