@@ -28,4 +28,4 @@
 - [x] 4.3 Rodar `reflex compile` restaurando `reflex.lock` antes de qualquer commit — verificação: `git status` sem alterações em `reflex.lock`
 - [x] 4.4 Rodar `openspec validate implement-sales-dashboard-panel --strict`, `openspec validate --all --strict` e `git diff --check` — verificação: tudo válido e diff limpo
 - [x] 4.5 Registrar evidência local, atualizar `docs/roadmap-changes.md` e `docs/AI_AGENT_HANDOFF.md` e arquivar a change — verificação: documentação consistente e change arquivada
-- [ ] 4.6 Commit focado e push somente com autorização explícita — verificação: `git log --oneline -1` e `git status --short --branch`
+- [x] 4.6 Commit focado e push somente com autorização explícita — verificação: `git log --oneline -1` e `git status --short --branch`
