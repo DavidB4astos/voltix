@@ -212,6 +212,22 @@ Pagamento ou estoque real foi alterado. Limite conhecido: `db.edit` no XanoScrip
 não aceita `where`, então o risco de devolução dupla em cancelamentos
 *simultâneos* do mesmo Pedido permanece documentado no design.
 
+### Gestão de pedidos
+
+A C3 (gestão interna de pedidos) foi **IMPLEMENTADA e PUBLICADA em 09/11/2026** no
+XanoFree (change `implement-c3-internal-order-management`, commits `20c195f` e
+`a60b54f` + evidências). Três endpoints no grupo `Voltix Internal Orders`:
+`GET /api:voltix-internal-orders/orders` (lista paginada, filtros `q`/`status`,
+`per_page` 1–50), `GET .../orders/{order_id}` (detalhe com Cliente, e-mail
+mascarado, itens, endereço e Pagamento) para FUNCIONARIO ou ADMINISTRADOR
+`ATIVO`; e `POST .../orders/{order_id}/status` só para ADMINISTRADOR `ATIVO`.
+A transição é estrita, um passo por chamada:
+`PAGAMENTO_CONFIRMADO → EM_PREPARACAO → ENVIADO → ENTREGUE`; alvo igual ao atual
+é sucesso `alterado=false` sem gravar; `CANCELADO` não é alvo aceito. `db.edit`
+grava apenas `status`/`updated_at`. Verificação remota somente leitura (pull +
+401 nas três rotas). **Não há tela no painel**: a UI de pedidos fica para uma
+change própria.
+
 ### Imagens de produto
 
 Há infraestrutura de imagens locais e créditos em `assets/demo/manifest.json`.
@@ -265,18 +281,20 @@ git status --short --branch
 
 ## 7. Próximas prioridades recomendadas
 
-1. **C1 e C2 concluídas e publicadas** (05/11/2026 e 09/11/2026); seguir a
-   sequência do roadmap: gestão de pedidos (C3), dashboard (C10), histórico CRM
-   (C6) e atendimentos (C7). Cada mudança com escopo e aprovação próprios.
+1. **C1, C2 e C3 concluídas e publicadas** (05/11/2026, 09/11/2026 e
+   09/11/2026); seguir a sequência do roadmap: dashboard (C10), histórico CRM
+   (C6) e atendimentos (C7). A tela de pedidos no painel pode ser uma change
+   própria quando aprovada. Cada mudança com escopo e aprovação próprios.
 2. Manter testes de compra E2E (C9) bloqueados até haver ambiente Xano isolado
    e autorizado.
 3. Retomar o trabalho mobile somente com uma change própria.
 4. Completar as cinco imagens de produto pendentes somente quando houver fonte,
    modelo e direitos comprovados.
 
-CRM ainda não está completo: a consulta de clientes (C4) existe; histórico de
-cliente, atendimentos, pedidos internos e dashboard continuam capabilities
-futuras e dependem da ordem de negócio documentada.
+CRM ainda não está completo: a consulta de clientes (C4) e a consulta/transição
+de pedidos (C3) existem no backend; histórico de cliente, atendimentos, tela de
+pedidos e dashboard continuam capabilities futuras e dependem da ordem de
+negócio documentada.
 
 ## 8. Comandos e decisões que exigem cuidado
 

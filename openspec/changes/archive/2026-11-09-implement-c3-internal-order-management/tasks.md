@@ -29,7 +29,7 @@
 
 ## 6. Encerramento
 
-- [ ] 6.1 Arquivar a change e consolidar a capability `order-management` — verificação: `openspec validate --all --strict`
-- [ ] 6.2 Atualizar `docs/roadmap-changes.md` (C3 concluída, matriz de autorização) e `docs/AI_AGENT_HANDOFF.md` — verificação: consistente com a evidência
-- [ ] 6.3 `git status --short --branch` limpo — verificação: nada pendente
+- [x] 6.1 Arquivar a change e consolidar a capability `order-management` — verificação: `openspec validate --all --strict`
+- [x] 6.2 Atualizar `docs/roadmap-changes.md` (C3 concluída, matriz de autorização) e `docs/AI_AGENT_HANDOFF.md` — verificação: consistente com a evidência
+- [x] 6.3 `git status --short --branch` limpo — verificação: nada pendente
 - [ ] 6.4 Commit focado + push somente com autorização explícita — verificação: `git log --oneline -1`

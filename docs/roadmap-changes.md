@@ -23,7 +23,7 @@ Atualizado em 03/11/2026 por conferência do repositório local. Fontes: [AGENTS
 | Estoque C1 | **Implementada e publicada em 05/11/2026** (change `implement-c1-atomic-decrement`). Checkout baixa estoque atomicamente com guarda `db.increment` na mesma transação; rollback multi-item verificado em prova e refletido na spec consolidada. Verificação remota somente leitura. | Spec `checkout-orders`; [README do adiamento](deferred-changes/2026-10-23-baixa-estoque-checkout/README.md); [evidência da prova](../openspec/changes/archive/2026-11-05-prove-c1-atomic-decrement-synthetic/evidence/04-run-results.md); [evidência da publicação](../openspec/changes/archive/2026-11-05-implement-c1-atomic-decrement/evidence/01-publish-verification.md) |
 | Cancelamento C2 | **Implementado e publicado em 09/11/2026** (change `implement-c2-order-cancellation`). Cliente cancela o próprio Pedido em `AGUARDANDO_PAGAMENTO`; ADMINISTRADOR cancela em `AGUARDANDO_PAGAMENTO` e `PAGAMENTO_CONFIRMADO`. Devolução de estoque, Pedido e Pagamento `CANCELADO` na mesma transação; repetição é idempotente. Verificação remota somente leitura. | Spec `order-cancellation`; [evidência](../openspec/changes/archive/2026-11-09-implement-c2-order-cancellation/evidence/02-publish-verification.md) |
 | Consulta interna de clientes C4 | Concluída: leitura para Funcionário/Administrador, filtros, paginação, máscaras e detalhe. Acesso de Cliente e interno inativo negado; teste de ID coincidente aprovado. | [Revisão final](../openspec/changes/archive/2026-10-29-consulta-clientes-painel/evidence/final-review.md) |
-| CRM, cancelamento e gestão operacional | Cancelamento C2 entregue em 09/11/2026. Histórico, atendimentos e gestão de pedidos continuam planejados, sem entrega completa dessas capabilities. | C3, C6, C7 e C10 |
+| CRM, cancelamento e gestão operacional | Cancelamento C2 e consulta/transição de pedidos C3 entregues em 09/11/2026. Histórico e atendimentos continuam planejados, sem entrega completa dessas capabilities. | C6, C7 e C10 |
 | E2E existente | Spec cobre login e navegação com leituras; não confirma compra nem simula pagamento. | `openspec/specs/e2e-playwright/spec.md` |
 
 Os lotes de fotos até ASUS estão nos commits `18e7919`, `d215ce8`, `b4dfb46`, `ef0b6c7`, `f41ef3f` e `064e66b`; a pesquisa sem foto nova é `1f29f3b`. Preservam arquivos originais, fontes, licenças, avisos e evidências. Cinco pendentes: G203 LIGHTSYNC, M90, WD SN580 1TB, Ryzen 5 5600 e Archer C6. Não usar modelos parecidos, imagens geradas por IA para SKU ou conteúdo sem direitos demonstrados.
@@ -52,7 +52,7 @@ Concluída a [refine-internal-import-desktop](../openspec/changes/archive/2026-1
 
 | ID | Decisão preservada |
 |---|---|
-| E1 | Cancelamento por Cliente e ADMINISTRADOR enquanto o Pedido está em `AGUARDANDO_PAGAMENTO`; o ADMINISTRADOR estende para `PAGAMENTO_CONFIRMADO`. Depois disso não há cancelamento nesta fase (C3 decide transições). Implementado e publicado na C2 em 09/11/2026, com devolução de estoque e Pagamento `CANCELADO`. |
+| E1 | Cancelamento por Cliente e ADMINISTRADOR enquanto o Pedido está em `AGUARDANDO_PAGAMENTO`; o ADMINISTRADOR estende para `PAGAMENTO_CONFIRMADO`. Implementado e publicado na C2 em 09/11/2026. As transições operacionais seguintes foram definidas e publicadas na C3 (`PAGAMENTO_CONFIRMADO → EM_PREPARACAO → ENVIADO → ENTREGUE`, só ADMINISTRADOR). |
 | E2 | FUNCIONARIO pode consultar pedidos/clientes e registrar atendimentos. Alterações sensíveis exclusivas do ADMINISTRADOR. Autorização no backend. |
 | E3 | Dashboard de vendas obrigatório, com faturamento e quantidade de pedidos (C10). |
 | E4 | CPF mascarado por padrão; nunca expor senhas, hashes ou tokens. |
@@ -82,7 +82,7 @@ Esta matriz preserva E1/E2/E4 e o planejamento anterior; **não declara que endp
 | Cancelar em `PAGAMENTO_CONFIRMADO` (C2) | Não | Não | Sim |
 | Cancelar em `EM_PREPARACAO`/`ENVIADO`/`ENTREGUE` | Não | Não | Não |
 | Listar/ver todos os pedidos (C3) | Não | Sim | Sim |
-| Transições de pedido (C3) | Não | Detalhar em design | Sim |
+| Transições de pedido (C3) | Não | Não | Sim, sequência estrita |
 | Consultar clientes, CPF mascarado (C4) | Não | Sim | Sim |
 | Registrar/editar atendimento aberto/em atendimento (C7) | Não | Sim | Sim |
 | Finalizar/cancelar atendimento (C7) | Não | Detalhar em design | Sim |
@@ -94,8 +94,8 @@ O rascunho `consulta-clientes-admin` restringe a ADMINISTRADOR e diverge de E2; 
 ## Ordem recomendada para propostas futuras
 
 1. C4 concluída e arquivada em 29/10/2026. Consulta de clientes somente leitura entregue; o rascunho admin-only adiado foi preservado como referência histórica e não publicado.
-2. C1 concluída e publicada em 05/11/2026; C2 concluída e publicada em 09/11/2026. Próximo: C3 (gestão de pedidos) → C10.
-3. Resolvidas C1 e C2: C3 → C10, preservando ordem de transições e agregados.
+2. C1 concluída e publicada em 05/11/2026; C2 concluída e publicada em 09/11/2026; C3 concluída e publicada em 09/11/2026. Próximo: C10 (dashboard de vendas).
+3. Resolvidas C1, C2 e C3: C10, preservando ordem de transições e agregados.
 4. Resolvidas consultas C4/C3: C6 → C7, medindo capacidade antes de criar atendimentos.
 5. C8 conforme lacunas reais e C9 somente com isolamento aprovado. Não duplicar as suítes existentes nem repetir testes sem motivo.
 
@@ -106,8 +106,8 @@ C5 já está concluída; não é próxima prioridade. As fotos restantes podem s
 | ID / proposta | Escopo, dependências e critérios preservados |
 |---|---|
 | C1 baixa-estoque-checkout | **CONCLUÍDA (05/11/2026)**: prova de runtime em 04/11 + implementação publicada no XanoFree em 05/11 (change `implement-c1-atomic-decrement`). `db.increment` com guarda atômico em transação; rollback multi-item e concorrência verificados. Sem cancelamento, reserva ou tabela de movimentação. Restam C2, C3, C10. |
-| C2 cancelamento-pedido | **CONCLUÍDA (09/11/2026)**: change `implement-c2-order-cancellation` publicada no XanoFree. Cliente cancela o próprio Pedido em `AGUARDANDO_PAGAMENTO`; ADMINISTRADOR em `AGUARDANDO_PAGAMENTO` e `PAGAMENTO_CONFIRMADO`. Devolução de estoque item a item, Pedido e Pagamento `CANCELADO` na mesma transação; repetição idempotente. Sem reembolso real, logística ou painel novo. Restam C3, C6, C7 e C10. |
-| C3 gestao-pedidos-painel | Depende de C1/C2 no planejamento aprovado. Listar/detalhar pedidos e transições EM_PREPARACAO/ENVIADO/ENTREGUE; cancelamento reutiliza C2. Definir permissão do FUNCIONARIO, validar transições e autorização negativa no backend. Sem transportadora, CRM ou métricas. |
+| C2 cancelamento-pedido | **CONCLUÍDA (09/11/2026)**: change `implement-c2-order-cancellation` publicada no XanoFree. Cliente cancela o próprio Pedido em `AGUARDANDO_PAGAMENTO`; ADMINISTRADOR em `AGUARDANDO_PAGAMENTO` e `PAGAMENTO_CONFIRMADO`. Devolução de estoque item a item, Pedido e Pagamento `CANCELADO` na mesma transação; repetição idempotente. Sem reembolso real, logística ou painel novo. Restam C10, C6 e C7. |
+| C3 gestao-pedidos-painel | **CONCLUÍDA (09/11/2026)**: change `implement-c3-internal-order-management` publicada no XanoFree. `GET orders` (filtros `q`/`status`, paginação), `GET orders/{order_id}` (detalhe com e-mail mascarado) para FUNCIONARIO/ADMINISTRADOR ativos; `POST orders/{order_id}/status` só para ADMINISTRADOR, em sequência estrita `PAGAMENTO_CONFIRMADO → EM_PREPARACAO → ENVIADO → ENTREGUE`, no-op idempotente. Sem tela no painel, transportadora, CRM ou métricas. Verificação remota somente leitura. |
 | C4 consulta-clientes-painel | Leitura de lista/detalhe; depende da autenticação interna existente. Compatibilizar o rascunho adiado com E2 e schema real. Definir campos, máscara, filtros combinados, paginação/limites e detalhe. Nunca senha/hash/token, CPF mascarado; negar anônimo/cliente/interno inativo. Testar vazio, erro e 429. Sem editar/inativar cliente, exportar, histórico ou atendimento. |
 | C5 pesquisa-catalogo | Concluída e arquivada. Reutiliza products_GET com q por nome, filtro de categoria, cache e UI; correções futuras exigem nova justificativa, sem recriar capability. |
 | C6 crm-cliente-historico | Depende de C4/C3. Cliente → pedidos, itens, valores e status, reutilizando consultas existentes; manter propriedade, histórico, consistência e CPF mascarado. Definir filtros por período/status e volume Free. Sem atendimentos, edição de cliente ou métricas. |
