@@ -23,7 +23,7 @@ Atualizado em 03/11/2026 por conferência do repositório local. Fontes: [AGENTS
 | Estoque C1 | **Implementada e publicada em 05/11/2026** (change `implement-c1-atomic-decrement`). Checkout baixa estoque atomicamente com guarda `db.increment` na mesma transação; rollback multi-item verificado em prova e refletido na spec consolidada. Verificação remota somente leitura. | Spec `checkout-orders`; [README do adiamento](deferred-changes/2026-10-23-baixa-estoque-checkout/README.md); [evidência da prova](../openspec/changes/archive/2026-11-05-prove-c1-atomic-decrement-synthetic/evidence/04-run-results.md); [evidência da publicação](../openspec/changes/archive/2026-11-05-implement-c1-atomic-decrement/evidence/01-publish-verification.md) |
 | Cancelamento C2 | **Implementado e publicado em 09/11/2026** (change `implement-c2-order-cancellation`). Cliente cancela o próprio Pedido em `AGUARDANDO_PAGAMENTO`; ADMINISTRADOR cancela em `AGUARDANDO_PAGAMENTO` e `PAGAMENTO_CONFIRMADO`. Devolução de estoque, Pedido e Pagamento `CANCELADO` na mesma transação; repetição é idempotente. Verificação remota somente leitura. | Spec `order-cancellation`; [evidência](../openspec/changes/archive/2026-11-09-implement-c2-order-cancellation/evidence/02-publish-verification.md) |
 | Consulta interna de clientes C4 | Concluída: leitura para Funcionário/Administrador, filtros, paginação, máscaras e detalhe. Acesso de Cliente e interno inativo negado; teste de ID coincidente aprovado. | [Revisão final](../openspec/changes/archive/2026-10-29-consulta-clientes-painel/evidence/final-review.md) |
-| CRM, cancelamento e gestão operacional | Cancelamento C2 e consulta/transição de pedidos C3 entregues em 09/11/2026. Histórico e atendimentos continuam planejados, sem entrega completa dessas capabilities. | C6, C7 e C10 |
+| CRM, cancelamento e gestão operacional | Cancelamento C2, consulta/transição de pedidos C3 e relatório de vendas C10 entregues em 09/11/2026. Histórico e atendimentos continuam planejados, sem entrega completa dessas capabilities. | C6 e C7 |
 | E2E existente | Spec cobre login e navegação com leituras; não confirma compra nem simula pagamento. | `openspec/specs/e2e-playwright/spec.md` |
 
 Os lotes de fotos até ASUS estão nos commits `18e7919`, `d215ce8`, `b4dfb46`, `ef0b6c7`, `f41ef3f` e `064e66b`; a pesquisa sem foto nova é `1f29f3b`. Preservam arquivos originais, fontes, licenças, avisos e evidências. Cinco pendentes: G203 LIGHTSYNC, M90, WD SN580 1TB, Ryzen 5 5600 e Archer C6. Não usar modelos parecidos, imagens geradas por IA para SKU ou conteúdo sem direitos demonstrados.
@@ -54,7 +54,7 @@ Concluída a [refine-internal-import-desktop](../openspec/changes/archive/2026-1
 |---|---|
 | E1 | Cancelamento por Cliente e ADMINISTRADOR enquanto o Pedido está em `AGUARDANDO_PAGAMENTO`; o ADMINISTRADOR estende para `PAGAMENTO_CONFIRMADO`. Implementado e publicado na C2 em 09/11/2026. As transições operacionais seguintes foram definidas e publicadas na C3 (`PAGAMENTO_CONFIRMADO → EM_PREPARACAO → ENVIADO → ENTREGUE`, só ADMINISTRADOR). |
 | E2 | FUNCIONARIO pode consultar pedidos/clientes e registrar atendimentos. Alterações sensíveis exclusivas do ADMINISTRADOR. Autorização no backend. |
-| E3 | Dashboard de vendas obrigatório, com faturamento e quantidade de pedidos (C10). |
+| E3 | Dashboard de vendas obrigatório, com faturamento e quantidade de pedidos (C10). Backend entregue e publicado em 09/11/2026 via `GET reports/sales`; a tela do painel continua pendente de change própria. |
 | E4 | CPF mascarado por padrão; nunca expor senhas, hashes ou tokens. |
 | E5 | Medir capacidade/consumo real no dashboard Xano antes de C7 e C9; reconfirmar limites aplicáveis. |
 | E6 | Compra E2E com mutações somente em ambiente de testes isolado e autorizado. Não presumir que uma branch isola dados; dados efêmeros com limpeza em instância compartilhada não equivalem a isolamento. |
@@ -86,7 +86,7 @@ Esta matriz preserva E1/E2/E4 e o planejamento anterior; **não declara que endp
 | Consultar clientes, CPF mascarado (C4) | Não | Sim | Sim |
 | Registrar/editar atendimento aberto/em atendimento (C7) | Não | Sim | Sim |
 | Finalizar/cancelar atendimento (C7) | Não | Detalhar em design | Sim |
-| Dashboard de vendas (C10) | Não | Detalhar em design | Sim |
+| Dashboard de vendas (C10) | Não | Sim (leitura) | Sim |
 | Gestão de produtos/categorias/marcas | Não | Não | Sim; limitação de upload preservada |
 
 O rascunho `consulta-clientes-admin` restringe a ADMINISTRADOR e diverge de E2; corrigir o contrato antes de retomar. Não publicar o draft nem interpretar suas tarefas antigas como concluídas.
@@ -94,8 +94,8 @@ O rascunho `consulta-clientes-admin` restringe a ADMINISTRADOR e diverge de E2; 
 ## Ordem recomendada para propostas futuras
 
 1. C4 concluída e arquivada em 29/10/2026. Consulta de clientes somente leitura entregue; o rascunho admin-only adiado foi preservado como referência histórica e não publicado.
-2. C1 concluída e publicada em 05/11/2026; C2 concluída e publicada em 09/11/2026; C3 concluída e publicada em 09/11/2026. Próximo: C10 (dashboard de vendas).
-3. Resolvidas C1, C2 e C3: C10, preservando ordem de transições e agregados.
+2. C1 concluída e publicada em 05/11/2026; C2, C3 e C10 concluídas e publicadas em 09/11/2026. Próximo: C6 (histórico do Cliente).
+3. Resolvidas C1, C2, C3 e C10; agregados de vendas preservam a ordem de transições da C3.
 4. Resolvidas consultas C4/C3: C6 → C7, medindo capacidade antes de criar atendimentos.
 5. C8 conforme lacunas reais e C9 somente com isolamento aprovado. Não duplicar as suítes existentes nem repetir testes sem motivo.
 
@@ -114,7 +114,7 @@ C5 já está concluída; não é próxima prioridade. As fotos restantes podem s
 | C7 crm-atendimentos | Depende de C4/C6 e medição E5. Atendimento sempre vinculado a Cliente e UsuarioInterno; Pedido opcional do mesmo Cliente. ABERTO/EM_ATENDIMENTO atualizáveis, FINALIZADO/CANCELADO imutáveis. Definir quem finaliza e provisionamento inicial interno. Testar vínculos inválidos, imutabilidade e autorização. Sem mensagens, SLA ou automação. |
 | C8 cobertura-testes-qualidade | Reavaliar lacunas antes de criar testes; não existem arquivos dedicados test_internal_access.py/test_integration_health.py no inventário desta revisão, o que não prova ausência total de cobertura indireta. Preservar objetivo de cobrir specs, sem duplicação ou teste que espelhe implementação. Originalmente posterior a C1–C7; focar behavior aprovado e suíte aplicável sem regressões. Sem nova feature ou axe-core automaticamente. |
 | C9 e2e-compra-completa | Bloqueada por E6; depende de C1/C2 e ambiente isolado aprovado. Jornada de cadastro/login/endereço/catálogo/carrinho/checkout/pedidos/pagamento simulado, cancelamento se disponível. workers=1 e throttle conforme limites reconfirmados; nunca mutar catálogo real. Segredos por ambiente, não Git; sem pagamentos reais ou CI novo. Diferente da navegação de leitura existente. Evidências devem excluir dados pessoais e credenciais. |
-| C10 dashboard-vendas | Depende de C1/C2/C3 para estados consistentes. Faturamento e quantidade por período; leitura, sem dados sensíveis. Definir período padrão, estados incluídos e acesso FUNCIONARIO no design; não transformar definição preliminar em nova regra contábil. Fixtures com valores corretos e acesso cliente negado. Sem previsões, metas, gráficos avançados, exportação ou CRM. |
+| C10 dashboard-vendas | **CONCLUÍDA (09/11/2026)**: change `implement-c10-sales-dashboard` publicada no XanoFree. `GET reports/sales` para FUNCIONARIO/ADMINISTRADOR ativos, somente leitura, com faturamento, quantidade, ticket médio e série diária dos Pedidos em `PAGAMENTO_CONFIRMADO`/`EM_PREPARACAO`/`ENVIADO`/`ENTREGUE`; período padrão de 30 dias em UTC, `from`/`to` inclusivos e limite de 366 dias. Sem tela no painel, previsões, metas, gráficos avançados, exportação ou CRM. Verificação remota somente leitura. |
 
 ## Riscos e sobreposições
 
@@ -211,3 +211,6 @@ Exceção documentada a E6 autorizada pelo usuário em 04/11/2026: prova executa
 
 ### Implementação da baixa atômica (C1) — CONCLUÍDA E PUBLICADA — 05/11/2026
 Change `implement-c1-atomic-decrement` implementada, publicada restritamente (somente `checkout_confirm_POST.xs`) e verificada no XanoFree. Pull confere; rota responde à validação esperada (400 `Missing param`); 188 testes e `openspec validate` verdes. Verificação remota = somente leitura (o usuário manteve essa decisão em 05/11/2026). Evidência: [01](../openspec/changes/implement-c1-atomic-decrement/evidence/01-publish-verification.md). Próximos: C2 → C3 → C10.
+
+### Relatório de vendas (C10) — CONCLUÍDA E PUBLICADA — 09/11/2026
+Change `implement-c10-sales-dashboard` implementada, publicada restritamente (`reports_sales_GET.xs` e `api_group.xs`) e verificada no XanoFree. `GET reports/sales` responde 401 sem sessão; pull independente confirma o endpoint e as referências `db.get user`/`db.query pedido`. Faturamento e quantidade somam apenas Pedidos em `PAGAMENTO_CONFIRMADO`, `EM_PREPARACAO`, `ENVIADO` ou `ENTREGUE`, com período padrão de 30 dias em UTC, `from`/`to` inclusivos e limite de 366 dias. 188 testes e `openspec validate --all --strict` verdes. A tela do painel fica para change própria. Evidência: [01](../openspec/changes/archive/2026-11-09-implement-c10-sales-dashboard/evidence/01-publish-verification.md).

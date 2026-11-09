@@ -191,4 +191,5 @@ query "reports/sales" verb=GET {
     serie_diaria: $serie_diaria
   }
   tags = ["voltix:internal-orders"]
+  guid = "Heqy-LV7kOfaJOsQmSnqu2KOrgk"
 }
