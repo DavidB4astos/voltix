@@ -85,11 +85,11 @@ importação real) exige ambiente isolado, autorizado e sem dados reais.
 
 ## 4. Estado do Git e do OpenSpec
 
-Na conferência de 09/11/2026, a C7 e sua tela, a tela de Pedidos (C3) e a tela do
-Dashboard (C10) foram implementadas e verificadas. `openspec validate --all --strict`
-aprovou 25 itens e a suíte `python -m unittest discover -s tests -q` aprovou 290 testes.
-Esses resultados são um registro datado, não substituem uma nova verificação
-após mudanças.
+Na conferência de 10/11/2026, a cobertura de `internal-access` e
+`reflex-xano-integration` foi adicionada. `openspec validate --all --strict`
+aprovou 26 itens e a suíte `python -m unittest discover -s tests -q` aprovou
+322 testes. Esses resultados são um registro datado, não substituem uma nova
+verificação após mudanças.
 
 Antes de prosseguir, confira o estado real com:
 
@@ -160,6 +160,7 @@ As seguintes changes foram concluídas e arquivadas:
 - `implement-attendance-panel`: seção de Atendimentos do CRM interno.
 - `implement-order-panel`: seção de Pedidos do painel interno.
 - `implement-sales-dashboard-panel`: seção Dashboard do painel interno (C10).
+- `add-internal-access-integration-tests`: cobertura de acesso interno e saúde da integração (C8).
 
 O controle de seção interno deve continuar restrito no `State`:
 
@@ -260,6 +261,19 @@ encerram a sessão; `400` informa período inválido e mantém a sessão; respos
 malformadas não renderizam. 290 testes, `openspec validate --all --strict`
 (25 itens), `git diff --check` e `reflex compile` verdes, com `reflex.lock`
 restaurado.
+
+### Cobertura de acesso interno e integração (C8)
+
+A change `add-internal-access-integration-tests`, concluída em 10/11/2026, cobriu as
+duas capabilities que não tinham nenhum teste dedicado, sem alterar produção ou Xano.
+`tests/test_internal_access.py` verifica login, `submit_login`, `validate_session`,
+`enter_internal_area`, logout, troca de identidade e separação Cliente × UsuarioInterno,
+além das guardas de perfil/status nos XanoScripts. `tests/test_integration_health.py`
+verifica o contrato exato de saúde, configuração ausente, HTTP, rede, payload inválido,
+nova tentativa e ausência de autenticação/dados de domínio na requisição. 32 testes
+novos, 322 na suíte completa, `openspec validate --all --strict` (26 itens) e
+`git diff --check` verdes, com `reflex.lock` restaurado. Evidência:
+[01](../openspec/changes/archive/2026-11-10-add-internal-access-integration-tests/evidence/01-local-verification.md).
 
 ### Histórico do Cliente
 
@@ -369,7 +383,7 @@ Verificação de testes a partir da raiz do repositório:
 & '.\.venv-windows\Scripts\python.exe' -m unittest discover -s tests -q
 ```
 
-A suíte mais recente registrada teve **290 testes aprovados**. Execute somente
+A suíte mais recente registrada teve **322 testes aprovados**. Execute somente
 os testes pertinentes quando a change for documental; não gere ruído rodando
 toda a aplicação sem necessidade.
 
@@ -396,8 +410,9 @@ git status --short --branch
 
 1. **C1, C2, C3, C6, C7 e C10 concluídas e publicadas** (05/11/2026 e
    09/11/2026); as telas de histórico do Cliente, de Atendimentos, de Pedidos e
-   do Dashboard também foram entregues. Próxima candidata: C8 (cobertura de
-   testes/qualidade), com escopo e aprovação próprios.
+   do Dashboard também foram entregues. A C8 foi iniciada em 10/11/2026 com a
+   cobertura de `internal-access` e `reflex-xano-integration`; trabalho de
+   qualidade remanescente exige escopo e aprovação próprios.
 2. Manter testes de compra E2E (C9) bloqueados até haver ambiente Xano isolado
    e autorizado.
 3. Retomar o trabalho mobile somente com uma change própria.
@@ -406,8 +421,9 @@ git status --short --branch
 
 O CRM está completo no backend e no painel: consulta de clientes (C4), histórico
 do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3) e o
-relatório de vendas (C10) com sua tela. Restam C8 (qualidade) e C9 (E2E
-bloqueada por E6).
+relatório de vendas (C10) com sua tela. A cobertura dedicada de acesso interno e
+saúde da integração foi adicionada; restam revisão de qualidade remanescente da
+C8 e C9 (E2E bloqueada por E6).
 
 ## 8. Comandos e decisões que exigem cuidado
 
