@@ -94,5 +94,5 @@
 - [x] 6.2 Atualizar `docs/roadmap-changes.md` e `docs/AI_AGENT_HANDOFF.md` — verificação:
       consistente com a evidência
 - [x] 6.3 Arquivar a change — verificação: diretório em `openspec/changes/archive/`
-- [ ] 6.4 Commit/push somente com autorização explícita — verificação:
+- [x] 6.4 Commit/push somente com autorização explícita — verificação:
       `git status --short --branch` limpo e sincronizado
