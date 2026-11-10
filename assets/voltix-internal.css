@@ -130,6 +130,10 @@
 .vx-products__secondary{background:white;border:1px solid #dce5ed;color:#40546b;border-radius:8px;padding:9px 11px}
 .vx-products__secondary:hover{background:#f3f7fa}
 .vx-products__quiet{background:transparent;border:0;color:#637287;padding:9px 5px}
+.vx-products__danger{background:#fff;border:1px solid #efd4cd;color:#a9382b;border-radius:8px;padding:9px 11px}
+.vx-products__danger:hover{background:#fff5f2}
+.vx-products__status-confirm{background:#fff8f6;border:1px solid #efd4cd;border-radius:8px;padding:12px;margin-top:12px}
+.vx-products__status-confirm p{font-size:12px;line-height:1.6;color:#7d2f24;margin:0}
 .vx-products button:disabled{opacity:.45;cursor:default}
 .vx-products__upload{border:1px dashed #cbd8e3;border-radius:10px;padding:22px 12px;margin:14px 0;background:#f8fafc;color:#637287;font-size:11px;text-align:center}
 .vx-products__list-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;padding:2px 0}

@@ -18,6 +18,8 @@ class _FakeAdminState:
     _refresh_products = AsyncMock(return_value=True)
     cancel_variation = app.State.cancel_variation.fn
     cancel_stock_adjustment = app.State.cancel_stock_adjustment.fn
+    cancel_product_edit = app.State.cancel_product_edit.fn
+    cancel_delete_product = app.State.cancel_delete_product.fn
     _form_decimal = staticmethod(app.State._form_decimal)
     _auth_token = "unit-test-placeholder"
     is_authenticated = True
@@ -47,6 +49,8 @@ class _FakeAdminState:
     stock_adjustment_current = ""
     stock_adjustment_direction = "entrada"
     stock_adjustment_quantity = ""
+    product_deletion_id = None
+    product_deletion_name = ""
 
 
 class _FakeEmployeeState(_FakeAdminState):
@@ -449,6 +453,130 @@ class ProductManagementTests(unittest.TestCase):
         state._refresh_products.assert_not_awaited()
         failure.close()
 
+    def test_product_deletion_uses_delete_and_confirms_reload(self):
+        state = _FakeAdminState()
+        state.product_deletion_id = 1
+        state.product_deletion_name = "Notebook"
+        state.product_editing_id = 1
+        state.product_form_name = "Notebook"
+        state._catalog_request = AsyncMock(
+            return_value={"id": 1, "deleted": True}
+        )
+        state._refresh_products = AsyncMock(return_value=True)
+
+        async def run():
+            await app.State.confirm_delete_product.fn(state)
+
+        asyncio.run(run())
+        state._catalog_request.assert_awaited_once_with(
+            app.XANO_PRODUCTS_URL_ENV,
+            method="DELETE",
+            record_id=1,
+        )
+        state._refresh_products.assert_awaited_once()
+        self.assertEqual(state.products_message, "Produto excluído.")
+        self.assertIsNone(state.product_deletion_id)
+        self.assertIsNone(state.product_editing_id)
+        self.assertEqual(state.product_form_name, "")
+
+    def test_product_deletion_requires_two_step_confirmation(self):
+        state = _FakeAdminState()
+        state._catalog_request = AsyncMock()
+        state._refresh_products = AsyncMock(return_value=True)
+
+        async def run():
+            await app.State.confirm_delete_product.fn(state)
+
+        asyncio.run(run())
+        state._catalog_request.assert_not_awaited()
+        state._refresh_products.assert_not_awaited()
+        self.assertEqual(
+            state.products_message,
+            "Selecione um produto para excluir.",
+        )
+
+    def test_product_deletion_failure_keeps_confirmation_and_maps_history(self):
+        state = _FakeAdminState()
+        state.product_deletion_id = 1
+        state.products = ["last-confirmed-list"]
+        failure = HTTPError(
+            "https://example.invalid",
+            400,
+            "Bad Request",
+            {},
+            io.BytesIO(
+                b'{"message": "Product has commercial history and cannot be '
+                b'deleted. Inactivate it instead."}'
+            ),
+        )
+        state._catalog_request = AsyncMock(side_effect=failure)
+        state._refresh_products = AsyncMock(return_value=True)
+
+        async def run():
+            await app.State.confirm_delete_product.fn(state)
+
+        asyncio.run(run())
+        self.assertIn("histórico comercial", state.products_message)
+        self.assertIn("inativação", state.products_message)
+        self.assertEqual(state.product_deletion_id, 1)
+        self.assertEqual(state.products, ["last-confirmed-list"])
+        state._refresh_products.assert_not_awaited()
+        failure.close()
+
+    def test_product_deletion_unknown_product_maps_not_found(self):
+        state = _FakeAdminState()
+        state.product_deletion_id = 1
+        failure = HTTPError(
+            "https://example.invalid",
+            404,
+            "Not Found",
+            {},
+            None,
+        )
+        state._catalog_request = AsyncMock(side_effect=failure)
+        state._refresh_products = AsyncMock(return_value=True)
+
+        async def run():
+            await app.State.confirm_delete_product.fn(state)
+
+        asyncio.run(run())
+        self.assertEqual(
+            state.products_message,
+            "Produto não encontrado. Atualize a lista.",
+        )
+        self.assertEqual(state.product_deletion_id, 1)
+        state._refresh_products.assert_not_awaited()
+        failure.close()
+
+    def test_product_deletion_begin_uses_selected_product_and_clears_feedback(self):
+        entry = app.ProductEntry(
+            id=7,
+            name="Notebook",
+            description="",
+            technical_specifications="",
+            image_present=False,
+            category_id=3,
+            category_name="Computadores",
+            category_status="ATIVO",
+            brand_id=4,
+            brand_name="Voltix",
+            brand_status="ATIVO",
+            status="ATIVO",
+            variations=[],
+        )
+        state = _FakeAdminState()
+        state.products = [entry]
+        state.products_message = "mensagem anterior"
+
+        app.State.begin_delete_product.fn(state, 7)
+        self.assertEqual(state.product_deletion_id, 7)
+        self.assertEqual(state.product_deletion_name, "Notebook")
+        self.assertEqual(state.products_message, "")
+
+        app.State.cancel_delete_product.fn(state)
+        self.assertIsNone(state.product_deletion_id)
+        self.assertEqual(state.product_deletion_name, "")
+
     def test_xano_stock_adjustment_is_atomic_and_has_no_movement_history(self):
         source = Path(
             "xano/api/product_management/variation/"
@@ -496,13 +624,50 @@ class ProductManagementTests(unittest.TestCase):
         self.assertIn("State.begin_stock_adjustment", product_ui)
         self.assertIn('"Ajustar estoque"', product_ui)
 
+    def test_xano_product_deletion_blocks_commercial_history_in_transaction(self):
+        source = Path(
+            "xano/api/product_management/product/product_id_DELETE.xs"
+        ).read_text(encoding="utf-8")
+        guard = (
+            'precondition ($user.role == "ADMINISTRADOR" '
+            '&& $user.status == "ATIVO")'
+        )
+        self.assertIn(guard, source)
+        self.assertLess(source.index(guard), source.index("db.get produto"))
+        self.assertIn('error_type = "notfound"', source)
+        self.assertIn("db.transaction", source)
+        self.assertIn("db.query variacao_produto", source)
+        self.assertIn(
+            "where = $db.variacao_produto.produto_id == $input.product_id",
+            source,
+        )
+        self.assertIn("db.query item_pedido", source)
+        self.assertIn(
+            "where = $db.item_pedido.variacao_produto_id in $variation_ids",
+            source,
+        )
+        self.assertIn("db.query item_carrinho", source)
+        self.assertIn(
+            "where = $db.item_carrinho.variacao_produto_id in $variation_ids",
+            source,
+        )
+        self.assertIn('error_type = "badrequest"', source)
+        self.assertIn("Inactivate it instead.", source)
+        self.assertIn("db.del variacao_produto", source)
+        self.assertIn('field_name = "produto_id"', source)
+        self.assertIn("db.del produto", source)
+        self.assertIn("deleted: true", source)
+        self.assertNotIn("409", source)
+        self.assertNotIn("storage.", source)
+        self.assertNotIn("db.patch", source)
+
     def test_xano_product_endpoints_authorize_before_business_data_access(self):
         endpoint_paths = [
             path
             for path in Path("xano/api/product_management").rglob("*.xs")
             if path.name != "api_group.xs"
         ]
-        self.assertEqual(len(endpoint_paths), 8)
+        self.assertEqual(len(endpoint_paths), 9)
         for path in endpoint_paths:
             with self.subTest(path=path):
                 source = path.read_text(encoding="utf-8")
@@ -688,7 +853,13 @@ class ProductManagementTests(unittest.TestCase):
         self.assertIn("State.product_form_brand_id == entry.id.to_string()", product_form)
         self.assertIn("State.edit_product", product_ui)
         self.assertIn("State.toggle_product_status", product_ui)
-        self.assertNotIn("Excluir", product_ui)
+        self.assertIn("State.begin_delete_product", product_ui)
+        self.assertIn("State.confirm_delete_product", product_ui)
+        self.assertIn("State.cancel_delete_product", product_ui)
+        self.assertIn('"Excluir produto"', product_ui)
+        self.assertIn('"Confirmar exclusão"', product_ui)
+        self.assertIn("State.product_deletion_id == product.id", product_ui)
+        self.assertIn("A exclusão é permanente", product_ui)
 
 
 if __name__ == "__main__":

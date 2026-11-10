@@ -1299,6 +1299,27 @@ def _product_failure_message(error: Exception) -> str:
     return "Não foi possível concluir a operação do produto. Tente novamente."
 
 
+def _product_deletion_failure_message(error: Exception) -> str:
+    if isinstance(error, ValueError) and not str(error).startswith(
+        "Missing required environment variable:"
+    ):
+        return str(error)
+    if isinstance(error, urllib.error.HTTPError):
+        if error.code in {401, 403}:
+            return "Você não tem autorização para essa operação."
+        if error.code == 404:
+            return "Produto não encontrado. Atualize a lista."
+        if error.code == 400:
+            body = _bulk_import_error_body(error).lower()
+            if "commercial history" in body:
+                return (
+                    "Este produto possui histórico comercial e não pode ser "
+                    "excluído. Utilize a inativação."
+                )
+            return "A exclusão do produto foi rejeitada. Atualize a lista e tente novamente."
+    return _product_failure_message(error)
+
+
 def _stock_adjustment_failure_message(error: Exception) -> str:
     if isinstance(error, ValueError) and not str(error).startswith(
         "Missing required environment variable:"
@@ -3534,6 +3555,8 @@ class State(rx.State):
     stock_adjustment_direction: str = "entrada"
     stock_adjustment_quantity: str = ""
     product_image_message: str = ""
+    product_deletion_id: int | None = None
+    product_deletion_name: str = ""
     bulk_import_preview: list[BulkImportRow] = []
     bulk_import_report: list[BulkImportResult] = []
     bulk_import_message: str = ""
@@ -3580,6 +3603,8 @@ class State(rx.State):
         self.stock_adjustment_direction = "entrada"
         self.stock_adjustment_quantity = ""
         self.product_image_message = ""
+        self.product_deletion_id = None
+        self.product_deletion_name = ""
         self.bulk_import_preview = []
         self.bulk_import_report = []
         self.bulk_import_message = ""
@@ -4108,6 +4133,71 @@ class State(rx.State):
         self.product_form_category_id = ""
         self.product_form_brand_id = ""
         self.product_image_message = ""
+
+    @rx.event
+    def begin_delete_product(self, product_id: int):
+        product = next(
+            (item for item in self.products if item.id == product_id), None
+        )
+        if product is None:
+            self.products_message = "Produto não encontrado. Atualize a lista."
+            return
+        self.product_deletion_id = product.id
+        self.product_deletion_name = (
+            product.name if product.name else f"Produto #{product.id}"
+        )
+        self.products_message = ""
+
+    @rx.event
+    def cancel_delete_product(self):
+        self.product_deletion_id = None
+        self.product_deletion_name = ""
+
+    @rx.event
+    async def confirm_delete_product(self):
+        product_id = self.product_deletion_id
+        if product_id is None:
+            self.products_message = "Selecione um produto para excluir."
+            return
+        self.products_loading = True
+        self.products_message = ""
+        try:
+            response = await self._catalog_request(
+                XANO_PRODUCTS_URL_ENV,
+                method="DELETE",
+                record_id=product_id,
+            )
+            if (
+                not isinstance(response, dict)
+                or response.get("deleted") is not True
+            ):
+                raise ValueError(
+                    "Product deletion response must confirm deletion."
+                )
+            if self.product_editing_id == product_id:
+                self.cancel_product_edit()
+            if self.variation_product_id == product_id:
+                self.cancel_variation()
+            if self.stock_adjustment_product_id == product_id:
+                self.cancel_stock_adjustment()
+            self.cancel_delete_product()
+            if await self._refresh_products():
+                self.products_message = "Produto excluído."
+            else:
+                self.products_message = (
+                    "Produto excluído; não foi possível atualizar a lista. "
+                    "Atualize para confirmar."
+                )
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as error:
+            self.products_message = _product_deletion_failure_message(error)
+        finally:
+            self.products_loading = False
 
     @staticmethod
     def _form_decimal(
@@ -8242,9 +8332,33 @@ def index() -> rx.Component:
                         rx.el.button(rx.cond(product.status == "ATIVO", "Inativar produto", "Reativar produto"),
                             on_click=State.toggle_product_status(product.id), type="button",
                             disabled=State.products_loading, class_name="vx-products__quiet"),
+                        rx.el.button("Excluir produto", on_click=State.begin_delete_product(product.id),
+                            type="button", disabled=State.products_loading,
+                            class_name="vx-products__danger"),
                         rx.el.button(rx.icon("plus", size=15), "Adicionar variação", on_click=State.begin_variation(product.id),
                             type="button", disabled=State.products_loading, class_name="vx-products__secondary"),
                         class_name="vx-products__actions"),
+                    rx.cond(State.product_deletion_id == product.id,
+                        rx.el.div(
+                            rx.el.p("Excluir definitivamente ",
+                                rx.cond(product.name != "", product.name,
+                                    "Produto #" + product.id.to_string()),
+                                "? A exclusão é permanente e só é permitida sem "
+                                "histórico comercial. Se o produto já possui pedidos "
+                                "ou itens em carrinhos, utilize a inativação."),
+                            rx.el.div(
+                                rx.el.button(rx.icon("trash-2", size=15),
+                                    "Confirmar exclusão", type="button",
+                                    on_click=State.confirm_delete_product,
+                                    disabled=State.products_loading,
+                                    class_name="vx-products__danger"),
+                                rx.el.button("Cancelar", type="button",
+                                    on_click=State.cancel_delete_product,
+                                    disabled=State.products_loading,
+                                    class_name="vx-products__secondary"),
+                                class_name="vx-products__actions"),
+                            class_name="vx-products__status-confirm"),
+                        rx.fragment()),
                     rx.el.h4("Variações", class_name="vx-products__variation-title"),
                     rx.el.div(rx.table.root(rx.table.header(rx.table.row(*[rx.table.column_header_cell(label)
                             for label in ["Variação / SKU", "Preço", "Disponível", "Status", "Ações"]])),

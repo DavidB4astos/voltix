@@ -403,6 +403,28 @@ preservam o formulário e não inventam sucesso. A URL reutiliza
 e
 [publicação](../openspec/changes/archive/2026-11-10-implement-variation-stock-adjustment/evidence/02-publish-verification.md).
 
+### Exclusão de Produto
+
+A exclusão de Produto foi **IMPLEMENTADA e PUBLICADA em 10/11/2026** pela change
+`implement-product-deletion`. O grupo `Product Management` ganhou
+`DELETE products/{product_id}` com `auth = "user"` e autorização exclusiva de
+ADMINISTRADOR `ATIVO`. A operação é definitiva e só é permitida quando nenhuma
+variação do produto é referenciada por `ItemPedido` ou `ItemCarrinho`; a
+verificação e a remoção das variações e do produto acontecem na mesma
+`db.transaction`. Com histórico comercial, o backend responde `400`
+(`badrequest`, pois o XanoScript não possui `409`) com mensagem que orienta a
+inativação; produto inexistente responde `404`. No painel, a ação
+"Excluir produto" exige confirmação em dois passos, identifica o produto e só
+aparece para ADMINISTRADOR; o formulário de edição, a variação e o ajuste de
+estoque são limpos quando o produto excluído estava selecionado. Imagem
+armazenada, Pedido, Pagamento, Carrinho, Categoria e Marca não são alterados.
+362 testes, `openspec validate --all --strict` (26 specs após arquivamento),
+`git diff --check` e `reflex compile` verdes, com `reflex.lock` restaurado.
+Evidências:
+[local](../openspec/changes/archive/2026-11-10-implement-product-deletion/evidence/01-local-verification.md)
+e
+[publicação](../openspec/changes/archive/2026-11-10-implement-product-deletion/evidence/02-publish-verification.md).
+
 ### Imagens de produto
 
 Há infraestrutura de imagens locais e créditos em `assets/demo/manifest.json`.
@@ -431,7 +453,7 @@ Verificação de testes a partir da raiz do repositório:
 & '.\.venv-windows\Scripts\python.exe' -m unittest discover -s tests -q
 ```
 
-A suíte mais recente registrada teve **356 testes aprovados**. Execute somente
+A suíte mais recente registrada teve **362 testes aprovados**. Execute somente
 os testes pertinentes quando a change for documental; não gere ruído rodando
 toda a aplicação sem necessidade.
 
@@ -471,12 +493,14 @@ git status --short --branch
    `implement-variation-stock-adjustment`), com
    `POST variations/{variation_id}/stock-adjustments` publicado, delta atômico
    guardado e formulário dedicado no painel, sem histórico de movimentações.
-5. **Próxima change recomendada:** exclusão de Produto (item 10 da fila fora de
-   spec). Depois: gestão de usuários internos com perfil e recuperação de senha
-   — uma change por vez, cada uma com aprovação própria.
-6. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
+5. **Exclusão de Produto concluída em 10/11/2026** (change
+   `implement-product-deletion`), com `DELETE products/{product_id}` publicado,
+   bloqueio de histórico comercial e confirmação em dois passos no painel.
+6. **Próxima change recomendada:** gestão de usuários internos com perfil e
+   recuperação de senha — uma change por vez, cada uma com aprovação própria.
+7. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
    autorizado.
-7. Retomar o trabalho mobile somente com uma change própria.
+8. Retomar o trabalho mobile somente com uma change própria.
 
 O CRM está completo no backend e no painel: consulta de clientes (C4), histórico
 do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3), o
