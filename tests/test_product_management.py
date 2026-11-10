@@ -1,4 +1,5 @@
 import asyncio
+import io
 import os
 import re
 import unittest
@@ -16,6 +17,7 @@ class _FakeAdminState:
     _change_product_status = app.State._change_product_status
     _refresh_products = AsyncMock(return_value=True)
     cancel_variation = app.State.cancel_variation.fn
+    cancel_stock_adjustment = app.State.cancel_stock_adjustment.fn
     _form_decimal = staticmethod(app.State._form_decimal)
     _auth_token = "unit-test-placeholder"
     is_authenticated = True
@@ -39,6 +41,12 @@ class _FakeAdminState:
     brands = [app.CatalogEntry(4, "Voltix", "", "ATIVO")]
     variation_product_id = 1
     variation_editing_id = None
+    stock_adjustment_variation_id = None
+    stock_adjustment_product_id = None
+    stock_adjustment_label = ""
+    stock_adjustment_current = ""
+    stock_adjustment_direction = "entrada"
+    stock_adjustment_quantity = ""
 
 
 class _FakeEmployeeState(_FakeAdminState):
@@ -305,13 +313,196 @@ class ProductManagementTests(unittest.TestCase):
         )
         state._refresh_products.assert_awaited_once()
 
+    def test_stock_adjustment_sends_signed_delta_and_confirms_reload(self):
+        state = _FakeAdminState()
+        state.stock_adjustment_variation_id = 9
+        state.stock_adjustment_direction = "saida"
+        state._catalog_request = AsyncMock(return_value={"id": 9})
+        state._refresh_products = AsyncMock(return_value=True)
+
+        async def run():
+            await app.State.save_stock_adjustment.fn(
+                state, {"stock_adjustment_quantity": "2.5"}
+            )
+
+        asyncio.run(run())
+        state._catalog_request.assert_awaited_once_with(
+            app.XANO_VARIATIONS_URL_ENV,
+            method="POST",
+            record_id=9,
+            path_suffix="/stock-adjustments",
+            payload={"delta": -2.5},
+        )
+        state._refresh_products.assert_awaited_once()
+        self.assertEqual(state.products_message, "Estoque ajustado.")
+        self.assertIsNone(state.stock_adjustment_variation_id)
+
+    def test_stock_adjustment_entry_sends_positive_delta(self):
+        state = _FakeAdminState()
+        state.stock_adjustment_variation_id = 9
+        state.stock_adjustment_direction = "entrada"
+        state._catalog_request = AsyncMock(return_value={"id": 9})
+        state._refresh_products = AsyncMock(return_value=True)
+
+        async def run():
+            await app.State.save_stock_adjustment.fn(
+                state, {"stock_adjustment_quantity": "3"}
+            )
+
+        asyncio.run(run())
+        state._catalog_request.assert_awaited_once_with(
+            app.XANO_VARIATIONS_URL_ENV,
+            method="POST",
+            record_id=9,
+            path_suffix="/stock-adjustments",
+            payload={"delta": 3.0},
+        )
+
+    def test_stock_adjustment_rejects_exit_above_current_stock(self):
+        state = _FakeAdminState()
+        state.stock_adjustment_variation_id = 9
+        state.stock_adjustment_direction = "saida"
+        state.stock_adjustment_current = "2"
+        state._catalog_request = AsyncMock()
+        state._refresh_products = AsyncMock(return_value=True)
+
+        async def run():
+            await app.State.save_stock_adjustment.fn(
+                state, {"stock_adjustment_quantity": "3"}
+            )
+
+        asyncio.run(run())
+        state._catalog_request.assert_not_awaited()
+        state._refresh_products.assert_not_awaited()
+        self.assertEqual(
+            state.products_message,
+            "A quantidade de saída não pode exceder o estoque atual.",
+        )
+
+    def test_stock_adjustment_rejects_zero_quantity_before_request(self):
+        state = _FakeAdminState()
+        state.stock_adjustment_variation_id = 9
+        state._catalog_request = AsyncMock()
+        state._refresh_products = AsyncMock(return_value=True)
+
+        async def run():
+            await app.State.save_stock_adjustment.fn(
+                state, {"stock_adjustment_quantity": "0"}
+            )
+
+        asyncio.run(run())
+        state._catalog_request.assert_not_awaited()
+        state._refresh_products.assert_not_awaited()
+        self.assertEqual(
+            state.products_message,
+            "Informe um valor válido para uma quantidade maior que zero.",
+        )
+        self.assertEqual(state.stock_adjustment_variation_id, 9)
+
+    def test_stock_adjustment_requires_selected_variation_and_valid_direction(self):
+        state = _FakeAdminState()
+        state._catalog_request = AsyncMock()
+
+        async def run(data):
+            await app.State.save_stock_adjustment.fn(state, data)
+
+        asyncio.run(run({"stock_adjustment_quantity": "1"}))
+        state._catalog_request.assert_not_awaited()
+        self.assertEqual(
+            state.products_message,
+            "Selecione uma variação para ajustar o estoque.",
+        )
+
+        state.stock_adjustment_variation_id = 9
+        state.stock_adjustment_direction = "lateral"
+        asyncio.run(run({"stock_adjustment_quantity": "1"}))
+        state._catalog_request.assert_not_awaited()
+        self.assertEqual(state.products_message, "Direção de ajuste inválida.")
+
+    def test_stock_adjustment_failure_keeps_form_and_is_observable(self):
+        state = _FakeAdminState()
+        state.stock_adjustment_variation_id = 9
+        state.stock_adjustment_direction = "saida"
+        failure = HTTPError(
+            "https://example.invalid",
+            400,
+            "Bad Request",
+            {},
+            io.BytesIO(
+                b'{"message": "Insufficient stock for this adjustment."}'
+            ),
+        )
+        state._catalog_request = AsyncMock(side_effect=failure)
+        state._refresh_products = AsyncMock(return_value=True)
+
+        async def run():
+            await app.State.save_stock_adjustment.fn(
+                state, {"stock_adjustment_quantity": "1"}
+            )
+
+        asyncio.run(run())
+        self.assertEqual(
+            state.products_message,
+            "Estoque insuficiente para a retirada informada.",
+        )
+        self.assertEqual(state.stock_adjustment_variation_id, 9)
+        state._refresh_products.assert_not_awaited()
+        failure.close()
+
+    def test_xano_stock_adjustment_is_atomic_and_has_no_movement_history(self):
+        source = Path(
+            "xano/api/product_management/variation/"
+            "variation_id_stock_adjustments_POST.xs"
+        ).read_text(encoding="utf-8")
+        self.assertIn(
+            "where = $db.variacao_produto.id == $input.variation_id",
+            source,
+        )
+        self.assertIn(
+            "$db.variacao_produto.quantidade_disponivel >= $required_quantity",
+            source,
+        )
+        self.assertIn('field_name = "quantidade_disponivel"', source)
+        self.assertIn("value = $input.delta", source)
+        self.assertIn('return = {type: "count"}', source)
+        self.assertIn("$input.delta != 0", source)
+        self.assertIn("Insufficient stock for this adjustment.", source)
+        self.assertIn('error_type = "notfound"', source)
+        self.assertNotIn("motivo", source.lower())
+        self.assertNotIn("movimenta", source.lower())
+        self.assertNotIn("db.patch", source)
+
+    def test_stock_adjustment_interface_is_admin_only_and_labeled(self):
+        source = Path("voltix/voltix.py").read_text(encoding="utf-8")
+        panel = source.split("    def stock_adjustment_form()", maxsplit=1)[1]
+        panel = panel.split("    product_management = rx.cond(", maxsplit=1)[0]
+        self.assertIn(
+            'product_field("Operação", "stock-adjustment-direction"',
+            panel,
+        )
+        self.assertIn(
+            'product_field("Quantidade", "stock-adjustment-quantity"',
+            panel,
+        )
+        self.assertIn('name="stock_adjustment_quantity"', panel)
+        self.assertIn("State.set_stock_adjustment_direction", panel)
+        self.assertIn("State.cancel_stock_adjustment", panel)
+        self.assertIn("on_submit=State.save_stock_adjustment", panel)
+        self.assertIn("disabled=State.products_loading", panel)
+        self.assertIn("A saída não pode exceder a quantidade atual", panel)
+        product_ui = source.split("    product_management = rx.cond(", maxsplit=1)[1]
+        product_ui = product_ui.split("    catalog_management = rx.cond(", maxsplit=1)[0]
+        self.assertIn('State.user_role == "ADMINISTRADOR"', product_ui)
+        self.assertIn("State.begin_stock_adjustment", product_ui)
+        self.assertIn('"Ajustar estoque"', product_ui)
+
     def test_xano_product_endpoints_authorize_before_business_data_access(self):
         endpoint_paths = [
             path
             for path in Path("xano/api/product_management").rglob("*.xs")
             if path.name != "api_group.xs"
         ]
-        self.assertEqual(len(endpoint_paths), 7)
+        self.assertEqual(len(endpoint_paths), 8)
         for path in endpoint_paths:
             with self.subTest(path=path):
                 source = path.read_text(encoding="utf-8")

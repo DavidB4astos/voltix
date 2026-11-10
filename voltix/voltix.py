@@ -1299,6 +1299,24 @@ def _product_failure_message(error: Exception) -> str:
     return "Não foi possível concluir a operação do produto. Tente novamente."
 
 
+def _stock_adjustment_failure_message(error: Exception) -> str:
+    if isinstance(error, ValueError) and not str(error).startswith(
+        "Missing required environment variable:"
+    ):
+        return str(error)
+    if isinstance(error, urllib.error.HTTPError):
+        if error.code in {401, 403}:
+            return "Você não tem autorização para essa operação."
+        if error.code == 404:
+            return "Variação não encontrada. Atualize a lista."
+        if error.code == 400:
+            body = _bulk_import_error_body(error).lower()
+            if "insufficient stock" in body:
+                return "Estoque insuficiente para a retirada informada."
+            return "O ajuste de estoque foi rejeitado. Verifique os dados e tente novamente."
+    return _product_failure_message(error)
+
+
 def _request_xano_multipart(
     url: str,
     *,
@@ -3509,6 +3527,12 @@ class State(rx.State):
     variation_form_sku: str = ""
     variation_form_price: str = ""
     variation_form_quantity: str = ""
+    stock_adjustment_variation_id: int | None = None
+    stock_adjustment_product_id: int | None = None
+    stock_adjustment_label: str = ""
+    stock_adjustment_current: str = ""
+    stock_adjustment_direction: str = "entrada"
+    stock_adjustment_quantity: str = ""
     product_image_message: str = ""
     bulk_import_preview: list[BulkImportRow] = []
     bulk_import_report: list[BulkImportResult] = []
@@ -3549,6 +3573,12 @@ class State(rx.State):
         self.variation_form_sku = ""
         self.variation_form_price = ""
         self.variation_form_quantity = ""
+        self.stock_adjustment_variation_id = None
+        self.stock_adjustment_product_id = None
+        self.stock_adjustment_label = ""
+        self.stock_adjustment_current = ""
+        self.stock_adjustment_direction = "entrada"
+        self.stock_adjustment_quantity = ""
         self.product_image_message = ""
         self.bulk_import_preview = []
         self.bulk_import_report = []
@@ -3593,6 +3623,7 @@ class State(rx.State):
         *,
         method: str = "GET",
         record_id: int | None = None,
+        path_suffix: str = "",
         payload: dict[str, object] | None = None,
         retry_rate_limit: bool | None = None,
     ) -> XanoJson:
@@ -3607,7 +3638,7 @@ class State(rx.State):
 
         url = _required_environment_url(collection_url_env).rstrip("/")
         if record_id is not None:
-            url = f"{url}/{record_id}"
+            url = f"{url}/{record_id}{path_suffix}"
         request_kwargs: dict[str, object] = {
             "method": method,
             "payload": payload,
@@ -3958,6 +3989,100 @@ class State(rx.State):
     @rx.event
     def set_variation_form_quantity(self, value: str):
         self.variation_form_quantity = value
+
+    @rx.event
+    def set_stock_adjustment_direction(self, value: str):
+        self.stock_adjustment_direction = value
+
+    @rx.event
+    def set_stock_adjustment_quantity(self, value: str):
+        self.stock_adjustment_quantity = value
+
+    @rx.event
+    def begin_stock_adjustment(
+        self,
+        product_id: int,
+        variation_id: int,
+        label: str,
+        current_quantity: str,
+    ):
+        self.stock_adjustment_product_id = product_id
+        self.stock_adjustment_variation_id = variation_id
+        self.stock_adjustment_label = label
+        self.stock_adjustment_current = current_quantity
+        self.stock_adjustment_direction = "entrada"
+        self.stock_adjustment_quantity = ""
+
+    @rx.event
+    def cancel_stock_adjustment(self):
+        self.stock_adjustment_variation_id = None
+        self.stock_adjustment_product_id = None
+        self.stock_adjustment_label = ""
+        self.stock_adjustment_current = ""
+        self.stock_adjustment_direction = "entrada"
+        self.stock_adjustment_quantity = ""
+
+    @rx.event
+    async def save_stock_adjustment(self, form_data: dict[str, Any]):
+        variation_id = self.stock_adjustment_variation_id
+        if variation_id is None:
+            self.products_message = "Selecione uma variação para ajustar o estoque."
+            return
+        direction = self.stock_adjustment_direction
+        if direction not in {"entrada", "saida"}:
+            self.products_message = "Direção de ajuste inválida."
+            return
+        self.products_loading = True
+        self.products_message = ""
+        try:
+            quantity = self._form_decimal(
+                form_data.get("stock_adjustment_quantity"),
+                field_name="uma quantidade maior que zero",
+                minimum=Decimal("0"),
+                strictly_positive=True,
+            )
+            if direction == "saida":
+                try:
+                    current_quantity = Decimal(
+                        self.stock_adjustment_current.strip()
+                    )
+                except (InvalidOperation, ValueError):
+                    current_quantity = None
+                if (
+                    current_quantity is not None
+                    and Decimal(str(quantity)) > current_quantity
+                ):
+                    raise ValueError(
+                        "A quantidade de saída não pode exceder o estoque atual."
+                    )
+            delta = quantity if direction == "entrada" else -quantity
+            response = await self._catalog_request(
+                XANO_VARIATIONS_URL_ENV,
+                method="POST",
+                record_id=variation_id,
+                path_suffix="/stock-adjustments",
+                payload={"delta": delta},
+            )
+            if not isinstance(response, dict):
+                raise ValueError("Variation stock response must be an object.")
+            self.cancel_stock_adjustment()
+            if await self._refresh_products():
+                self.products_message = "Estoque ajustado."
+            else:
+                self.products_message = (
+                    "Estoque ajustado; não foi possível atualizar a lista. "
+                    "Atualize para confirmar."
+                )
+        except (
+            urllib.error.HTTPError,
+            urllib.error.URLError,
+            TimeoutError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as error:
+            self.products_message = _stock_adjustment_failure_message(error)
+        finally:
+            self.products_loading = False
 
     @rx.event
     def edit_product(self, product_id: int):
@@ -8058,10 +8183,42 @@ def index() -> rx.Component:
                         disabled=State.products_loading, class_name="vx-products__secondary"), class_name="vx-products__actions"),
                 on_submit=State.save_variation, width="100%", class_name="vx-products__form"), rx.fragment())
 
+    def stock_adjustment_form() -> rx.Component:
+        return rx.cond(State.stock_adjustment_variation_id != None,
+            rx.form(rx.el.div(rx.el.p("ESTOQUE DA VARIAÇÃO", class_name="vx-products__eyebrow"),
+                    rx.el.h2("Ajustar estoque"),
+                    class_name="vx-products__form-heading"),
+                rx.el.p("Variação: " + State.stock_adjustment_label
+                    + " \u00b7 Quantidade atual: " + State.stock_adjustment_current,
+                    class_name="vx-products__muted"),
+                product_field("Operação", "stock-adjustment-direction", rx.el.select(
+                    rx.el.option("Entrada (adicionar)", value="entrada"),
+                    rx.el.option("Saída (remover)", value="saida"),
+                    id="stock-adjustment-direction", value=State.stock_adjustment_direction,
+                    on_change=State.set_stock_adjustment_direction,
+                    disabled=State.products_loading)),
+                product_field("Quantidade", "stock-adjustment-quantity", rx.input(
+                    id="stock-adjustment-quantity", name="stock_adjustment_quantity",
+                    type="number", step="any", min="0", placeholder="Maior que zero",
+                    value=State.stock_adjustment_quantity,
+                    on_change=State.set_stock_adjustment_quantity,
+                    required=True, disabled=State.products_loading, width="100%")),
+                rx.el.p("O ajuste altera apenas a quantidade disponível; não registra "
+                    "histórico nem motivo. A saída não pode exceder a quantidade atual "
+                    "e o backend impede estoque negativo.",
+                    class_name="vx-products__muted"),
+                rx.el.div(rx.el.button("Confirmar ajuste", type="submit",
+                        disabled=State.products_loading, class_name="vx-products__primary"),
+                    rx.el.button("Cancelar", type="button", on_click=State.cancel_stock_adjustment,
+                        disabled=State.products_loading, class_name="vx-products__secondary"),
+                    class_name="vx-products__actions"),
+                on_submit=State.save_stock_adjustment, width="100%", class_name="vx-products__form"),
+            rx.fragment())
+
     product_management = rx.cond(
         State.user_role == "ADMINISTRADOR",
         rx.el.section(
-            rx.el.div(variation_form(), product_form(), class_name="vx-products__editor"),
+            rx.el.div(variation_form(), stock_adjustment_form(), product_form(), class_name="vx-products__editor"),
             rx.el.div(rx.el.header(rx.el.div(rx.el.h2("Produtos cadastrados"),
                         rx.el.p("Informações e variações do catálogo.", class_name="vx-products__muted")),
                     rx.el.button(rx.icon("refresh-cw", size=15), "Atualizar lista", on_click=State.load_products,
@@ -8099,6 +8256,11 @@ def index() -> rx.Component:
                             rx.table.cell(rx.el.div(rx.el.button("Editar variação", type="button",
                                     on_click=State.edit_variation(product.id, variation.id), disabled=State.products_loading,
                                     class_name="vx-products__text-action"),
+                                rx.el.button("Ajustar estoque", type="button",
+                                    on_click=State.begin_stock_adjustment(product.id, variation.id,
+                                        rx.cond(variation.name_or_description != "", variation.name_or_description, variation.sku),
+                                        variation.available_quantity.to_string()),
+                                    disabled=State.products_loading, class_name="vx-products__text-action"),
                                 rx.el.button(rx.cond(variation.status == "ATIVO", "Inativar variação", "Reativar variação"),
                                     type="button", on_click=State.toggle_variation_status(variation.id,
                                         rx.cond(variation.status == "ATIVO", "INATIVO", "ATIVO")),

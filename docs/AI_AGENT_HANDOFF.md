@@ -88,9 +88,10 @@ importação real) exige ambiente isolado, autorizado e sem dados reais.
 
 Na conferência de 10/11/2026, a cobertura de `internal-access` e
 `reflex-xano-integration` foi adicionada, o dashboard de CRM foi entregue como
-capability própria e a edição administrativa de Cliente foi implementada e
-publicada. `openspec validate --all --strict` aprovou 26 specs consolidadas e a
-suíte `python -m unittest discover -s tests -q` aprovou 348 testes. Esses
+capability própria, a edição administrativa de Cliente foi implementada e
+publicada e o ajuste de estoque por variação foi implementado e publicado.
+`openspec validate --all --strict` aprovou 26 specs consolidadas e a
+suíte `python -m unittest discover -s tests -q` aprovou 356 testes. Esses
 resultados são um registro datado, não substituem uma nova verificação após
 mudanças.
 
@@ -381,6 +382,27 @@ confirmação em dois passos. A URL vem de `XANO_INTERNAL_CUSTOMER_UPDATE_URL`
 e
 [publicação](../openspec/changes/archive/2026-11-10-implement-internal-customer-edit/evidence/02-publish-verification.md).
 
+### Ajuste de estoque por variação
+
+O ajuste de estoque foi **IMPLEMENTADO e PUBLICADO em 10/11/2026** pela change
+`implement-variation-stock-adjustment`. O grupo `Product Management` ganhou
+`POST variations/{variation_id}/stock-adjustments` com `auth = "user"` e
+autorização exclusiva de ADMINISTRADOR `ATIVO`, recebendo `delta` decimal não
+nulo (positivo adiciona, negativo remove). A aplicação usa `db.increment`
+atômico com guarda de quantidade suficiente apenas na saída, impedindo estoque
+negativo e sobrescrita de baixas concorrentes do checkout. Não há tabela,
+histórico, motivo nem alteração de `updated_at`; delta zero, variação
+inexistente e estoque insuficiente falham sem escrita. No painel de produtos, a
+ação "Ajustar estoque" abre um formulário dedicado com quantidade atual,
+entrada/saída e quantidade positiva, visível apenas para ADMINISTRADOR; falhas
+preservam o formulário e não inventam sucesso. A URL reutiliza
+`XANO_VARIATIONS_URL` com o sufixo `/stock-adjustments`, sem variável nova.
+356 testes, `openspec validate --all --strict` (26 specs), `git diff --check` e
+`reflex compile` verdes, com `reflex.lock` restaurado. Evidências:
+[local](../openspec/changes/archive/2026-11-10-implement-variation-stock-adjustment/evidence/01-local-verification.md)
+e
+[publicação](../openspec/changes/archive/2026-11-10-implement-variation-stock-adjustment/evidence/02-publish-verification.md).
+
 ### Imagens de produto
 
 Há infraestrutura de imagens locais e créditos em `assets/demo/manifest.json`.
@@ -409,7 +431,7 @@ Verificação de testes a partir da raiz do repositório:
 & '.\.venv-windows\Scripts\python.exe' -m unittest discover -s tests -q
 ```
 
-A suíte mais recente registrada teve **322 testes aprovados**. Execute somente
+A suíte mais recente registrada teve **356 testes aprovados**. Execute somente
 os testes pertinentes quando a change for documental; não gere ruído rodando
 toda a aplicação sem necessidade.
 
@@ -445,12 +467,16 @@ git status --short --branch
    `implement-internal-customer-edit`), com `PATCH customers/{customer_id}`
    publicado e restrito a ADMINISTRADOR. A visão 360 na ficha do Cliente foi
    recusada pelo usuário.
-4. **Próxima change recomendada:** ajuste de estoque (item 8 da fila fora de
-   spec). Depois: exclusão de Produto, gestão de usuários internos com perfil e
-   recuperação de senha — uma change por vez, cada uma com aprovação própria.
-5. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
+4. **Ajuste de estoque concluído em 10/11/2026** (change
+   `implement-variation-stock-adjustment`), com
+   `POST variations/{variation_id}/stock-adjustments` publicado, delta atômico
+   guardado e formulário dedicado no painel, sem histórico de movimentações.
+5. **Próxima change recomendada:** exclusão de Produto (item 10 da fila fora de
+   spec). Depois: gestão de usuários internos com perfil e recuperação de senha
+   — uma change por vez, cada uma com aprovação própria.
+6. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
    autorizado.
-6. Retomar o trabalho mobile somente com uma change própria.
+7. Retomar o trabalho mobile somente com uma change própria.
 
 O CRM está completo no backend e no painel: consulta de clientes (C4), histórico
 do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3), o
