@@ -6,7 +6,8 @@ from types import SimpleNamespace, MethodType
 from unittest.mock import AsyncMock, patch
 
 from voltix.internal_customers import (customer_record, customer_page, query_parameters,
-    bounded_read, customer_date_display, history_parameters, order_history_page, order_record)
+    bounded_read, customer_date_display, history_parameters, order_history_page, order_record,
+    customer_update_payload, customer_status_payload)
 import voltix.voltix as app
 
 
@@ -141,6 +142,29 @@ class CustomerContractTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             order_history_page(value, customer_id=42, page=1)
 
+    def test_customer_update_payload_normalizes_and_keeps_blank_fields(self):
+        self.assertEqual(customer_update_payload("  ", "", " ", current_name="Atual"), {})
+        self.assertEqual(
+            customer_update_payload(" Atual ", " MARIA@Example.TEST ", " 1199999 ",
+                                    current_name="Atual"),
+            {"email": "maria@example.test", "telefone": "1199999"})
+        self.assertEqual(customer_update_payload(" Novo Nome ", "", "", current_name="Atual"),
+                         {"nome_completo": "Novo Nome"})
+
+    def test_customer_update_payload_rejects_invalid_values(self):
+        cases = [("x" * 301, "", ""), ("", "invalido", ""), ("", "a" * 250 + "@x.test", ""),
+                 ("", "", "1" * 31), (None, "", "")]
+        for name, mail, phone in cases:
+            with self.assertRaises(ValueError):
+                customer_update_payload(name, mail, phone, current_name="Atual")
+
+    def test_customer_status_payload_accepts_only_known_status(self):
+        self.assertEqual(customer_status_payload("INATIVO"), {"status": "INATIVO"})
+        self.assertEqual(customer_status_payload("ATIVO"), {"status": "ATIVO"})
+        for value in ["", "TODOS", "ativo", None]:
+            with self.assertRaises(ValueError):
+                customer_status_payload(value)
+
 
 class CustomerWorkflowTests(unittest.IsolatedAsyncioTestCase):
     def state(self, role="FUNCIONARIO"):
@@ -149,12 +173,18 @@ class CustomerWorkflowTests(unittest.IsolatedAsyncioTestCase):
             internal_customers_page=1,_internal_customers_generation=0,_internal_detail_generation=0,
             internal_customers=[],internal_customer_detail=[],internal_customers_loading=False,
             internal_customer_loading=False,internal_customers_message="",internal_customers_total=0,internal_customers_pages=0,
+            internal_customer_edit_nome="",internal_customer_edit_email="",internal_customer_edit_telefone="",
+            internal_customer_status_confirmation=False,internal_customer_saving=False,
+            internal_customer_feedback="",internal_customer_feedback_error=False,
             internal_customer_history=[],internal_customer_history_customer_id=0,
             internal_customer_history_status="TODOS",internal_customer_history_from="",internal_customer_history_to="",
             internal_customer_history_status_input="TODOS",internal_customer_history_from_input="",internal_customer_history_to_input="",
             internal_customer_history_page=1,internal_customer_history_total=0,internal_customer_history_pages=0,
             internal_customer_history_loading=False,internal_customer_history_message="",_internal_history_generation=0)
-        for method in ["_internal_customer_allowed","_clear_internal_customers","_clear_internal_customer_history"]:
+        for method in ["_internal_customer_allowed","_internal_customer_admin_allowed",
+                       "_clear_internal_customers","_clear_internal_customer_history",
+                       "_clear_internal_customer_edit","_customer_feedback",
+                       "_load_internal_customers","_submit_internal_customer_update"]:
             setattr(state,method,MethodType(getattr(app.State,method),state))
         state.close_internal_customer=MethodType(app.State.close_internal_customer.fn,state)
         def clear(message):
@@ -338,3 +368,116 @@ class CustomerWorkflowTests(unittest.IsolatedAsyncioTestCase):
         request=AsyncMock(side_effect=error(429,"0"))
         with self.assertRaises(urllib.error.HTTPError): await bounded_read(request,sleep=AsyncMock())
         self.assertEqual(request.await_count,2)
+
+    async def test_show_customer_prepares_administrator_edit_fields(self):
+        state=self.state("ADMINISTRADOR")
+        with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}"), patch.object(app,"_server_side_xano_request",AsyncMock(return_value=record(cpf_masked="***.***.***-09"))):
+            await app.State.show_internal_customer.fn(state,1)
+        self.assertEqual(state.internal_customer_edit_nome,"Cliente fictício")
+        self.assertEqual(state.internal_customer_edit_email,"")
+        self.assertEqual(state.internal_customer_edit_telefone,"")
+        self.assertFalse(state.internal_customer_status_confirmation)
+
+    async def test_administrator_updates_customer_and_refreshes_list(self):
+        state=self.state("ADMINISTRADOR")
+        state.internal_customer_detail=[customer_record(record(cpf_masked="***.***.***-09"),detail=True)]
+        updated=record(nome_completo="Novo Nome",cpf_masked="***.***.***-09")
+        page=dict(items=[record(nome_completo="Novo Nome")],page=1,per_page=20,total_items=1,total_pages=1)
+        async def request(*args,**kwargs):
+            return updated if kwargs.get("method")=="PATCH" else page
+        with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}"), patch.object(app,"_server_side_xano_request",side_effect=request) as call:
+            await app.State.save_internal_customer.fn(state,{"nome_completo":"Novo Nome","email":"","telefone":""})
+        first=call.await_args_list[0]
+        self.assertEqual(first.args[0],"https://example.test/customers/1")
+        self.assertEqual(first.kwargs["method"],"PATCH")
+        self.assertEqual(first.kwargs["payload"],{"nome_completo":"Novo Nome"})
+        self.assertEqual(first.kwargs["authorization"],"Bearer internal-fixture")
+        self.assertFalse(first.kwargs["retry_rate_limit"])
+        self.assertEqual(state.internal_customer_detail[0].nome_completo,"Novo Nome")
+        self.assertEqual(state.internal_customers_total,1)
+        self.assertIn("atualizado",state.internal_customer_feedback)
+        self.assertFalse(state.internal_customer_feedback_error)
+
+    async def test_employee_cannot_update_customer(self):
+        state=self.state("FUNCIONARIO")
+        state.internal_customer_detail=[customer_record(record(cpf_masked="***.***.***-09"),detail=True)]
+        with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}"), patch.object(app,"_server_side_xano_request",AsyncMock()) as request:
+            await app.State.save_internal_customer.fn(state,{"nome_completo":"Novo","email":"","telefone":""})
+        request.assert_not_awaited()
+        self.assertTrue(state.internal_customer_feedback_error)
+        self.assertIn("administrador",state.internal_customer_feedback)
+
+    async def test_empty_or_unchanged_update_does_not_request(self):
+        state=self.state("ADMINISTRADOR")
+        state.internal_customer_detail=[customer_record(record(cpf_masked="***.***.***-09"),detail=True)]
+        for form in [{"nome_completo":"Cliente fictício","email":"","telefone":""},
+                     {"nome_completo":"","email":"","telefone":""}]:
+            with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}"), patch.object(app,"_server_side_xano_request",AsyncMock()) as request:
+                await app.State.save_internal_customer.fn(state,form)
+            request.assert_not_awaited()
+            self.assertTrue(state.internal_customer_feedback_error)
+
+    async def test_inactivation_requires_confirmation_then_patches_status(self):
+        state=self.state("ADMINISTRADOR")
+        state.internal_customer_detail=[customer_record(record(cpf_masked="***.***.***-09"),detail=True)]
+        with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}"), patch.object(app,"_server_side_xano_request",AsyncMock()) as request:
+            await app.State.request_internal_customer_status_change.fn(state,"INATIVO")
+        request.assert_not_awaited()
+        self.assertTrue(state.internal_customer_status_confirmation)
+        inactive=record(status="INATIVO",cpf_masked="***.***.***-09")
+        empty_page=dict(items=[],page=1,per_page=20,total_items=0,total_pages=0)
+        async def request_status(*args,**kwargs):
+            return inactive if kwargs.get("method")=="PATCH" else empty_page
+        with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}"), patch.object(app,"_server_side_xano_request",side_effect=request_status) as call:
+            await app.State.confirm_internal_customer_status_change.fn(state)
+        self.assertEqual(call.await_args_list[0].kwargs["payload"],{"status":"INATIVO"})
+        self.assertEqual(state.internal_customer_detail[0].status,"INATIVO")
+        self.assertFalse(state.internal_customer_status_confirmation)
+        self.assertIn("inativado",state.internal_customer_feedback)
+
+    async def test_cancel_and_reactivation_flow(self):
+        state=self.state("ADMINISTRADOR")
+        state.internal_customer_detail=[customer_record(record(status="INATIVO",cpf_masked="***.***.***-09"),detail=True)]
+        state.internal_customer_status_confirmation=True
+        app.State.cancel_internal_customer_status_change.fn(state)
+        self.assertFalse(state.internal_customer_status_confirmation)
+        self.assertEqual(state.internal_customer_feedback,"")
+        active=record(cpf_masked="***.***.***-09")
+        empty_page=dict(items=[],page=1,per_page=20,total_items=0,total_pages=0)
+        async def request(*args,**kwargs):
+            return active if kwargs.get("method")=="PATCH" else empty_page
+        with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}"), patch.object(app,"_server_side_xano_request",side_effect=request) as call:
+            await app.State.request_internal_customer_status_change.fn(state,"ATIVO")
+        self.assertEqual(call.await_args_list[0].kwargs["payload"],{"status":"ATIVO"})
+        self.assertEqual(state.internal_customer_detail[0].status,"ATIVO")
+        self.assertIn("reativado",state.internal_customer_feedback)
+
+    async def test_duplicate_email_is_reported_without_changing_detail(self):
+        state=self.state("ADMINISTRADOR")
+        state.internal_customer_detail=[customer_record(record(cpf_masked="***.***.***-09"),detail=True)]
+        error=urllib.error.HTTPError("https://example.test",400,"bad request",{},io.BytesIO())
+        with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}"), patch.object(app,"_server_side_xano_request",AsyncMock(side_effect=error)):
+            await app.State.save_internal_customer.fn(state,{"nome_completo":"","email":"dup@example.test","telefone":""})
+        self.assertEqual(state.internal_customer_detail[0].nome_completo,"Cliente fictício")
+        self.assertTrue(state.internal_customer_feedback_error)
+        self.assertIn("e-mail",state.internal_customer_feedback)
+
+    async def test_update_unauthorized_clears_session_and_discards_logout_result(self):
+        state=self.state("ADMINISTRADOR")
+        state.internal_customer_detail=[customer_record(record(cpf_masked="***.***.***-09"),detail=True)]
+        error=urllib.error.HTTPError("https://example.test",403,"forbidden",{},io.BytesIO())
+        with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}"), patch.object(app,"_server_side_xano_request",AsyncMock(side_effect=error)):
+            await app.State.save_internal_customer.fn(state,{"nome_completo":"Novo","email":"","telefone":""})
+        self.assertFalse(state.is_authenticated)
+        self.assertEqual(state.internal_customer_detail,[])
+
+        state=self.state("ADMINISTRADOR")
+        state.internal_customer_detail=[customer_record(record(cpf_masked="***.***.***-09"),detail=True)]
+        updated=record(nome_completo="Novo Nome",cpf_masked="***.***.***-09")
+        async def request(*args,**kwargs):
+            state._clear_authentication_state("logout")
+            return updated
+        with patch.object(app,"_required_environment_url",return_value="https://example.test/customers/{customer_id}"), patch.object(app,"_server_side_xano_request",side_effect=request):
+            await app.State.save_internal_customer.fn(state,{"nome_completo":"Novo Nome","email":"","telefone":""})
+        self.assertEqual(state.internal_customer_detail,[])
+        self.assertEqual(state.internal_customer_feedback,"")

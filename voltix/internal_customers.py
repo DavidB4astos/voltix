@@ -85,6 +85,40 @@ def query_parameters(q: str, status: str, page: int, per_page: int = 20) -> dict
             "per_page": positive_int(per_page, 50)}
 
 
+EMAIL_PATTERN = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
+
+
+def customer_update_payload(nome_completo: str, email: str, telefone: str, *,
+                            current_name: str) -> dict:
+    """Build a partial update body; blank fields mean 'keep the current value'."""
+    if not all(isinstance(value, str) for value in
+               (nome_completo, email, telefone, current_name)):
+        raise ValueError("Invalid customer update input.")
+    payload = {}
+    name = nome_completo.strip()
+    if name and name != current_name.strip():
+        if len(name) > 300:
+            raise ValueError("Invalid customer name.")
+        payload["nome_completo"] = name
+    mail = email.strip().lower()
+    if mail:
+        if len(mail) > 254 or not EMAIL_PATTERN.fullmatch(mail):
+            raise ValueError("Invalid customer email.")
+        payload["email"] = mail
+    phone = telefone.strip()
+    if phone:
+        if len(phone) > 30:
+            raise ValueError("Invalid customer phone.")
+        payload["telefone"] = phone
+    return payload
+
+
+def customer_status_payload(status: str) -> dict:
+    if not isinstance(status, str) or status not in {"ATIVO", "INATIVO"}:
+        raise ValueError("Invalid customer status.")
+    return {"status": status}
+
+
 def customer_record(value: Any, *, detail: bool = False) -> InternalCustomer:
     if not isinstance(value, dict):
         raise ValueError("Invalid customer record.")

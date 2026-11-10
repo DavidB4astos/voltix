@@ -192,7 +192,11 @@ O CRM deverá permitir:
 -   registrar atendimentos;
 -   consultar o histórico de atendimentos;
 -   registrar informações relevantes sobre o relacionamento com o
-    cliente.
+    cliente;
+-   acompanhar indicadores consolidados de relacionamento em um dashboard
+    de CRM;
+-   editar dados cadastrais e inativar clientes com preservação do
+    histórico, exclusivamente por administradores.
 
 Funcionalidades mais específicas do CRM poderão ser adicionadas
 posteriormente por meio das mudanças incrementais do projeto.

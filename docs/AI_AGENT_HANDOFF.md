@@ -1,6 +1,6 @@
 # Handoff para agente de IA — Voltix
 
-> Atualizado em 09/11/2026. Este documento resume o trabalho já realizado,
+> Atualizado em 10/11/2026. Este documento resume o trabalho já realizado,
 > o estado verificável do repositório e as regras para continuar o projeto com
 > segurança. Não contém senhas, tokens, URLs privadas de credenciais ou dados
 > pessoais de clientes.
@@ -18,10 +18,11 @@ de CRM. A arquitetura aprovada é fixa:
 Três perfis existem no produto:
 
 - **Cliente:** catálogo, conta, carrinho, checkout e pedidos próprios.
-- **Funcionário:** dashboard de vendas e consulta interna de clientes,
-  atendimentos e pedidos.
-- **Administrador:** dashboard de vendas, consulta de clientes, atendimentos e
-  pedidos, além de gestão de produtos, categorias, marcas e importação.
+- **Funcionário:** dashboard de vendas, dashboard de CRM, consulta interna de
+  clientes, atendimentos e pedidos.
+- **Administrador:** dashboard de vendas, dashboard de CRM, consulta de
+  clientes, atendimentos e pedidos, além de gestão de produtos, categorias,
+  marcas e importação.
 
 Leia obrigatoriamente antes de qualquer alteração:
 
@@ -86,10 +87,12 @@ importação real) exige ambiente isolado, autorizado e sem dados reais.
 ## 4. Estado do Git e do OpenSpec
 
 Na conferência de 10/11/2026, a cobertura de `internal-access` e
-`reflex-xano-integration` foi adicionada. `openspec validate --all --strict`
-aprovou 26 itens e a suíte `python -m unittest discover -s tests -q` aprovou
-322 testes. Esses resultados são um registro datado, não substituem uma nova
-verificação após mudanças.
+`reflex-xano-integration` foi adicionada, o dashboard de CRM foi entregue como
+capability própria e a edição administrativa de Cliente foi implementada e
+publicada. `openspec validate --all --strict` aprovou 26 specs consolidadas e a
+suíte `python -m unittest discover -s tests -q` aprovou 348 testes. Esses
+resultados são um registro datado, não substituem uma nova verificação após
+mudanças.
 
 Antes de prosseguir, confira o estado real com:
 
@@ -161,12 +164,14 @@ As seguintes changes foram concluídas e arquivadas:
 - `implement-order-panel`: seção de Pedidos do painel interno.
 - `implement-sales-dashboard-panel`: seção Dashboard do painel interno (C10).
 - `add-internal-access-integration-tests`: cobertura de acesso interno e saúde da integração (C8).
+- `implement-crm-dashboard`: seção CRM consolidada no painel interno.
+- `implement-internal-customer-edit`: edição administrativa e status de Cliente (C9).
 
 O controle de seção interno deve continuar restrito no `State`:
 
-- Funcionário: `dashboard`, `clientes`, `atendimentos`, `pedidos`.
-- Administrador: `dashboard`, `clientes`, `atendimentos`, `pedidos`, `produtos`,
-  `catalogo`, `importacao`.
+- Funcionário: `dashboard`, `crm`, `clientes`, `atendimentos`, `pedidos`.
+- Administrador: `dashboard`, `crm`, `clientes`, `atendimentos`, `pedidos`,
+  `produtos`, `catalogo`, `importacao`.
 
 Os refinamentos de Importação, Categorias e Marcas preservaram State, handlers,
 parsers, limites e Xano. Foram testados com dados fictícios/isolados; importação
@@ -355,6 +360,27 @@ negação de operação e mantêm a sessão e o Pedido. 266 testes,
 `openspec validate --all --strict` (24 itens), `git diff --check` e
 `reflex compile` verdes, com `reflex.lock` restaurado.
 
+### Edição administrativa de Cliente (C9)
+
+A C9 foi **IMPLEMENTADA e PUBLICADA em 10/11/2026** pela change
+`implement-internal-customer-edit`. O grupo `Voltix Internal Customers` ganhou
+`PATCH customers/{customer_id}` com `auth = "user"` e autorização exclusiva de
+ADMINISTRADOR `ATIVO`; FUNCIONARIO continua somente leitura. A edição é parcial:
+`nome_completo` (1–300), `email` (válido, até 254 e único ignorando o próprio
+Cliente), `telefone` (até 30) e `status` (`ATIVO`/`INATIVO`). CPF, senha,
+`USER_ID` e vínculos não são aceitos. `updated_at` é atualizado em transação e a
+resposta repete o contrato mascarado do detalhe. Inativar preserva pedidos,
+atendimentos e endereços e apenas bloqueia novos logins; reativar é idempotente.
+Na ficha do Cliente, o formulário aparece somente para ADMINISTRADOR, com nome
+pré-preenchido e e-mail/telefone em branco para manter; a inativação exige
+confirmação em dois passos. A URL vem de `XANO_INTERNAL_CUSTOMER_UPDATE_URL`
+(placeholder `{customer_id}`), server-side. 348 testes,
+`openspec validate --all --strict` (26 specs), `git diff --check` e
+`reflex compile` verdes, com `reflex.lock` restaurado. Evidências:
+[local](../openspec/changes/archive/2026-11-10-implement-internal-customer-edit/evidence/01-local-verification.md)
+e
+[publicação](../openspec/changes/archive/2026-11-10-implement-internal-customer-edit/evidence/02-publish-verification.md).
+
 ### Imagens de produto
 
 Há infraestrutura de imagens locais e créditos em `assets/demo/manifest.json`.
@@ -408,22 +434,30 @@ git status --short --branch
 
 ## 7. Próximas prioridades recomendadas
 
-1. **C1, C2, C3, C6, C7 e C10 concluídas e publicadas** (05/11/2026 e
-   09/11/2026); as telas de histórico do Cliente, de Atendimentos, de Pedidos e
-   do Dashboard também foram entregues. A C8 foi iniciada em 10/11/2026 com a
-   cobertura de `internal-access` e `reflex-xano-integration`; trabalho de
-   qualidade remanescente exige escopo e aprovação próprios.
-2. Manter testes de compra E2E (C9) bloqueados até haver ambiente Xano isolado
-   e autorizado.
-3. Retomar o trabalho mobile somente com uma change própria.
-4. Completar as cinco imagens de produto pendentes somente quando houver fonte,
-   modelo e direitos comprovados.
+1. **C1, C2, C3, C6, C7, C8, C9 e C10 concluídas e publicadas** (05/11/2026,
+   09/11/2026 e 10/11/2026); as telas de histórico do Cliente, de Atendimentos,
+   de Pedidos, do Dashboard e do CRM também foram entregues.
+2. **Dashboard de CRM concluído em 10/11/2026** (change
+   `implement-crm-dashboard`), sem backend novo. A seção CRM consolida Clientes
+   ativos, Atendimentos por situação, Pedidos registrados, o resumo de vendas do
+   backend e os últimos Atendimentos.
+3. **Edição administrativa de Cliente concluída em 10/11/2026** (change
+   `implement-internal-customer-edit`), com `PATCH customers/{customer_id}`
+   publicado e restrito a ADMINISTRADOR. A visão 360 na ficha do Cliente foi
+   recusada pelo usuário.
+4. **Próxima change recomendada:** ajuste de estoque (item 8 da fila fora de
+   spec). Depois: exclusão de Produto, gestão de usuários internos com perfil e
+   recuperação de senha — uma change por vez, cada uma com aprovação própria.
+5. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
+   autorizado.
+6. Retomar o trabalho mobile somente com uma change própria.
 
 O CRM está completo no backend e no painel: consulta de clientes (C4), histórico
-do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3) e o
-relatório de vendas (C10) com sua tela. A cobertura dedicada de acesso interno e
-saúde da integração foi adicionada; restam revisão de qualidade remanescente da
-C8 e C9 (E2E bloqueada por E6).
+do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3), o
+relatório de vendas (C10), o dashboard de CRM e a edição/inativação de Cliente
+(C9). Os entregáveis do professor (vídeo e README) foram suspensos pelo usuário
+em 10/11/2026, e a auditoria de runtime foi movida para
+`docs/deferred-changes/2026-11-10-runtime-screen-audit/`.
 
 ## 8. Comandos e decisões que exigem cuidado
 

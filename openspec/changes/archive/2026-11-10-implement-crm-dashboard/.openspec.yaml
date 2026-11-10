@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-11-10
+goal: Entregar uma seção CRM com dashboard consolidado de relacionamento,
+  usando apenas endpoints publicados e sem expor dados pessoais.

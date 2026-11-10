@@ -26,9 +26,11 @@ from dotenv import load_dotenv
 from rxconfig import config
 from .internal_customers import (InternalCustomer, InternalOrder, history_parameters,
                                  order_history_page, query_parameters, customer_page,
-                                 customer_record, bounded_read)
+                                 customer_record, bounded_read,
+                                 customer_update_payload, customer_status_payload)
 from .internal_attendances import (Attendance, attendance_filters, attendance_page,
                                    attendance_record, status_result)
+from .internal_crm import CRM_STATUS_ORDER, CrmDashboard, crm_dashboard
 from .internal_orders import (OrderDetail as InternalOrderDetail,
                               OrderSummary as InternalOrderSummary,
                               order_detail, order_filters, order_status_result,
@@ -1925,6 +1927,13 @@ class State(rx.State):
     internal_customers_loading: bool = False
     internal_customer_loading: bool = False
     internal_customers_message: str = ""
+    internal_customer_edit_nome: str = ""
+    internal_customer_edit_email: str = ""
+    internal_customer_edit_telefone: str = ""
+    internal_customer_status_confirmation: bool = False
+    internal_customer_saving: bool = False
+    internal_customer_feedback: str = ""
+    internal_customer_feedback_error: bool = False
     internal_customer_history: list[InternalOrder] = []
     internal_customer_history_customer_id: int = 0
     internal_customer_history_status: str = "TODOS"
@@ -1995,13 +2004,19 @@ class State(rx.State):
     internal_dashboard_message: str = ""
     _internal_dashboard_generation: int = 0
 
+    internal_crm: list[CrmDashboard] = []
+    internal_crm_loading: bool = False
+    internal_crm_message: str = ""
+    internal_crm_loaded: bool = False
+    _internal_crm_generation: int = 0
+
     internal_section: str = "clientes"
 
     @rx.event
     def select_internal_section(self, section: str):
         if not isinstance(section, str) or not self._internal_customer_allowed():
             return
-        allowed = {"clientes", "atendimentos", "pedidos", "dashboard"}
+        allowed = {"clientes", "atendimentos", "pedidos", "dashboard", "crm"}
         if self.user_role == "ADMINISTRADOR":
             allowed.update({"produtos", "catalogo", "importacao"})
         if section in allowed:
@@ -2013,6 +2028,8 @@ class State(rx.State):
                 return State.load_internal_orders
             if changed and section == "dashboard":
                 return State.load_internal_dashboard
+            if changed and section == "crm":
+                return State.load_internal_crm
 
     def _internal_customer_allowed(self) -> bool:
         return bool(self._auth_token and self.is_authenticated and self.session_status == "success"
@@ -2034,6 +2051,15 @@ class State(rx.State):
         self.internal_customer_history_loading = False
         self.internal_customer_history_message = ""
 
+    def _clear_internal_customer_edit(self):
+        self.internal_customer_edit_nome = ""
+        self.internal_customer_edit_email = ""
+        self.internal_customer_edit_telefone = ""
+        self.internal_customer_status_confirmation = False
+        self.internal_customer_saving = False
+        self.internal_customer_feedback = ""
+        self.internal_customer_feedback_error = False
+
     def _clear_internal_customers(self):
         self._internal_customers_generation += 1
         self._internal_detail_generation += 1
@@ -2049,6 +2075,7 @@ class State(rx.State):
         self.internal_customers_loading = False
         self.internal_customer_loading = False
         self.internal_customers_message = ""
+        self._clear_internal_customer_edit()
         self._clear_internal_customer_history()
 
     def _internal_attendance_allowed(self) -> bool:
@@ -2058,6 +2085,9 @@ class State(rx.State):
         return self._internal_customer_allowed()
 
     def _internal_dashboard_allowed(self) -> bool:
+        return self._internal_customer_allowed()
+
+    def _internal_crm_allowed(self) -> bool:
         return self._internal_customer_allowed()
 
     def _clear_internal_attendance_detail(self):
@@ -2135,11 +2165,19 @@ class State(rx.State):
         self.internal_dashboard_message = ""
         self._reset_internal_dashboard_filters()
 
+    def _clear_internal_crm(self):
+        self._internal_crm_generation += 1
+        self.internal_crm = []
+        self.internal_crm_loading = False
+        self.internal_crm_message = ""
+        self.internal_crm_loaded = False
+
     @rx.event
     def close_internal_customer(self):
         self._internal_detail_generation += 1
         self.internal_customer_detail = []
         self.internal_customer_loading = False
+        self._clear_internal_customer_edit()
         self._clear_internal_customer_history()
 
     @rx.event
@@ -2176,13 +2214,17 @@ class State(rx.State):
 
     @rx.event
     async def load_internal_customers(self):
+        await self._load_internal_customers()
+
+    async def _load_internal_customers(self, *, preserve_detail: bool = False):
         if not self._internal_customer_allowed():
             self._clear_internal_customers()
             return
         self._internal_customers_generation += 1
         generation = self._internal_customers_generation
         token, user_id = self._auth_token, self.user_id
-        self.close_internal_customer()
+        if not preserve_detail:
+            self.close_internal_customer()
         self.internal_customers = []
         self.internal_customers_total = 0
         self.internal_customers_pages = 0
@@ -2237,6 +2279,13 @@ class State(rx.State):
                 raise ValueError("Unexpected customer")
             if generation == self._internal_detail_generation and list_generation == self._internal_customers_generation and token == self._auth_token and user_id == self.user_id and self._internal_customer_allowed():
                 self.internal_customer_detail = [record]
+                self.internal_customer_edit_nome = record.nome_completo
+                self.internal_customer_edit_email = ""
+                self.internal_customer_edit_telefone = ""
+                self.internal_customer_status_confirmation = False
+                self.internal_customer_saving = False
+                self.internal_customer_feedback = ""
+                self.internal_customer_feedback_error = False
                 self.internal_customer_history_customer_id = record.id
                 return State.load_internal_customer_history
         except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
@@ -2250,6 +2299,164 @@ class State(rx.State):
         finally:
             if generation == self._internal_detail_generation:
                 self.internal_customer_loading = False
+
+    def _customer_feedback(self, message: str, *, error: bool = False):
+        self.internal_customer_feedback = message
+        self.internal_customer_feedback_error = error
+
+    def _internal_customer_admin_allowed(self) -> bool:
+        return self._internal_customer_allowed() and self.user_role == "ADMINISTRADOR"
+
+    @rx.event
+    def set_internal_customer_edit_nome(self, value: str):
+        self.internal_customer_edit_nome = value
+
+    @rx.event
+    def set_internal_customer_edit_email(self, value: str):
+        self.internal_customer_edit_email = value
+
+    @rx.event
+    def set_internal_customer_edit_telefone(self, value: str):
+        self.internal_customer_edit_telefone = value
+
+    @rx.event
+    async def save_internal_customer(self, form_data: dict):
+        if not self._internal_customer_allowed():
+            self._clear_internal_customers()
+            return
+        if not self.internal_customer_detail:
+            return
+        if not self._internal_customer_admin_allowed():
+            self._customer_feedback(
+                "Somente um administrador pode editar clientes.", error=True)
+            return
+        current = self.internal_customer_detail[0]
+        try:
+            payload = customer_update_payload(
+                str(form_data.get("nome_completo") or ""),
+                str(form_data.get("email") or ""),
+                str(form_data.get("telefone") or ""),
+                current_name=current.nome_completo,
+            )
+        except ValueError:
+            self._customer_feedback(
+                "Revise o nome, o e-mail e o telefone informados.", error=True)
+            return
+        if not payload:
+            self._customer_feedback(
+                "Informe um nome, e-mail ou telefone diferente para salvar.",
+                error=True)
+            return
+        await self._submit_internal_customer_update(
+            payload, "Cliente atualizado com sucesso.")
+
+    @rx.event
+    async def request_internal_customer_status_change(self, status: str):
+        if not self._internal_customer_allowed():
+            self._clear_internal_customers()
+            return
+        if not self.internal_customer_detail:
+            return
+        if not self._internal_customer_admin_allowed():
+            self._customer_feedback(
+                "Somente um administrador pode alterar o status de clientes.",
+                error=True)
+            return
+        try:
+            payload = customer_status_payload(status)
+        except ValueError:
+            return
+        current = self.internal_customer_detail[0]
+        if current.status == payload["status"]:
+            self._customer_feedback("O cliente já está neste status.")
+            return
+        if payload["status"] == "INATIVO":
+            self.internal_customer_status_confirmation = True
+            self._customer_feedback(
+                "Confirme a inativação. O histórico do cliente será preservado.")
+            return
+        await self._submit_internal_customer_update(
+            payload, "Cliente reativado com sucesso.")
+
+    @rx.event
+    def cancel_internal_customer_status_change(self):
+        self.internal_customer_status_confirmation = False
+        self._customer_feedback("")
+
+    @rx.event
+    async def confirm_internal_customer_status_change(self):
+        if not self._internal_customer_allowed():
+            self._clear_internal_customers()
+            return
+        if not self.internal_customer_detail or not self.internal_customer_status_confirmation:
+            return
+        if not self._internal_customer_admin_allowed():
+            self._customer_feedback(
+                "Somente um administrador pode alterar o status de clientes.",
+                error=True)
+            return
+        if self.internal_customer_detail[0].status == "INATIVO":
+            self.internal_customer_status_confirmation = False
+            self._customer_feedback("O cliente já está inativo.")
+            return
+        await self._submit_internal_customer_update(
+            {"status": "INATIVO"},
+            "Cliente inativado. O histórico foi preservado.")
+
+    async def _submit_internal_customer_update(self, payload: dict, success_message: str):
+        if not self.internal_customer_detail:
+            return
+        current = self.internal_customer_detail[0]
+        token, user_id = self._auth_token, self.user_id
+        self.internal_customer_saving = True
+        self.internal_customer_feedback = ""
+        self.internal_customer_feedback_error = False
+        try:
+            url = _required_environment_url("XANO_INTERNAL_CUSTOMER_UPDATE_URL")
+            if "{customer_id}" not in url:
+                raise ValueError("Missing customer placeholder")
+            url = url.replace("{customer_id}", str(current.id))
+            updated = customer_record(await _server_side_xano_request(
+                url,
+                method="PATCH",
+                payload=payload,
+                authorization="Bearer " + token,
+                retry_rate_limit=False,
+            ), detail=True)
+            if updated.id != current.id:
+                raise ValueError("Unexpected customer")
+            if (token == self._auth_token and user_id == self.user_id
+                    and self._internal_customer_allowed()):
+                self.internal_customer_detail = [updated]
+                self.internal_customer_edit_nome = updated.nome_completo
+                self.internal_customer_edit_email = ""
+                self.internal_customer_edit_telefone = ""
+                self.internal_customer_status_confirmation = False
+                self.internal_customers = [
+                    updated if item.id == updated.id else item
+                    for item in self.internal_customers
+                ]
+                self._customer_feedback(success_message)
+                await self._load_internal_customers(preserve_detail=True)
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if isinstance(error, urllib.error.HTTPError):
+                error.close()
+            if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                self._clear_authentication_state(
+                    "Acesso interno não autorizado. Entre novamente.")
+                return
+            if isinstance(error, urllib.error.HTTPError) and error.code == 404:
+                self._customer_feedback("Cliente não encontrado.", error=True)
+            elif isinstance(error, urllib.error.HTTPError) and error.code == 400:
+                self._customer_feedback(
+                    "Dados inválidos ou e-mail já cadastrado para outro cliente.",
+                    error=True)
+            else:
+                self._customer_feedback(
+                    "Não foi possível atualizar o cliente. Tente novamente.",
+                    error=True)
+        finally:
+            self.internal_customer_saving = False
 
     @rx.event
     def set_internal_customer_history_status_input(self, value: str):
@@ -3101,6 +3308,81 @@ class State(rx.State):
             if generation == self._internal_dashboard_generation:
                 self.internal_dashboard_loading = False
 
+    @rx.event
+    async def load_internal_crm(self):
+        if not self._internal_crm_allowed():
+            self._clear_internal_crm()
+            return
+        self._internal_crm_generation += 1
+        generation = self._internal_crm_generation
+        token, user_id = self._auth_token, self.user_id
+        self.internal_crm = []
+        self.internal_crm_message = ""
+        self.internal_crm_loaded = False
+        self.internal_crm_loading = True
+
+        def current() -> bool:
+            return (generation == self._internal_crm_generation
+                    and token == self._auth_token and user_id == self.user_id
+                    and self._internal_crm_allowed())
+
+        async def read(environment: str, parameters: dict) -> Any:
+            url = _required_environment_url(environment)
+            if parameters:
+                url += ("&" if "?" in url else "?") + urlencode(parameters)
+            async def request():
+                return await _server_side_xano_request(
+                    url, authorization="Bearer " + token, retry_rate_limit=False)
+            return await bounded_read(request)
+
+        try:
+            customers = await read(
+                "XANO_INTERNAL_CUSTOMERS_URL",
+                {"status": "ATIVO", "page": 1, "per_page": 1})
+            _, clientes_ativos, _ = customer_page(customers, page=1, per_page=1)
+            counts = {}
+            for status in CRM_STATUS_ORDER:
+                result = await read(
+                    "XANO_INTERNAL_ATTENDANCES_URL",
+                    {"status": status, "page": 1, "per_page": 1})
+                _, total, _ = attendance_page(result, page=1, per_page=1)
+                counts[status] = total
+            orders = await read(
+                "XANO_INTERNAL_ORDERS_URL",
+                {"q": "", "status": "TODOS", "page": 1, "per_page": 1})
+            _, pedidos_total, _ = order_summary_page(orders, page=1, per_page=1)
+            recent = await read(
+                "XANO_INTERNAL_ATTENDANCES_URL",
+                {"status": "TODOS", "page": 1, "per_page": 10})
+            recentes, atendimentos_total, _ = attendance_page(
+                recent, page=1, per_page=10)
+            sales = await read("XANO_INTERNAL_SALES_URL", {})
+            snapshot = crm_dashboard(
+                clientes_ativos=clientes_ativos,
+                atendimentos_por_status=counts,
+                atendimentos_total=atendimentos_total,
+                pedidos_total=pedidos_total,
+                recentes=recentes,
+                vendas=sales_dashboard(sales),
+            )
+            if current():
+                self.internal_crm = [snapshot]
+                self.internal_crm_loaded = True
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if current():
+                if isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                    self._clear_authentication_state(
+                        "Acesso interno não autorizado. Entre novamente.")
+                    return
+                self.internal_crm_message = (
+                    "Não foi possível carregar o CRM. "
+                    "Verifique o acesso e tente novamente.")
+        finally:
+            if generation == self._internal_crm_generation:
+                self.internal_crm_loading = False
+
     integration_loading: bool = False
     integration_status: str = "idle"
     integration_message: str = "Integration check has not run."
@@ -3289,6 +3571,7 @@ class State(rx.State):
         self._clear_internal_attendances()
         self._clear_internal_orders()
         self._clear_internal_dashboard()
+        self._clear_internal_crm()
         self.internal_section = "clientes"
         self._auth_token = ""
         self.is_authenticated = False
@@ -6542,6 +6825,77 @@ def internal_customer_panel(*, show_heading: bool = True) -> rx.Component:
     def field(label, value):
         return rx.el.div(rx.el.dt(label), rx.el.dd(value), class_name="vx-customers__field")
 
+    def edit_section(customer):
+        def edit_field(label, control):
+            return rx.el.div(rx.el.label(label), control,
+                class_name="vx-customers__edit-field")
+
+        return rx.el.section(
+            rx.el.h4("Editar cadastro", class_name="vx-customers__edit-title"),
+            rx.el.p("Somente administradores podem alterar estes dados. Deixe e-mail e "
+                "telefone em branco para manter os valores atuais.",
+                class_name="vx-customers__edit-hint"),
+            rx.el.form(
+                rx.el.div(
+                    edit_field("Nome completo", rx.input(name="nome_completo",
+                        value=State.internal_customer_edit_nome,
+                        on_change=State.set_internal_customer_edit_nome, max_length=300,
+                        disabled=State.internal_customer_saving, width="100%")),
+                    edit_field("Novo e-mail", rx.input(name="email", type="email",
+                        value=State.internal_customer_edit_email,
+                        on_change=State.set_internal_customer_edit_email, max_length=254,
+                        placeholder="Deixe em branco para manter",
+                        disabled=State.internal_customer_saving, width="100%")),
+                    edit_field("Novo telefone", rx.input(name="telefone", type="tel",
+                        value=State.internal_customer_edit_telefone,
+                        on_change=State.set_internal_customer_edit_telefone, max_length=30,
+                        placeholder="Deixe em branco para manter",
+                        disabled=State.internal_customer_saving, width="100%")),
+                    class_name="vx-customers__edit-grid"),
+                rx.el.div(
+                    rx.el.button(rx.icon("save", size=16), "Salvar alterações",
+                        type="submit", disabled=State.internal_customer_saving,
+                        class_name="vx-customers__primary"),
+                    rx.el.p("O CPF não pode ser alterado.",
+                        class_name="vx-customers__edit-hint"),
+                    class_name="vx-customers__edit-actions"),
+                on_submit=State.save_internal_customer, reset_on_submit=False,
+                class_name="vx-customers__edit-form"),
+            rx.el.div(
+                rx.cond(customer.status == "ATIVO",
+                    rx.cond(State.internal_customer_status_confirmation,
+                        rx.el.div(
+                            rx.el.p("Inativar este cliente? Ele perderá novos acessos, "
+                                "mas pedidos, atendimentos e endereços serão preservados."),
+                            rx.el.div(
+                                rx.el.button(rx.icon("check", size=16),
+                                    "Confirmar inativação", type="button",
+                                    on_click=State.confirm_internal_customer_status_change,
+                                    disabled=State.internal_customer_saving,
+                                    class_name="vx-customers__danger"),
+                                rx.el.button("Manter ativo", type="button",
+                                    on_click=State.cancel_internal_customer_status_change,
+                                    disabled=State.internal_customer_saving,
+                                    class_name="vx-customers__secondary"),
+                                class_name="vx-customers__edit-actions"),
+                            class_name="vx-customers__status-confirm"),
+                        rx.el.button(rx.icon("user-x", size=16), "Inativar cliente",
+                            type="button",
+                            on_click=State.request_internal_customer_status_change("INATIVO"),
+                            disabled=State.internal_customer_saving,
+                            class_name="vx-customers__danger")),
+                    rx.el.button(rx.icon("user-check", size=16), "Reativar cliente",
+                        type="button",
+                        on_click=State.request_internal_customer_status_change("ATIVO"),
+                        disabled=State.internal_customer_saving,
+                        class_name="vx-customers__secondary")),
+                class_name="vx-customers__status-actions"),
+            rx.cond(State.internal_customer_feedback != "",
+                rx.el.p(State.internal_customer_feedback, role="status",
+                    class_name=rx.cond(State.internal_customer_feedback_error,
+                        "vx-customers__feedback is-error", "vx-customers__feedback"))),
+            class_name="vx-customers__edit")
+
     def detail(customer):
         return rx.el.section(
             rx.el.div(rx.el.div(rx.el.p("FICHA DO CLIENTE", class_name="vx-customers__eyebrow"),
@@ -6554,8 +6908,13 @@ def internal_customer_panel(*, show_heading: bool = True) -> rx.Component:
                 field("Telefone protegido", protected_value(customer.telefone_masked)),
                 field("CPF protegido", protected_value(customer.cpf_masked)),
                 field("Data de cadastro", customer.created_at_display)),
-            rx.el.p(rx.icon("lock-keyhole", size=15), "Dados protegidos. Consulta somente para leitura.",
+            rx.el.p(rx.icon("lock-keyhole", size=15),
+                rx.cond(State.user_role == "ADMINISTRADOR",
+                    "Dados protegidos. Edição restrita a administradores.",
+                    "Dados protegidos. Consulta somente para leitura."),
                 class_name="vx-customers__privacy"),
+            rx.cond(State.user_role == "ADMINISTRADOR", edit_section(customer),
+                rx.fragment()),
             aria_label="Detalhes do cliente", class_name="vx-customers__detail")
 
     def history_status_badge(status):
@@ -6695,7 +7054,9 @@ def internal_customer_panel(*, show_heading: bool = True) -> rx.Component:
                 disabled=State.internal_customers_loading, class_name="vx-customers__secondary"),
             class_name="vx-customers__filters"), on_submit=State.search_internal_customers,
             reset_on_submit=False, width="100%"),
-        rx.el.div(rx.el.p(rx.icon("shield-check", size=15), "Acesso somente para leitura", class_name="vx-customers__muted"),
+        rx.el.div(rx.el.p(rx.icon("shield-check", size=15), rx.cond(
+            State.user_role == "ADMINISTRADOR", "Leitura e edição administrativa",
+            "Acesso somente para leitura"), class_name="vx-customers__muted"),
             rx.el.button(rx.icon("refresh-cw", size=15), "Carregar / atualizar clientes", type="button",
                 on_click=State.load_internal_customers, disabled=State.internal_customers_loading,
                 class_name="vx-customers__refresh"), class_name="vx-customers__toolbar"),
@@ -7321,6 +7682,130 @@ def internal_dashboard_panel(*, show_heading: bool = True) -> rx.Component:
         aria_label="Dashboard interno", class_name="vx-dashboard")
 
 
+def internal_crm_panel(*, show_heading: bool = True) -> rx.Component:
+    def metric_card(label, value, icon):
+        return rx.el.article(
+            rx.icon(icon, size=20, aria_hidden=True),
+            rx.el.p(label, class_name="vx-crm__metric-label"),
+            rx.el.p(value, class_name="vx-crm__metric-value"),
+            class_name="vx-crm__metric")
+
+    def status_label(status):
+        return rx.match(status,
+            ("ABERTO", "Aberto"),
+            ("EM_ATENDIMENTO", "Em atendimento"),
+            ("FINALIZADO", "Finalizado"),
+            ("CANCELADO", "Cancelado"),
+            status)
+
+    def attendance_row(item):
+        return rx.table.row(
+            rx.table.cell(item.data_atendimento_display),
+            rx.table.cell(rx.el.span(item.assunto, class_name="vx-crm__subject")),
+            rx.table.cell(rx.el.span(status_label(item.status),
+                class_name="vx-crm__badge")),
+            rx.table.cell(item.cliente_display),
+            rx.table.cell(item.responsavel_display))
+
+    def shortcut(label, section, icon):
+        return rx.el.button(
+            rx.icon(icon, size=16), label,
+            on_click=State.select_internal_section(section),
+            type="button", disabled=State.internal_crm_loading,
+            class_name="vx-crm__shortcut")
+
+    def crm_view(item):
+        return rx.fragment(
+            rx.el.div(
+                rx.el.h3("Relacionamento", class_name="vx-crm__block-title"),
+                rx.el.div(
+                    metric_card("Clientes ativos", item.clientes_ativos, "users"),
+                    metric_card("Atendimentos abertos", item.atendimentos_abertos,
+                        "inbox"),
+                    metric_card("Em atendimento", item.atendimentos_em_atendimento,
+                        "headset"),
+                    metric_card("Atendimentos finalizados",
+                        item.atendimentos_finalizados, "check-check"),
+                    metric_card("Pedidos registrados", item.pedidos_total,
+                        "receipt-text"),
+                    class_name="vx-crm__metrics"),
+                class_name="vx-crm__block"),
+            rx.el.div(
+                rx.el.h3("Vendas no período", class_name="vx-crm__block-title"),
+                rx.el.p(item.vendas_periodo_display, class_name="vx-crm__period"),
+                rx.el.div(
+                    metric_card("Faturamento",
+                        _cart_money_text(item.faturamento), "circle-dollar-sign"),
+                    metric_card("Pedidos faturados", item.vendas_pedidos,
+                        "receipt-text"),
+                    metric_card("Ticket médio", _cart_money_text(item.ticket_medio),
+                        "chart-column"),
+                    class_name="vx-crm__metrics is-sales"),
+                class_name="vx-crm__block"),
+            rx.el.div(
+                rx.el.h3("Últimos atendimentos", class_name="vx-crm__block-title"),
+                rx.cond(item.recentes.length() > 0,
+                    rx.box(rx.table.root(
+                        rx.table.header(rx.table.row(
+                            rx.table.column_header_cell("Data"),
+                            rx.table.column_header_cell("Assunto"),
+                            rx.table.column_header_cell("Situação"),
+                            rx.table.column_header_cell("Cliente"),
+                            rx.table.column_header_cell("Responsável"))),
+                        rx.table.body(rx.foreach(item.recentes, attendance_row)),
+                        overflow_x="auto", width="100%",
+                        class_name="vx-crm__table")),
+                    rx.el.div(rx.icon("inbox", size=23),
+                        rx.el.p("Nenhum atendimento registrado até agora."),
+                        class_name="vx-crm__empty")),
+                class_name="vx-crm__block"),
+            rx.el.nav(
+                rx.el.h3("Ir para", class_name="vx-crm__block-title"),
+                rx.el.div(
+                    shortcut("Clientes", "clientes", "users"),
+                    shortcut("Atendimentos", "atendimentos", "headset"),
+                    shortcut("Pedidos", "pedidos", "receipt-text"),
+                    class_name="vx-crm__shortcuts"),
+                aria_label="Atalhos do CRM", class_name="vx-crm__block"),
+            class_name="vx-crm__result")
+
+    initial = ((State.internal_crm.length() == 0)
+               & (State.internal_crm_message == "")
+               & ~State.internal_crm_loading)
+    return rx.el.section(
+        rx.el.h2("CRM", class_name="vx-customers__heading") if show_heading else rx.fragment(),
+        rx.el.div(
+            rx.el.p("Visão de relacionamento",
+                class_name="vx-customers__intro-title"),
+            rx.el.p("Acompanhe clientes ativos, atendimentos e o resumo de vendas "
+                "em um só lugar.", class_name="vx-customers__muted"),
+            class_name="vx-customers__intro"),
+        rx.el.div(
+            rx.el.p(rx.icon("shield-check", size=15),
+                "Somente leitura. Nenhum dado pessoal é exibido.",
+                class_name="vx-customers__muted"),
+            rx.el.button(rx.icon("refresh-cw", size=15), "Carregar / atualizar CRM",
+                type="button", on_click=State.load_internal_crm,
+                disabled=State.internal_crm_loading,
+                class_name="vx-customers__refresh"),
+            class_name="vx-customers__toolbar"),
+        rx.cond(State.internal_crm_loading,
+            rx.el.div(rx.icon("loader-circle", size=21),
+                rx.el.p("Carregando indicadores do CRM…"), role="status",
+                class_name="vx-customers__feedback")),
+        rx.cond(State.internal_crm_message != "",
+            rx.el.div(rx.icon("info", size=23),
+                rx.el.p(State.internal_crm_message), role="status",
+                class_name="vx-crm__message")),
+        rx.cond(initial, rx.el.div(rx.icon("handshake", size=26),
+            rx.el.p("Sua visão de relacionamento começa aqui",
+                class_name="vx-customers__feedback-title"),
+            rx.el.p("Use o botão de atualização para carregar os indicadores."),
+            class_name="vx-customers__feedback")),
+        rx.foreach(State.internal_crm, crm_view),
+        aria_label="Dashboard de CRM", class_name="vx-crm")
+
+
 def internal_workspace_shell(content: rx.Component) -> rx.Component:
     def navigation(label: str, key: str, icon: str):
         selected = State.internal_section == key
@@ -7333,7 +7818,7 @@ def internal_workspace_shell(content: rx.Component) -> rx.Component:
     title = rx.match(State.internal_section, ("produtos", "Produtos"),
         ("catalogo", "Categorias e marcas"), ("importacao", "Importação"),
         ("atendimentos", "Atendimentos"), ("pedidos", "Pedidos"),
-        ("dashboard", "Dashboard"), "Clientes")
+        ("dashboard", "Dashboard"), ("crm", "CRM"), "Clientes")
     description = rx.match(State.internal_section,
         ("produtos", "Organize os produtos e suas variações."),
         ("catalogo", "Mantenha a estrutura do seu catálogo organizada."),
@@ -7341,6 +7826,7 @@ def internal_workspace_shell(content: rx.Component) -> rx.Component:
         ("atendimentos", "Registre e acompanhe os atendimentos do CRM."),
         ("pedidos", "Consulte pedidos e avance a etapa operacional."),
         ("dashboard", "Acompanhe faturamento e volume de vendas por período."),
+        ("crm", "Acompanhe o relacionamento com os clientes e os atendimentos."),
         "Uma visão clara para consultar e conhecer seus clientes.")
     return rx.el.div(
         rx.el.elements.a("Ir para o conteúdo", href="#internal-workspace-main", class_name="vx-internal__skip"),
@@ -7348,6 +7834,7 @@ def internal_workspace_shell(content: rx.Component) -> rx.Component:
             rx.link(brand_logo(on_dark=True), href="/catalogo", aria_label="Voltix — loja pública", class_name="vx-internal__brand"),
             rx.el.p("ESPAÇO DA EQUIPE", class_name="vx-internal__eyebrow"),
             rx.el.nav(navigation("Dashboard", "dashboard", "layout-dashboard"),
+                navigation("CRM", "crm", "handshake"),
                 navigation("Clientes", "clientes", "users"),
                 navigation("Atendimentos", "atendimentos", "headset"),
                 navigation("Pedidos", "pedidos", "receipt-text"),
@@ -7732,6 +8219,7 @@ def index() -> rx.Component:
 
     protected_area = internal_workspace_shell(rx.fragment(
         rx.cond(State.internal_section == "dashboard", internal_dashboard_panel(show_heading=False), rx.fragment()),
+        rx.cond(State.internal_section == "crm", internal_crm_panel(show_heading=False), rx.fragment()),
         rx.cond(State.internal_section == "clientes", internal_customer_panel(show_heading=False), rx.fragment()),
         rx.cond(State.internal_section == "atendimentos", internal_attendance_panel(show_heading=False), rx.fragment()),
         rx.cond(State.internal_section == "pedidos", internal_order_panel(show_heading=False), rx.fragment()),
