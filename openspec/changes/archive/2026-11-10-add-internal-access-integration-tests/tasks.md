@@ -19,4 +19,4 @@
 - [x] 3.2 Rodar `python -m unittest discover -s tests -q` — verificação: suíte completa aprovada sem regressões
 - [x] 3.3 Rodar `openspec validate add-internal-access-integration-tests --strict`, `openspec validate --all --strict` e `git diff --check` — verificação: tudo válido e diff limpo
 - [x] 3.4 Registrar evidência local, atualizar `docs/roadmap-changes.md` e `docs/AI_AGENT_HANDOFF.md` e arquivar a change — verificação: documentação consistente e change arquivada
-- [ ] 3.5 Commit focado e push somente com autorização explícita — verificação: `git log --oneline -1` e `git status --short --branch`
+- [x] 3.5 Commit focado e push somente com autorização explícita — verificação: `git log --oneline -1` e `git status --short --branch`
