@@ -19,10 +19,10 @@ Três perfis existem no produto:
 
 - **Cliente:** catálogo, conta, carrinho, checkout e pedidos próprios.
 - **Funcionário:** dashboard de vendas, dashboard de CRM, consulta interna de
-  clientes, atendimentos e pedidos.
+  clientes, atendimentos, pedidos e o próprio perfil.
 - **Administrador:** dashboard de vendas, dashboard de CRM, consulta de
-  clientes, atendimentos e pedidos, além de gestão de produtos, categorias,
-  marcas e importação.
+  clientes, atendimentos e pedidos, gestão de produtos, categorias, marcas,
+  importação, gestão de usuários internos e o próprio perfil.
 
 Leia obrigatoriamente antes de qualquer alteração:
 
@@ -88,12 +88,12 @@ importação real) exige ambiente isolado, autorizado e sem dados reais.
 
 Na conferência de 10/11/2026, a cobertura de `internal-access` e
 `reflex-xano-integration` foi adicionada, o dashboard de CRM foi entregue como
-capability própria, a edição administrativa de Cliente foi implementada e
-publicada e o ajuste de estoque por variação foi implementado e publicado.
-`openspec validate --all --strict` aprovou 26 specs consolidadas e a
-suíte `python -m unittest discover -s tests -q` aprovou 356 testes. Esses
-resultados são um registro datado, não substituem uma nova verificação após
-mudanças.
+capability própria, a edição administrativa de Cliente, o ajuste de estoque por
+variação, a exclusão de Produto e a gestão de usuários internos com perfil
+próprio foram implementados e publicados. `openspec validate --all --strict`
+aprovou 28 specs consolidadas e a suíte
+`python -m unittest discover -s tests -q` aprovou 389 testes. Esses resultados
+são um registro datado, não substituem uma nova verificação após mudanças.
 
 Antes de prosseguir, confira o estado real com:
 
@@ -167,12 +167,13 @@ As seguintes changes foram concluídas e arquivadas:
 - `add-internal-access-integration-tests`: cobertura de acesso interno e saúde da integração (C8).
 - `implement-crm-dashboard`: seção CRM consolidada no painel interno.
 - `implement-internal-customer-edit`: edição administrativa e status de Cliente (C9).
+- `implement-internal-user-management`: gestão de usuários internos e perfil próprio (itens 7 + 14).
 
 O controle de seção interno deve continuar restrito no `State`:
 
-- Funcionário: `dashboard`, `crm`, `clientes`, `atendimentos`, `pedidos`.
+- Funcionário: `dashboard`, `crm`, `clientes`, `atendimentos`, `pedidos`, `perfil`.
 - Administrador: `dashboard`, `crm`, `clientes`, `atendimentos`, `pedidos`,
-  `produtos`, `catalogo`, `importacao`.
+  `produtos`, `catalogo`, `importacao`, `usuarios`, `perfil`.
 
 Os refinamentos de Importação, Categorias e Marcas preservaram State, handlers,
 parsers, limites e Xano. Foram testados com dados fictícios/isolados; importação
@@ -425,6 +426,39 @@ Evidências:
 e
 [publicação](../openspec/changes/archive/2026-11-10-implement-product-deletion/evidence/02-publish-verification.md).
 
+### Gestão de usuários internos e perfil próprio
+
+A gestão de usuários internos e o perfil próprio (itens 7 + 14) foram
+**IMPLEMENTADOS e PUBLICADOS em 10/11/2026** pela change
+`implement-internal-user-management`. O grupo `Voltix Internal Users`
+(`voltix-internal-users`) expõe `GET /users`, `POST /users`,
+`PATCH /users/{user_id}`, `PATCH /profile` e `POST /profile/password`, todos com
+`auth = "user"`. Listar, criar e editar exigem ADMINISTRADOR `ATIVO`; perfil e
+senha aceitam FUNCIONARIO ou ADMINISTRADOR `ATIVO`. A listagem traz todos os
+usuários, inclusive inativos, ordenados por nome, com allowlist `id`, `name`,
+`email`, `role`, `status`, `created_at`; a criação exige nome, e-mail único,
+senha inicial (8+ caracteres, letra e número) e perfil aprovado, nascendo
+`ATIVO`. A edição é parcial, não aceita senha nem exclusão, bloqueia alterar o
+próprio perfil/status e impede remover o último administrador ativo. O perfil
+próprio altera apenas nome/e-mail; a troca de senha exige a senha atual,
+confirmação e nova senha diferente, sem revogar tokens globalmente. No painel, a
+seção **Usuários** aparece só para ADMINISTRADOR, com criação/edição e
+inativação/reativação em dois passos; **Meu perfil** aparece para ambos os
+perfis e atualiza a identidade só após confirmação. A escrita protegida exigiu
+`db.edit` com objeto literal. Novas variáveis server-side:
+`XANO_INTERNAL_USERS_URL`, `XANO_INTERNAL_USER_UPDATE_URL` (com `{user_id}`),
+`XANO_PROFILE_URL` e `XANO_PROFILE_PASSWORD_URL`. 389 testes,
+`openspec validate --all --strict` (28 itens), `git diff --check` e
+`reflex compile` verdes, com `reflex.lock` restaurado. Verificação remota
+somente leitura: `GET /users`, `PATCH /users/{id}` e `PATCH /profile`
+responderam `401` sem sessão; `POST /users` e `POST /profile/password`
+responderam `400` por campos obrigatórios ausentes, sem escrita. O teste
+autenticado positivo com usuário sintético não foi executado (limitação
+documentada). Evidências:
+[local](../openspec/changes/archive/2026-11-10-implement-internal-user-management/evidence/01-local-verification.md)
+e
+[publicação](../openspec/changes/archive/2026-11-10-implement-internal-user-management/evidence/02-publish-verification.md).
+
 ### Imagens de produto
 
 Há infraestrutura de imagens locais e créditos em `assets/demo/manifest.json`.
@@ -453,7 +487,7 @@ Verificação de testes a partir da raiz do repositório:
 & '.\.venv-windows\Scripts\python.exe' -m unittest discover -s tests -q
 ```
 
-A suíte mais recente registrada teve **362 testes aprovados**. Execute somente
+A suíte mais recente registrada teve **389 testes aprovados**. Execute somente
 os testes pertinentes quando a change for documental; não gere ruído rodando
 toda a aplicação sem necessidade.
 
@@ -496,11 +530,16 @@ git status --short --branch
 5. **Exclusão de Produto concluída em 10/11/2026** (change
    `implement-product-deletion`), com `DELETE products/{product_id}` publicado,
    bloqueio de histórico comercial e confirmação em dois passos no painel.
-6. **Próxima change recomendada:** gestão de usuários internos com perfil e
-   recuperação de senha — uma change por vez, cada uma com aprovação própria.
-7. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
+6. **Gestão de usuários internos e perfil próprio concluída em 10/11/2026**
+   (change `implement-internal-user-management`, itens 7 + 14), com o grupo
+   `Voltix Internal Users` publicado, listagem/criação/edição de usuários,
+   proteção do último administrador e troca de senha pelo próprio usuário.
+7. **Próxima change recomendada:** recuperação de senha (item 11) — depende de
+   envio de e-mail nunca comprovado no plano Free e exige aprovação própria.
+   Demais itens de escopo (12 e 13) foram descartados pelo usuário.
+8. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
    autorizado.
-8. Retomar o trabalho mobile somente com uma change própria.
+9. Retomar o trabalho mobile somente com uma change própria.
 
 O CRM está completo no backend e no painel: consulta de clientes (C4), histórico
 do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3), o

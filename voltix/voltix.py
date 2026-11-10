@@ -37,6 +37,10 @@ from .internal_orders import (OrderDetail as InternalOrderDetail,
                               order_summary_page)
 from .internal_sales import (DailySales, SalesDashboard, dashboard_filters,
                              sales_dashboard)
+from .internal_users import (InternalUserEntry, internal_user_list,
+                             internal_user_record, password_change_payload,
+                             profile_update_payload, user_create_payload,
+                             user_status_payload, user_update_payload)
 
 try:
     from .demo_images import (
@@ -1953,6 +1957,35 @@ def _bulk_import_error_body(error: urllib.error.HTTPError) -> str:
         return ""
 
 
+def _internal_user_error_message(error: urllib.error.HTTPError) -> str:
+    text = _bulk_import_error_body(error).lower()
+    if "own role or status" in text:
+        return "Não é possível alterar o próprio perfil ou status."
+    if "active administrator must remain" in text:
+        return "A operação deve manter ao menos um administrador ativo."
+    if "email already exists" in text:
+        return "Já existe um usuário interno com este e-mail."
+    return "Dados inválidos. Revise as informações e tente novamente."
+
+
+def _profile_error_message(error: urllib.error.HTTPError) -> str:
+    text = _bulk_import_error_body(error).lower()
+    if "email already exists" in text:
+        return "Já existe um usuário interno com este e-mail."
+    return "Dados inválidos. Revise o nome e o e-mail informados."
+
+
+def _profile_password_error_message(error: urllib.error.HTTPError) -> str:
+    text = _bulk_import_error_body(error).lower()
+    if "current password" in text:
+        return "Senha atual incorreta."
+    if "confirmation" in text:
+        return "A confirmação não confere com a nova senha."
+    if "differ" in text:
+        return "A nova senha deve ser diferente da senha atual."
+    return "Não foi possível alterar a senha. Revise os dados e tente novamente."
+
+
 class State(rx.State):
     internal_customers: list[InternalCustomer] = []
     internal_customer_detail: list[InternalCustomer] = []
@@ -2049,15 +2082,40 @@ class State(rx.State):
     internal_crm_loaded: bool = False
     _internal_crm_generation: int = 0
 
+    internal_users: list[InternalUserEntry] = []
+    internal_users_loading: bool = False
+    internal_users_message: str = ""
+    internal_users_feedback: str = ""
+    internal_users_feedback_error: bool = False
+    internal_users_saving: bool = False
+    internal_user_editing_id: int = 0
+    internal_user_form_name: str = ""
+    internal_user_form_email: str = ""
+    internal_user_form_password: str = ""
+    internal_user_form_role: str = "FUNCIONARIO"
+    internal_user_form_status: str = "ATIVO"
+    internal_user_status_confirmation_id: int = 0
+    internal_user_status_confirmation_status: str = ""
+    _internal_users_generation: int = 0
+
+    internal_profile_name: str = ""
+    internal_profile_email: str = ""
+    internal_profile_password_current: str = ""
+    internal_profile_password_new: str = ""
+    internal_profile_password_confirm: str = ""
+    internal_profile_feedback: str = ""
+    internal_profile_feedback_error: bool = False
+    internal_profile_saving: bool = False
+
     internal_section: str = "clientes"
 
     @rx.event
     def select_internal_section(self, section: str):
         if not isinstance(section, str) or not self._internal_customer_allowed():
             return
-        allowed = {"clientes", "atendimentos", "pedidos", "dashboard", "crm"}
+        allowed = {"clientes", "atendimentos", "pedidos", "dashboard", "crm", "perfil"}
         if self.user_role == "ADMINISTRADOR":
-            allowed.update({"produtos", "catalogo", "importacao"})
+            allowed.update({"produtos", "catalogo", "importacao", "usuarios"})
         if section in allowed:
             changed = section != self.internal_section
             self.internal_section = section
@@ -2069,6 +2127,10 @@ class State(rx.State):
                 return State.load_internal_dashboard
             if changed and section == "crm":
                 return State.load_internal_crm
+            if changed and section == "usuarios":
+                return State.load_internal_users
+            if section == "perfil":
+                self._prepare_internal_profile()
 
     def _internal_customer_allowed(self) -> bool:
         return bool(self._auth_token and self.is_authenticated and self.session_status == "success"
@@ -2128,6 +2190,52 @@ class State(rx.State):
 
     def _internal_crm_allowed(self) -> bool:
         return self._internal_customer_allowed()
+
+    def _internal_users_allowed(self) -> bool:
+        return self._internal_customer_allowed() and self.user_role == "ADMINISTRADOR"
+
+    def _clear_internal_user_form(self):
+        self.internal_user_editing_id = 0
+        self.internal_user_form_name = ""
+        self.internal_user_form_email = ""
+        self.internal_user_form_password = ""
+        self.internal_user_form_role = "FUNCIONARIO"
+        self.internal_user_form_status = "ATIVO"
+        self.internal_user_status_confirmation_id = 0
+        self.internal_user_status_confirmation_status = ""
+        self.internal_users_feedback = ""
+        self.internal_users_feedback_error = False
+
+    def _clear_internal_users(self):
+        self._internal_users_generation += 1
+        self.internal_users = []
+        self.internal_users_loading = False
+        self.internal_users_message = ""
+        self.internal_users_saving = False
+        self._clear_internal_user_form()
+
+    def _prepare_internal_profile(self):
+        if not self._internal_customer_allowed():
+            self._clear_internal_profile()
+            return
+        self.internal_profile_name = self.user_name
+        self.internal_profile_email = self.user_email
+        self.internal_profile_password_current = ""
+        self.internal_profile_password_new = ""
+        self.internal_profile_password_confirm = ""
+        self.internal_profile_feedback = ""
+        self.internal_profile_feedback_error = False
+        self.internal_profile_saving = False
+
+    def _clear_internal_profile(self):
+        self.internal_profile_name = ""
+        self.internal_profile_email = ""
+        self.internal_profile_password_current = ""
+        self.internal_profile_password_new = ""
+        self.internal_profile_password_confirm = ""
+        self.internal_profile_feedback = ""
+        self.internal_profile_feedback_error = False
+        self.internal_profile_saving = False
 
     def _clear_internal_attendance_detail(self):
         self._internal_attendance_detail_generation += 1
@@ -3422,6 +3530,517 @@ class State(rx.State):
             if generation == self._internal_crm_generation:
                 self.internal_crm_loading = False
 
+    @rx.event
+    async def load_internal_users(self):
+        await self._load_internal_users()
+
+    async def _load_internal_users(self):
+        if not self._internal_users_allowed():
+            self._clear_internal_users()
+            return
+        self._internal_users_generation += 1
+        generation = self._internal_users_generation
+        token, user_id = self._auth_token, self.user_id
+        self.internal_users_loading = True
+        self.internal_users_message = ""
+
+        def current() -> bool:
+            return (generation == self._internal_users_generation
+                    and token == self._auth_token and user_id == self.user_id
+                    and self._internal_users_allowed())
+
+        try:
+            url = _required_environment_url("XANO_INTERNAL_USERS_URL")
+
+            async def request():
+                return await _server_side_xano_request(
+                    url, authorization="Bearer " + token, retry_rate_limit=False)
+
+            users = internal_user_list(await bounded_read(request))
+            if current():
+                self.internal_users = users
+                if not users:
+                    self.internal_users_message = (
+                        "Nenhum usuário interno cadastrado.")
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if current():
+                if isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                    self._clear_authentication_state(
+                        "Acesso interno não autorizado. Entre novamente.")
+                    return
+                self.internal_users_message = (
+                    "Não foi possível carregar os usuários internos. "
+                    "Verifique o acesso e tente novamente.")
+        finally:
+            if generation == self._internal_users_generation:
+                self.internal_users_loading = False
+
+    def _users_feedback(self, message: str, *, error: bool = False):
+        self.internal_users_feedback = message
+        self.internal_users_feedback_error = error
+
+    def _profile_feedback_message(self, message: str, *, error: bool = False):
+        self.internal_profile_feedback = message
+        self.internal_profile_feedback_error = error
+
+    @rx.event
+    def open_internal_user_create(self):
+        if not self._internal_users_allowed():
+            self._clear_internal_users()
+            return
+        self._clear_internal_user_form()
+        self.internal_user_form_role = "FUNCIONARIO"
+
+    @rx.event
+    def edit_internal_user(self, user_id: int):
+        if not self._internal_users_allowed():
+            self._clear_internal_users()
+            return
+        if type(user_id) is not int or user_id < 1:
+            return
+        entry = next((item for item in self.internal_users if item.id == user_id), None)
+        if entry is None:
+            self._users_feedback("Usuário interno não encontrado.", error=True)
+            return
+        self.internal_user_editing_id = entry.id
+        self.internal_user_form_name = entry.name
+        self.internal_user_form_email = entry.email
+        self.internal_user_form_password = ""
+        self.internal_user_form_role = entry.role
+        self.internal_user_form_status = entry.status
+        self.internal_user_status_confirmation_id = 0
+        self.internal_user_status_confirmation_status = ""
+        self._users_feedback("")
+
+    @rx.event
+    def cancel_internal_user_edit(self):
+        self._clear_internal_user_form()
+
+    @rx.event
+    def set_internal_user_form_name(self, value: str):
+        self.internal_user_form_name = value
+
+    @rx.event
+    def set_internal_user_form_email(self, value: str):
+        self.internal_user_form_email = value
+
+    @rx.event
+    def set_internal_user_form_password(self, value: str):
+        self.internal_user_form_password = value
+
+    @rx.event
+    def set_internal_user_form_role(self, value: str):
+        self.internal_user_form_role = value
+
+    @rx.event
+    def set_internal_user_form_status(self, value: str):
+        self.internal_user_form_status = value
+
+    @rx.event
+    async def save_internal_user(self, form_data: dict):
+        if not self._internal_users_allowed():
+            self._clear_internal_users()
+            return
+        name = str(form_data.get("name") or "")
+        email = str(form_data.get("email") or "")
+        role = str(form_data.get("role") or "")
+        status = str(form_data.get("status") or "")
+        editing_id = self.internal_user_editing_id
+        if editing_id > 0:
+            entry = next(
+                (item for item in self.internal_users if item.id == editing_id),
+                None)
+            if entry is None:
+                self._users_feedback("Usuário interno não encontrado.", error=True)
+                return
+            try:
+                payload = user_update_payload(
+                    name, email, role, status,
+                    current_name=entry.name,
+                    current_email=entry.email,
+                    current_role=entry.role,
+                    current_status=entry.status,
+                )
+            except ValueError:
+                self._users_feedback(
+                    "Revise nome, e-mail, perfil e status informados.", error=True)
+                return
+            if entry.id == self.user_id and (
+                    "role" in payload or "status" in payload):
+                self._users_feedback(
+                    "Não é possível alterar o próprio perfil ou status.", error=True)
+                return
+            if not payload:
+                self._users_feedback(
+                    "Nenhuma alteração foi informada para salvar.", error=True)
+                return
+            await self._submit_internal_user_update(
+                entry.id, payload, "Usuário interno atualizado com sucesso.")
+            return
+        password = str(form_data.get("password") or "")
+        try:
+            payload = user_create_payload(name, email, password, role)
+        except ValueError:
+            self._users_feedback(
+                "Revise nome, e-mail, perfil e senha. A senha deve ter ao menos "
+                "8 caracteres, uma letra e um número.", error=True)
+            return
+        await self._submit_internal_user_create(payload)
+
+    async def _submit_internal_user_create(self, payload: dict):
+        token, user_id = self._auth_token, self.user_id
+        self.internal_users_saving = True
+        self.internal_users_feedback = ""
+        self.internal_users_feedback_error = False
+
+        def current() -> bool:
+            return (token == self._auth_token and user_id == self.user_id
+                    and self._internal_users_allowed())
+
+        try:
+            url = _required_environment_url("XANO_INTERNAL_USERS_URL")
+            created = internal_user_record(await _server_side_xano_request(
+                url,
+                method="POST",
+                payload=payload,
+                authorization="Bearer " + token,
+                retry_rate_limit=False,
+            ))
+            if current():
+                self._clear_internal_user_form()
+                self._users_feedback("Usuário interno criado com sucesso.")
+                await self._load_internal_users()
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if current():
+                if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                    error.close()
+                    self._clear_authentication_state(
+                        "Acesso interno não autorizado. Entre novamente.")
+                    return
+                if isinstance(error, urllib.error.HTTPError) and error.code == 400:
+                    self._users_feedback(_internal_user_error_message(error), error=True)
+                    error.close()
+                elif isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                    self._users_feedback(
+                        "Não foi possível criar o usuário interno. Tente novamente.",
+                        error=True)
+                else:
+                    self._users_feedback(
+                        "Não foi possível criar o usuário interno. Tente novamente.",
+                        error=True)
+        finally:
+            if token == self._auth_token and user_id == self.user_id:
+                self.internal_users_saving = False
+
+    async def _submit_internal_user_update(
+        self, target_id: int, payload: dict, success_message: str):
+        token, user_id = self._auth_token, self.user_id
+        self.internal_users_saving = True
+        self.internal_users_feedback = ""
+        self.internal_users_feedback_error = False
+
+        def current() -> bool:
+            return (token == self._auth_token and user_id == self.user_id
+                    and self._internal_users_allowed())
+
+        try:
+            url = _required_environment_url("XANO_INTERNAL_USER_UPDATE_URL")
+            if "{user_id}" not in url:
+                raise ValueError("Missing internal user placeholder")
+            url = url.replace("{user_id}", str(target_id))
+            updated = internal_user_record(await _server_side_xano_request(
+                url,
+                method="PATCH",
+                payload=payload,
+                authorization="Bearer " + token,
+                retry_rate_limit=False,
+            ))
+            if updated.id != target_id:
+                raise ValueError("Unexpected internal user")
+            if current():
+                self.internal_users = [
+                    updated if item.id == updated.id else item
+                    for item in self.internal_users
+                ]
+                self._clear_internal_user_form()
+                self._users_feedback(success_message)
+                await self._load_internal_users()
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if current():
+                if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                    error.close()
+                    self._clear_authentication_state(
+                        "Acesso interno não autorizado. Entre novamente.")
+                    return
+                if isinstance(error, urllib.error.HTTPError) and error.code == 404:
+                    error.close()
+                    self._users_feedback("Usuário interno não encontrado.", error=True)
+                elif isinstance(error, urllib.error.HTTPError) and error.code == 400:
+                    self._users_feedback(_internal_user_error_message(error), error=True)
+                    error.close()
+                elif isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                    self._users_feedback(
+                        "Não foi possível atualizar o usuário interno. Tente novamente.",
+                        error=True)
+                else:
+                    self._users_feedback(
+                        "Não foi possível atualizar o usuário interno. Tente novamente.",
+                        error=True)
+        finally:
+            if token == self._auth_token and user_id == self.user_id:
+                self.internal_users_saving = False
+
+    @rx.event
+    def request_internal_user_status_change(self, user_id: int, status: str):
+        if not self._internal_users_allowed():
+            self._clear_internal_users()
+            return
+        if type(user_id) is not int or user_id < 1:
+            return
+        try:
+            payload = user_status_payload(status)
+        except ValueError:
+            return
+        entry = next((item for item in self.internal_users if item.id == user_id), None)
+        if entry is None:
+            self._users_feedback("Usuário interno não encontrado.", error=True)
+            return
+        if entry.id == self.user_id:
+            self._users_feedback(
+                "Não é possível alterar o próprio status.", error=True)
+            return
+        if entry.status == payload["status"]:
+            self._users_feedback("O usuário já está neste status.")
+            return
+        self.internal_user_status_confirmation_id = entry.id
+        self.internal_user_status_confirmation_status = payload["status"]
+        if payload["status"] == "INATIVO":
+            self._users_feedback(
+                f"Confirme a inativação de {entry.name}. O histórico será preservado.")
+        else:
+            self._users_feedback(
+                f"Confirme a reativação de {entry.name}.")
+
+    @rx.event
+    def cancel_internal_user_status_change(self):
+        self.internal_user_status_confirmation_id = 0
+        self.internal_user_status_confirmation_status = ""
+        self._users_feedback("")
+
+    @rx.event
+    async def confirm_internal_user_status_change(self):
+        if not self._internal_users_allowed():
+            self._clear_internal_users()
+            return
+        target_id = self.internal_user_status_confirmation_id
+        status = self.internal_user_status_confirmation_status
+        if target_id < 1:
+            return
+        try:
+            payload = user_status_payload(status)
+        except ValueError:
+            self.internal_user_status_confirmation_id = 0
+            self.internal_user_status_confirmation_status = ""
+            return
+        entry = next((item for item in self.internal_users if item.id == target_id), None)
+        if entry is None:
+            self.internal_user_status_confirmation_id = 0
+            self.internal_user_status_confirmation_status = ""
+            self._users_feedback("Usuário interno não encontrado.", error=True)
+            return
+        if entry.id == self.user_id:
+            self.internal_user_status_confirmation_id = 0
+            self.internal_user_status_confirmation_status = ""
+            self._users_feedback(
+                "Não é possível alterar o próprio status.", error=True)
+            return
+        if entry.status == payload["status"]:
+            self.internal_user_status_confirmation_id = 0
+            self.internal_user_status_confirmation_status = ""
+            self._users_feedback("O usuário já está neste status.")
+            return
+        success = (
+            "Usuário interno inativado. O histórico foi preservado."
+            if payload["status"] == "INATIVO"
+            else "Usuário interno reativado com sucesso."
+        )
+        await self._submit_internal_user_update(target_id, payload, success)
+
+    @rx.event
+    def open_internal_profile(self):
+        if not self._internal_customer_allowed():
+            self._clear_internal_profile()
+            return
+        self.internal_section = "perfil"
+        self._prepare_internal_profile()
+
+    @rx.event
+    def set_internal_profile_name(self, value: str):
+        self.internal_profile_name = value
+
+    @rx.event
+    def set_internal_profile_email(self, value: str):
+        self.internal_profile_email = value
+
+    @rx.event
+    def set_internal_profile_password_current(self, value: str):
+        self.internal_profile_password_current = value
+
+    @rx.event
+    def set_internal_profile_password_new(self, value: str):
+        self.internal_profile_password_new = value
+
+    @rx.event
+    def set_internal_profile_password_confirm(self, value: str):
+        self.internal_profile_password_confirm = value
+
+    @rx.event
+    async def save_internal_profile(self, form_data: dict):
+        if not self._internal_customer_allowed():
+            self._clear_internal_profile()
+            return
+        try:
+            payload = profile_update_payload(
+                str(form_data.get("name") or ""),
+                str(form_data.get("email") or ""),
+                current_name=self.user_name,
+                current_email=self.user_email,
+            )
+        except ValueError:
+            self._profile_feedback_message(
+                "Revise o nome e o e-mail informados.", error=True)
+            return
+        if not payload:
+            self._profile_feedback_message(
+                "Informe um nome ou e-mail diferente para salvar.", error=True)
+            return
+        token, user_id = self._auth_token, self.user_id
+        self.internal_profile_saving = True
+        self.internal_profile_feedback = ""
+        self.internal_profile_feedback_error = False
+
+        def current() -> bool:
+            return (token == self._auth_token and user_id == self.user_id
+                    and self._internal_customer_allowed())
+
+        try:
+            url = _required_environment_url("XANO_PROFILE_URL")
+            updated = internal_user_record(await _server_side_xano_request(
+                url,
+                method="PATCH",
+                payload=payload,
+                authorization="Bearer " + token,
+                retry_rate_limit=False,
+            ))
+            if updated.id != user_id:
+                raise ValueError("Unexpected profile")
+            if current():
+                self.user_name = updated.name
+                self.user_email = updated.email
+                self.internal_profile_name = updated.name
+                self.internal_profile_email = updated.email
+                self._profile_feedback_message("Perfil atualizado com sucesso.")
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if current():
+                if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                    error.close()
+                    self._clear_authentication_state(
+                        "Acesso interno não autorizado. Entre novamente.")
+                    return
+                if isinstance(error, urllib.error.HTTPError) and error.code == 400:
+                    self._profile_feedback_message(
+                        _profile_error_message(error), error=True)
+                    error.close()
+                elif isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                    self._profile_feedback_message(
+                        "Não foi possível atualizar o perfil. Tente novamente.",
+                        error=True)
+                else:
+                    self._profile_feedback_message(
+                        "Não foi possível atualizar o perfil. Tente novamente.",
+                        error=True)
+        finally:
+            if token == self._auth_token and user_id == self.user_id:
+                self.internal_profile_saving = False
+
+    @rx.event
+    async def change_internal_profile_password(self, form_data: dict):
+        if not self._internal_customer_allowed():
+            self._clear_internal_profile()
+            return
+        try:
+            payload = password_change_payload(
+                str(form_data.get("current_password") or ""),
+                str(form_data.get("new_password") or ""),
+                str(form_data.get("confirm_password") or ""),
+            )
+        except ValueError as error:
+            messages = {
+                "Current password is required.": "Informe a senha atual.",
+                "Password confirmation does not match.": (
+                    "A confirmação não confere com a nova senha."),
+                "The new password must differ from the current password.": (
+                    "A nova senha deve ser diferente da senha atual."),
+            }
+            self._profile_feedback_message(
+                messages.get(str(error), (
+                    "A nova senha deve ter ao menos 8 caracteres, "
+                    "uma letra e um número.")), error=True)
+            return
+        token, user_id = self._auth_token, self.user_id
+        self.internal_profile_saving = True
+        self.internal_profile_feedback = ""
+        self.internal_profile_feedback_error = False
+
+        def current() -> bool:
+            return (token == self._auth_token and user_id == self.user_id
+                    and self._internal_customer_allowed())
+
+        try:
+            url = _required_environment_url("XANO_PROFILE_PASSWORD_URL")
+            result = await _server_side_xano_request(
+                url,
+                method="POST",
+                payload=payload,
+                authorization="Bearer " + token,
+                retry_rate_limit=False,
+            )
+            if not isinstance(result, dict) or result.get("updated") is not True:
+                raise ValueError("Invalid password response.")
+            if current():
+                self.internal_profile_password_current = ""
+                self.internal_profile_password_new = ""
+                self.internal_profile_password_confirm = ""
+                self._profile_feedback_message("Senha alterada com sucesso.")
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if current():
+                if isinstance(error, urllib.error.HTTPError) and error.code in {401, 403}:
+                    error.close()
+                    self._clear_authentication_state(
+                        "Acesso interno não autorizado. Entre novamente.")
+                    return
+                if isinstance(error, urllib.error.HTTPError) and error.code == 400:
+                    self._profile_feedback_message(
+                        _profile_password_error_message(error), error=True)
+                    error.close()
+                elif isinstance(error, urllib.error.HTTPError):
+                    error.close()
+                    self._profile_feedback_message(
+                        "Não foi possível alterar a senha. Tente novamente.",
+                        error=True)
+                else:
+                    self._profile_feedback_message(
+                        "Não foi possível alterar a senha. Tente novamente.",
+                        error=True)
+        finally:
+            if token == self._auth_token and user_id == self.user_id:
+                self.internal_profile_saving = False
+
     integration_loading: bool = False
     integration_status: str = "idle"
     integration_message: str = "Integration check has not run."
@@ -3627,6 +4246,8 @@ class State(rx.State):
         self._clear_internal_orders()
         self._clear_internal_dashboard()
         self._clear_internal_crm()
+        self._clear_internal_users()
+        self._clear_internal_profile()
         self.internal_section = "clientes"
         self._auth_token = ""
         self.is_authenticated = False
@@ -5150,6 +5771,8 @@ class State(rx.State):
         self._clear_internal_attendances()
         self._clear_internal_orders()
         self._clear_internal_dashboard()
+        self._clear_internal_users()
+        self._clear_internal_profile()
         self.login_loading = True
         self.login_status = "loading"
         self.login_message = ""
@@ -8021,6 +8644,346 @@ def internal_crm_panel(*, show_heading: bool = True) -> rx.Component:
         aria_label="Dashboard de CRM", class_name="vx-crm")
 
 
+def internal_users_panel(*, show_heading: bool = True) -> rx.Component:
+    """Administrator-only internal user management."""
+
+    def role_badge(role):
+        return rx.el.span(
+            rx.cond(role == "ADMINISTRADOR", "Administrador", "Funcionário"),
+            class_name="vx-team__role")
+
+    def status_badge(status):
+        return rx.el.span(
+            rx.cond(status == "ATIVO", "Ativo", "Inativo"),
+            class_name=rx.cond(
+                status == "ATIVO",
+                "vx-team__badge",
+                "vx-team__badge is-inactive"))
+
+    def user_row(entry):
+        is_self = entry.id == State.user_id
+        return rx.table.row(
+            rx.table.cell(
+                rx.el.div(
+                    rx.el.span(entry.name, class_name="vx-team__name"),
+                    rx.cond(is_self, rx.el.span("Você", class_name="vx-team__self"),
+                            rx.fragment()),
+                    class_name="vx-team__identity-cell"),
+            ),
+            rx.table.cell(entry.email),
+            rx.table.cell(role_badge(entry.role)),
+            rx.table.cell(status_badge(entry.status)),
+            rx.table.cell(entry.created_at_display),
+            rx.table.cell(
+                rx.el.div(
+                    rx.el.button(
+                        rx.icon("pencil", size=15), "Editar",
+                        type="button",
+                        on_click=State.edit_internal_user(entry.id),
+                        disabled=State.internal_users_loading | State.internal_users_saving,
+                        class_name="vx-team__action"),
+                    rx.cond(
+                        is_self,
+                        rx.el.span("Sessão atual", class_name="vx-team__muted"),
+                        rx.cond(
+                            entry.status == "ATIVO",
+                            rx.el.button(
+                                rx.icon("user-x", size=15), "Inativar",
+                                type="button",
+                                on_click=State.request_internal_user_status_change(
+                                    entry.id, "INATIVO"),
+                                disabled=(State.internal_users_loading
+                                          | State.internal_users_saving),
+                                class_name="vx-team__action is-danger"),
+                            rx.el.button(
+                                rx.icon("user-check", size=15), "Reativar",
+                                type="button",
+                                on_click=State.request_internal_user_status_change(
+                                    entry.id, "ATIVO"),
+                                disabled=(State.internal_users_loading
+                                          | State.internal_users_saving),
+                                class_name="vx-team__action"),
+                        ),
+                    ),
+                    class_name="vx-team__actions",
+                ),
+            ),
+        )
+
+    def form_field(label, control):
+        return rx.el.div(rx.el.label(label), control, class_name="vx-team__field")
+
+    editing = State.internal_user_editing_id > 0
+    editing_self = State.internal_user_editing_id == State.user_id
+    return rx.el.section(
+        rx.el.h2("Usuários", class_name="vx-customers__heading") if show_heading else rx.fragment(),
+        rx.el.div(
+            rx.el.p("Equipe interna", class_name="vx-customers__intro-title"),
+            rx.el.p("Crie e mantenha os usuários que acessam a operação. "
+                    "Inativar preserva atendimentos e demais históricos.",
+                    class_name="vx-customers__muted"),
+            class_name="vx-customers__intro"),
+        rx.el.div(
+            rx.el.p(rx.icon("shield-check", size=15),
+                    "Somente administradores podem gerenciar usuários. "
+                    "Senhas nunca são exibidas.",
+                    class_name="vx-customers__muted"),
+            rx.el.button(
+                rx.icon("refresh-cw", size=15), "Carregar / atualizar usuários",
+                type="button", on_click=State.load_internal_users,
+                disabled=State.internal_users_loading,
+                class_name="vx-customers__refresh"),
+            class_name="vx-customers__toolbar"),
+        rx.el.div(
+            rx.el.div(
+                rx.cond(State.internal_users_loading,
+                    rx.el.div(rx.icon("loader-circle", size=21),
+                        rx.el.p("Carregando usuários internos…"), role="status",
+                        class_name="vx-customers__feedback")),
+                rx.cond(State.internal_users_message != "",
+                    rx.el.div(rx.icon("info", size=21),
+                        rx.el.p(State.internal_users_message), role="status",
+                        class_name="vx-customers__feedback")),
+                rx.cond(
+                    (State.internal_users.length() > 0) & ~State.internal_users_loading,
+                    rx.box(rx.table.root(
+                        rx.table.header(rx.table.row(
+                            rx.table.column_header_cell("Nome"),
+                            rx.table.column_header_cell("E-mail"),
+                            rx.table.column_header_cell("Perfil"),
+                            rx.table.column_header_cell("Status"),
+                            rx.table.column_header_cell("Criado em"),
+                            rx.table.column_header_cell("Ações"))),
+                        rx.table.body(rx.foreach(State.internal_users, user_row)),
+                        overflow_x="auto", width="100%",
+                        class_name="vx-team__table")),
+                    rx.fragment()),
+                rx.cond(
+                    (State.internal_users.length() == 0)
+                    & (State.internal_users_message == "")
+                    & ~State.internal_users_loading,
+                    rx.el.div(
+                        rx.icon("users-round", size=26),
+                        rx.el.p("Nenhum usuário carregado",
+                                class_name="vx-customers__feedback-title"),
+                        rx.el.p("Use o botão de atualização para carregar a equipe."),
+                        class_name="vx-customers__feedback")),
+                class_name="vx-team__list"),
+            rx.el.div(
+                rx.el.form(
+                    rx.el.h3(rx.cond(editing, "Editar usuário interno",
+                                      "Novo usuário interno"),
+                            class_name="vx-team__form-title"),
+                    rx.el.p(
+                        rx.cond(editing,
+                                "Atualize nome, e-mail, perfil e status. A senha não pode ser alterada por aqui.",
+                                "Defina a senha inicial. O usuário já nasce com status ativo."),
+                        class_name="vx-team__hint"),
+                    form_field("Nome", rx.input(
+                        id="internal-user-name", name="name", type="text",
+                        value=State.internal_user_form_name,
+                        on_change=State.set_internal_user_form_name,
+                        max_length=300, required=True,
+                        disabled=State.internal_users_saving, width="100%")),
+                    form_field("E-mail", rx.input(
+                        id="internal-user-email", name="email", type="email",
+                        value=State.internal_user_form_email,
+                        on_change=State.set_internal_user_form_email,
+                        max_length=254, required=True,
+                        disabled=State.internal_users_saving, width="100%")),
+                    rx.cond(
+                        editing,
+                        rx.fragment(),
+                        form_field("Senha inicial", rx.input(
+                            id="internal-user-password", name="password",
+                            type="password", value=State.internal_user_form_password,
+                            on_change=State.set_internal_user_form_password,
+                            placeholder="Mínimo de 8 caracteres, com letra e número",
+                            required=True,
+                            disabled=State.internal_users_saving, width="100%"))),
+                    form_field("Perfil", rx.el.select(
+                        rx.el.option("Funcionário", value="FUNCIONARIO"),
+                        rx.el.option("Administrador", value="ADMINISTRADOR"),
+                        id="internal-user-role", name="role",
+                        value=State.internal_user_form_role,
+                        on_change=State.set_internal_user_form_role,
+                        disabled=(State.internal_users_saving | editing_self))),
+                    rx.cond(
+                        editing,
+                        form_field("Status", rx.el.select(
+                            rx.el.option("Ativo", value="ATIVO"),
+                            rx.el.option("Inativo", value="INATIVO"),
+                            id="internal-user-status", name="status",
+                            value=State.internal_user_form_status,
+                            on_change=State.set_internal_user_form_status,
+                            disabled=(State.internal_users_saving | editing_self))),
+                        rx.fragment()),
+                    rx.cond(
+                        editing_self,
+                        rx.el.p("Seu próprio perfil e status não podem ser alterados "
+                                "por esta seção. Use Meu perfil para nome e e-mail.",
+                                class_name="vx-team__hint"),
+                        rx.fragment()),
+                    rx.el.div(
+                        rx.el.button(
+                            rx.icon("save", size=16),
+                            rx.cond(editing, "Salvar alterações", "Criar usuário"),
+                            type="submit", disabled=State.internal_users_saving,
+                            class_name="vx-customers__primary"),
+                        rx.cond(
+                            editing,
+                            rx.el.button(
+                                "Cancelar edição", type="button",
+                                on_click=State.cancel_internal_user_edit,
+                                disabled=State.internal_users_saving,
+                                class_name="vx-customers__secondary"),
+                            rx.el.button(
+                                "Limpar", type="button",
+                                on_click=State.open_internal_user_create,
+                                disabled=State.internal_users_saving,
+                                class_name="vx-customers__secondary")),
+                        class_name="vx-team__form-actions"),
+                    on_submit=State.save_internal_user,
+                    reset_on_submit=False,
+                    class_name="vx-team__form"),
+                rx.cond(
+                    State.internal_user_status_confirmation_id > 0,
+                    rx.el.div(
+                        rx.el.p(
+                            rx.cond(
+                                State.internal_user_status_confirmation_status == "INATIVO",
+                                "Confirmar a inativação deste usuário? O acesso será "
+                                "encerrado e o histórico preservado.",
+                                "Confirmar a reativação deste usuário?"),
+                            class_name="vx-team__confirm-text"),
+                        rx.el.div(
+                            rx.el.button(
+                                rx.icon("check", size=16), "Confirmar",
+                                type="button",
+                                on_click=State.confirm_internal_user_status_change,
+                                disabled=State.internal_users_saving,
+                                class_name="vx-customers__danger"),
+                            rx.el.button(
+                                "Cancelar", type="button",
+                                on_click=State.cancel_internal_user_status_change,
+                                disabled=State.internal_users_saving,
+                                class_name="vx-customers__secondary"),
+                            class_name="vx-team__form-actions"),
+                        class_name="vx-team__confirmation"),
+                    rx.fragment()),
+                rx.cond(
+                    State.internal_users_feedback != "",
+                    rx.el.p(
+                        State.internal_users_feedback, role="status",
+                        class_name=rx.cond(
+                            State.internal_users_feedback_error,
+                            "vx-customers__feedback is-error",
+                            "vx-customers__feedback")),
+                    rx.fragment()),
+                class_name="vx-team__side"),
+            class_name="vx-team__grid"),
+        aria_label="Gestão de usuários internos",
+        class_name="vx-team")
+
+
+def internal_profile_panel(*, show_heading: bool = True) -> rx.Component:
+    """Self-service profile for both approved internal roles."""
+
+    def profile_field(label, control):
+        return rx.el.div(rx.el.label(label), control, class_name="vx-profile__field")
+
+    def read_value(label, value):
+        return rx.el.div(rx.el.dt(label), rx.el.dd(value), class_name="vx-profile__value")
+
+    return rx.el.section(
+        rx.el.h2("Meu perfil", class_name="vx-customers__heading") if show_heading else rx.fragment(),
+        rx.el.div(
+            rx.el.p("Seus dados de acesso", class_name="vx-customers__intro-title"),
+            rx.el.p("Mantenha seu nome e e-mail atualizados e troque sua senha "
+                    "com segurança. Alterações de perfil e status são exclusivas "
+                    "da administração.",
+                    class_name="vx-customers__muted"),
+            class_name="vx-customers__intro"),
+        rx.el.div(
+            rx.el.div(
+                rx.el.h3("Identidade", class_name="vx-profile__title"),
+                rx.el.dl(
+                    read_value("Nome", State.user_name),
+                    read_value("E-mail", State.user_email),
+                    read_value("Perfil", rx.cond(
+                        State.user_role == "ADMINISTRADOR",
+                        "Administrador", "Funcionário")),
+                    read_value("Status", rx.cond(
+                        State.user_status == "ATIVO", "Ativo", "Inativo")),
+                    class_name="vx-profile__values"),
+                class_name="vx-profile__card"),
+            rx.el.form(
+                rx.el.h3("Nome e e-mail", class_name="vx-profile__title"),
+                rx.el.p("O e-mail precisa ser único entre os usuários internos.",
+                        class_name="vx-profile__hint"),
+                profile_field("Nome", rx.input(
+                    id="internal-profile-name", name="name", type="text",
+                    value=State.internal_profile_name,
+                    on_change=State.set_internal_profile_name,
+                    max_length=300, required=True, width="100%",
+                    disabled=State.internal_profile_saving)),
+                profile_field("E-mail", rx.input(
+                    id="internal-profile-email", name="email", type="email",
+                    value=State.internal_profile_email,
+                    on_change=State.set_internal_profile_email,
+                    max_length=254, required=True, width="100%",
+                    disabled=State.internal_profile_saving)),
+                rx.el.button(
+                    rx.icon("save", size=16), "Salvar perfil",
+                    type="submit", disabled=State.internal_profile_saving,
+                    class_name="vx-customers__primary"),
+                on_submit=State.save_internal_profile,
+                reset_on_submit=False,
+                class_name="vx-profile__card"),
+            rx.el.form(
+                rx.el.h3("Trocar senha", class_name="vx-profile__title"),
+                rx.el.p("Informe a senha atual e confirme a nova senha.",
+                        class_name="vx-profile__hint"),
+                profile_field("Senha atual", rx.input(
+                    id="internal-profile-current-password", name="current_password",
+                    type="password", value=State.internal_profile_password_current,
+                    on_change=State.set_internal_profile_password_current,
+                    required=True, width="100%",
+                    disabled=State.internal_profile_saving)),
+                profile_field("Nova senha", rx.input(
+                    id="internal-profile-new-password", name="new_password",
+                    type="password", value=State.internal_profile_password_new,
+                    on_change=State.set_internal_profile_password_new,
+                    placeholder="Mínimo de 8 caracteres, com letra e número",
+                    required=True, width="100%",
+                    disabled=State.internal_profile_saving)),
+                profile_field("Confirmar nova senha", rx.input(
+                    id="internal-profile-confirm-password", name="confirm_password",
+                    type="password", value=State.internal_profile_password_confirm,
+                    on_change=State.set_internal_profile_password_confirm,
+                    required=True, width="100%",
+                    disabled=State.internal_profile_saving)),
+                rx.el.button(
+                    rx.icon("key-round", size=16), "Alterar senha",
+                    type="submit", disabled=State.internal_profile_saving,
+                    class_name="vx-customers__primary"),
+                on_submit=State.change_internal_profile_password,
+                reset_on_submit=False,
+                class_name="vx-profile__card"),
+            class_name="vx-profile__grid"),
+        rx.cond(
+            State.internal_profile_feedback != "",
+            rx.el.p(
+                State.internal_profile_feedback, role="status",
+                class_name=rx.cond(
+                    State.internal_profile_feedback_error,
+                    "vx-customers__feedback is-error",
+                    "vx-customers__feedback")),
+            rx.fragment()),
+        aria_label="Meu perfil",
+        class_name="vx-profile")
+
+
 def internal_workspace_shell(content: rx.Component) -> rx.Component:
     def navigation(label: str, key: str, icon: str):
         selected = State.internal_section == key
@@ -8033,7 +8996,8 @@ def internal_workspace_shell(content: rx.Component) -> rx.Component:
     title = rx.match(State.internal_section, ("produtos", "Produtos"),
         ("catalogo", "Categorias e marcas"), ("importacao", "Importação"),
         ("atendimentos", "Atendimentos"), ("pedidos", "Pedidos"),
-        ("dashboard", "Dashboard"), ("crm", "CRM"), "Clientes")
+        ("dashboard", "Dashboard"), ("crm", "CRM"), ("usuarios", "Usuários"),
+        ("perfil", "Meu perfil"), "Clientes")
     description = rx.match(State.internal_section,
         ("produtos", "Organize os produtos e suas variações."),
         ("catalogo", "Mantenha a estrutura do seu catálogo organizada."),
@@ -8042,6 +9006,8 @@ def internal_workspace_shell(content: rx.Component) -> rx.Component:
         ("pedidos", "Consulte pedidos e avance a etapa operacional."),
         ("dashboard", "Acompanhe faturamento e volume de vendas por período."),
         ("crm", "Acompanhe o relacionamento com os clientes e os atendimentos."),
+        ("usuarios", "Crie e mantenha os usuários internos da operação."),
+        ("perfil", "Mantenha seus dados de acesso e sua senha atualizados."),
         "Uma visão clara para consultar e conhecer seus clientes.")
     return rx.el.div(
         rx.el.elements.a("Ir para o conteúdo", href="#internal-workspace-main", class_name="vx-internal__skip"),
@@ -8056,14 +9022,20 @@ def internal_workspace_shell(content: rx.Component) -> rx.Component:
                 rx.cond(State.user_role == "ADMINISTRADOR", rx.fragment(
                     navigation("Produtos", "produtos", "package"),
                     navigation("Categorias e marcas", "catalogo", "tags"),
-                    navigation("Importação", "importacao", "file-up")), rx.fragment()),
+                    navigation("Importação", "importacao", "file-up"),
+                    navigation("Usuários", "usuarios", "user-cog")), rx.fragment()),
                 aria_label="Navegação interna", class_name="vx-internal__nav"),
             rx.el.div(
                 rx.link(rx.el.span("Ver loja"), rx.icon("arrow-up-right", size=16), href="/catalogo", class_name="vx-internal__store"),
-                rx.el.div(rx.el.div(rx.icon("user-round", size=18), class_name="vx-internal__avatar"),
-                    rx.el.div(rx.el.p(State.user_name, class_name="vx-internal__name"),
-                        rx.el.p(rx.cond(State.user_role == "ADMINISTRADOR", "Administrador", "Funcionário"), class_name="vx-internal__role")),
-                    class_name="vx-internal__identity"),
+                rx.el.button(rx.el.span(rx.icon("user-round", size=18), class_name="vx-internal__avatar"),
+                    rx.el.span(rx.el.span(State.user_name, class_name="vx-internal__name"),
+                        rx.el.span(rx.cond(State.user_role == "ADMINISTRADOR", "Administrador", "Funcionário"), class_name="vx-internal__role"),
+                        class_name="vx-internal__identity-text"),
+                    on_click=State.open_internal_profile, type="button",
+                    aria_current=rx.cond(State.internal_section == "perfil", "page", "false"),
+                    aria_label="Abrir meu perfil",
+                    class_name=rx.cond(State.internal_section == "perfil",
+                        "vx-internal__identity is-selected", "vx-internal__identity")),
                 rx.el.button(rx.icon("log-out", size=16), "Sair da conta", on_click=State.logout,
                     type="button", class_name="vx-internal__logout"),
                 class_name="vx-internal__bottom"),
@@ -8499,10 +9471,12 @@ def index() -> rx.Component:
         rx.cond(State.internal_section == "clientes", internal_customer_panel(show_heading=False), rx.fragment()),
         rx.cond(State.internal_section == "atendimentos", internal_attendance_panel(show_heading=False), rx.fragment()),
         rx.cond(State.internal_section == "pedidos", internal_order_panel(show_heading=False), rx.fragment()),
+        rx.cond(State.internal_section == "perfil", internal_profile_panel(show_heading=False), rx.fragment()),
         rx.cond(State.user_role == "ADMINISTRADOR", rx.fragment(
             rx.cond(State.internal_section == "catalogo", catalog_management, rx.fragment()),
             rx.cond(State.internal_section == "produtos", product_management, rx.fragment()),
-            rx.cond(State.internal_section == "importacao", bulk_import_management, rx.fragment())), rx.fragment())))
+            rx.cond(State.internal_section == "importacao", bulk_import_management, rx.fragment()),
+            rx.cond(State.internal_section == "usuarios", internal_users_panel(show_heading=False), rx.fragment())), rx.fragment())))
 
     login_surface = page_shell(
         rx.fragment(
