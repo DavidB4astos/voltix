@@ -86,5 +86,5 @@
       também recebeu `XANO_PASSWORD_RESET_REQUEST_URL`/`XANO_PASSWORD_RESET_CONFIRM_URL`)
 - [x] 6.3 Arquivar a change — verificação: diretório em `openspec/changes/archive/`
       (`2026-11-12-implement-internal-password-recovery`)
-- [ ] 6.4 Commit/push somente com autorização explícita — verificação:
-      `git status --short --branch` limpo e sincronizado
+- [x] 6.4 Commit/push somente com autorização explícita — verificação: autorização
+      registrada; `1b0ff6f` em `main`
