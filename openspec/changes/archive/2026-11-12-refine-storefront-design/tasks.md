@@ -64,5 +64,5 @@
 - [x] 6.5 Restaurar `reflex.lock/*` — verificação: `git status` limpo
 - [x] 6.6 Sincronizar specs, arquivar a change e atualizar docs — verificação: diretório
       em `openspec/changes/archive/` (`2026-11-12-refine-storefront-design`)
-- [ ] 6.7 Commit/push somente com autorização explícita — verificação: árvore limpa e
-      sincronizada com `origin/main`
+- [x] 6.7 Commit/push somente com autorização explícita — verificação: autorização
+      registrada; `5ad2d36` em `main`
