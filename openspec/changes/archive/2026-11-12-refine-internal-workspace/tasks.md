@@ -34,4 +34,5 @@
 - [x] 6.3 `git diff --check` e restaurar `reflex.lock/*` — verificação: árvore limpa
 - [x] 6.4 `openspec validate --all --strict` — verificação: todas as specs válidas
 - [x] 6.5 Sincronizar specs, arquivar e atualizar docs (`docs/roadmap-changes.md`, `docs/AI_AGENT_HANDOFF.md`) — verificação: diretório em `openspec/changes/archive/2026-11-12-refine-internal-workspace/`
-- [ ] 6.6 Commit/push somente com autorização explícita — verificação: árvore limpa e sincronizada com `origin/main`
+- [x] 6.6 Commit/push somente com autorização explícita — verificação: autorização
+      registrada; `51bc0a4` em `main`
