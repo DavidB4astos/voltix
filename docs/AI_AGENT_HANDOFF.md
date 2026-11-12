@@ -87,14 +87,15 @@ importação real) exige ambiente isolado, autorizado e sem dados reais.
 ## 4. Estado do Git e do OpenSpec
 
 Na conferência de 12/11/2026, a recuperação de senha interna (item 11, change
-`implement-internal-password-recovery`) e o refinamento visual da storefront
-(change `refine-storefront-design`) foram entregues. O primeiro publicou o grupo
-`voltix-internal-password-recovery` com `POST request`/`POST confirm` e as páginas
-públicas de recuperação; o segundo entregou navegação pública compacta abaixo de
-1024 px, barra de categorias com affordance, grade do catálogo em faixas estáveis e
-créditos compactos. 422 testes e `openspec validate --all --strict` aprovando 29
-itens. Esses resultados são um registro datado, não substituem uma nova verificação
-após mudanças.
+`implement-internal-password-recovery`) e os dois refinamentos visuais
+(`refine-storefront-design` e `refine-internal-workspace`) foram entregues. O primeiro
+publicou o grupo `voltix-internal-password-recovery` com `POST request`/`POST confirm`
+e as páginas públicas de recuperação; o segundo entregou navegação pública compacta
+abaixo de 1024 px, barra de categorias com affordance e grade do catálogo em faixas
+estáveis; o terceiro unificou as ações de atualização como botões, reduziu a densidade
+dos painéis e da sidebar e trocou a pílula redundante por "Sessão ativa". 428 testes e
+`openspec validate --all --strict` aprovando 29 itens. Esses resultados são um
+registro datado, não substituem uma nova verificação após mudanças.
 
 Antes de prosseguir, confira o estado real com:
 
@@ -171,6 +172,7 @@ As seguintes changes foram concluídas e arquivadas:
 - `implement-internal-user-management`: gestão de usuários internos e perfil próprio (itens 7 + 14).
 - `implement-internal-password-recovery`: recuperação de senha interna por link de e-mail (item 11).
 - `refine-storefront-design`: refinamento visual e responsivo da storefront pública.
+- `refine-internal-workspace`: refinamento visual e de fluxo do workspace interno.
 
 O controle de seção interno deve continuar restrito no `State`:
 
@@ -521,6 +523,28 @@ testes, `openspec validate --all --strict` (29 itens) e inspeção visual sem ov
 nas seis páginas públicas principais. Evidência:
 [verificação](../openspec/changes/archive/2026-11-12-refine-storefront-design/evidence/verification.md).
 
+### Refinamento visual do workspace interno
+
+O refinamento visual do workspace interno foi **IMPLEMENTADO em 12/11/2026** pela
+change `refine-internal-workspace`. A auditoria ao vivo (conta funcionalista,
+somente leitura) encontrou: ações "Carregar / atualizar …" transparentes com visual
+de link ao lado do botão primário de busca, painéis de erro/vazio com altura
+excessiva, sidebar com itens pouco compactos e a pílula "Acesso interno" redundante
+no canto superior. Entregue: `.vx-customers__refresh` com o mesmo tratamento de
+botão secundário das demais ações (altura 40px, borda e hover; destrutivos
+inalterados), densidade reduzida nos painéis de erro/aviso/empty states, tabelas
+com `font-size:12px` e proteção de overflow horizontal, sidebar com itens de 10/12px
+e seleção reforçada (`#123c4f`/borda `#2c6479`), e a pílula superior substituída por
+"Sessão ativa". Escopo restrito: apresentação apenas; nenhuma rota, handler, State,
+guarda ou backend foi alterado. 428 testes, `openspec validate --all --strict` (29
+itens) e `reflex compile` verdes. Sessão ao vivo confirmou o visual em 1280 px;
+os painéis de dados exibem erro de carregamento neste ambiente (leituras autenticadas
+aos endpoints internos nunca testadas de ponta a ponta — limitação; fora do escopo).
+Mobile verificado estaticamente (viewport emula contexto novo e desconecta a sessão).
+Observação: o `.env` local recebeu as URLs internas canônicas para que os painéis
+possam carregar dados. Evidência:
+[verificação](../openspec/changes/archive/2026-11-12-refine-internal-workspace/evidence/verification.md).
+
 ### Imagens de produto
 
 Há infraestrutura de imagens locais e créditos em `assets/demo/manifest.json`.
@@ -549,7 +573,7 @@ Verificação de testes a partir da raiz do repositório:
 & '.\.venv-windows\Scripts\python.exe' -m unittest discover -s tests -q
 ```
 
-A suíte mais recente registrada teve **422 testes aprovados**. Execute somente
+A suíte mais recente registrada teve **428 testes aprovados**. Execute somente
 os testes pertinentes quando a change for documental; não gere ruído rodando
 toda a aplicação sem necessidade.
 
@@ -605,15 +629,18 @@ git status --short --branch
 9. **Refinamento visual da storefront concluído em 12/11/2026** (change
    `refine-storefront-design`), com navegação pública compacta abaixo de
    1024 px, barra de categorias com affordance e grade do catálogo em faixas
-   estáveis; segunda etapa pendente: workspace interno.
-10. **Próxima change recomendada:** correção dos filtros inválidos em
+   estáveis.
+10. **Refinamento visual do workspace interno concluído em 12/11/2026**
+    (change `refine-internal-workspace`), com ações de atualização como botões,
+    densidade maior, tabelas legíveis e pílula "Sessão ativa".
+11. **Próxima change recomendada:** correção dos filtros inválidos em
     `internal_users` (`users_POST`, `profile/password_POST`) — inputs `text`
     não aceitam `minAlpha`/`minDigit` (mesmo erro corrigido nesta change) —
     ainda sem aprovação. Demais itens de escopo (12 e 13) foram descartados
     pelo usuário.
-11. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
+12. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
     autorizado.
-12. Retomar o trabalho mobile somente com uma change própria.
+13. Retomar o trabalho mobile somente com uma change própria.
 
 O CRM está completo no backend e no painel: consulta de clientes (C4), histórico
 do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3), o

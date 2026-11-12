@@ -9120,7 +9120,7 @@ def internal_workspace_shell(content: rx.Component) -> rx.Component:
         rx.el.main(
             rx.el.header(rx.el.div(rx.el.p("OPERAÇÃO VOLTIX", class_name="vx-internal__overline"),
                 rx.el.h1(title, class_name="vx-internal__title"), rx.el.p(description, class_name="vx-internal__description")),
-                rx.el.span(rx.el.span(class_name="vx-internal__status-dot"), "Acesso interno", class_name="vx-internal__status"),
+                rx.el.span(rx.el.span(class_name="vx-internal__status-dot"), "Sessão ativa", class_name="vx-internal__status"),
                 class_name="vx-internal__header"),
             rx.el.div(content, class_name="vx-internal__content"),
             rx.el.footer("Voltix · Ambiente acadêmico", class_name="vx-internal__footer"),
