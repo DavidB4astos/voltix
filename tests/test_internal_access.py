@@ -276,6 +276,11 @@ class InternalAccessContractTests(unittest.TestCase):
         self.assertNotIn("password", access)
         self.assertNotIn("authToken", access)
 
+    def test_login_page_links_internal_password_recovery(self):
+        source = self.read("voltix/voltix.py")
+        self.assertIn('"Esqueci minha senha"', source)
+        self.assertIn("/interno/recuperar-senha", source)
+
     def test_no_public_internal_signup_endpoint_is_defined(self):
         auth_dir = Path("xano/api/authentication/auth")
         names = {path.name.lower() for path in auth_dir.glob("*.xs")}

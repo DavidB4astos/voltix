@@ -37,6 +37,12 @@ from .internal_orders import (OrderDetail as InternalOrderDetail,
                               order_summary_page)
 from .internal_sales import (DailySales, SalesDashboard, dashboard_filters,
                              sales_dashboard)
+from .internal_password_recovery import (
+    recovery_confirm_payload,
+    recovery_confirm_result,
+    recovery_email_payload,
+    recovery_request_result,
+)
 from .internal_users import (InternalUserEntry, internal_user_list,
                              internal_user_record, password_change_payload,
                              profile_update_payload, user_create_payload,
@@ -87,6 +93,8 @@ XANO_CHECKOUT_REVIEW_URL_ENV = "XANO_CHECKOUT_REVIEW_URL"
 XANO_CHECKOUT_CONFIRM_URL_ENV = "XANO_CHECKOUT_CONFIRM_URL"
 XANO_ORDERS_URL_ENV = "XANO_ORDERS_URL"
 XANO_PAYMENT_SIMULATION_URL_ENV = "XANO_PAYMENT_SIMULATION_URL"
+XANO_PASSWORD_RESET_REQUEST_URL_ENV = "XANO_PASSWORD_RESET_REQUEST_URL"
+XANO_PASSWORD_RESET_CONFIRM_URL_ENV = "XANO_PASSWORD_RESET_CONFIRM_URL"
 
 PUBLIC_CATALOG_CACHE_TTL_SECONDS = 30.0
 XANO_RATE_LIMIT_MAX_ATTEMPTS = 3
@@ -974,6 +982,13 @@ def _public_catalog_cache_put(
 def _public_search_term(value: object) -> str:
     """Normalize public search without accepting arbitrary form objects."""
     return value.strip()[:100] if isinstance(value, str) else ""
+
+
+def _public_recovery_parameter(value: object, max_length: int) -> str:
+    """Normalize a recovery query parameter; never accepts arbitrary objects."""
+    if not isinstance(value, str):
+        return ""
+    return value.strip()[:max_length]
 
 
 async def _load_public_catalog_with_cache(
@@ -2107,6 +2122,21 @@ class State(rx.State):
     internal_profile_feedback_error: bool = False
     internal_profile_saving: bool = False
 
+    internal_recovery_email: str = ""
+    internal_recovery_loading: bool = False
+    internal_recovery_done: bool = False
+    internal_recovery_feedback: str = ""
+    internal_recovery_feedback_error: bool = False
+
+    internal_reset_email: str = ""
+    internal_reset_token: str = ""
+    internal_reset_password: str = ""
+    internal_reset_confirm: str = ""
+    internal_reset_loading: bool = False
+    internal_reset_done: bool = False
+    internal_reset_feedback: str = ""
+    internal_reset_feedback_error: bool = False
+
     internal_section: str = "clientes"
 
     @rx.event
@@ -2236,6 +2266,21 @@ class State(rx.State):
         self.internal_profile_feedback = ""
         self.internal_profile_feedback_error = False
         self.internal_profile_saving = False
+
+    def _clear_internal_recovery(self):
+        self.internal_recovery_email = ""
+        self.internal_recovery_loading = False
+        self.internal_recovery_done = False
+        self.internal_recovery_feedback = ""
+        self.internal_recovery_feedback_error = False
+        self.internal_reset_email = ""
+        self.internal_reset_token = ""
+        self.internal_reset_password = ""
+        self.internal_reset_confirm = ""
+        self.internal_reset_loading = False
+        self.internal_reset_done = False
+        self.internal_reset_feedback = ""
+        self.internal_reset_feedback_error = False
 
     def _clear_internal_attendance_detail(self):
         self._internal_attendance_detail_generation += 1
@@ -4041,6 +4086,131 @@ class State(rx.State):
             if token == self._auth_token and user_id == self.user_id:
                 self.internal_profile_saving = False
 
+    @rx.event
+    def set_internal_recovery_email(self, value: str):
+        self.internal_recovery_email = value
+
+    @rx.event
+    async def request_internal_password_recovery(self, form_data: dict[str, Any]):
+        email = str(form_data.get("email") or "")
+        try:
+            payload = recovery_email_payload(email)
+        except ValueError:
+            self.internal_recovery_done = False
+            self.internal_recovery_feedback = "Informe um e-mail válido."
+            self.internal_recovery_feedback_error = True
+            return
+        self.internal_recovery_loading = True
+        self.internal_recovery_feedback = ""
+        self.internal_recovery_feedback_error = False
+        try:
+            url = _required_environment_url(XANO_PASSWORD_RESET_REQUEST_URL_ENV)
+            result = await _server_side_xano_request(
+                url,
+                method="POST",
+                payload=payload,
+                retry_rate_limit=False,
+            )
+            recovery_request_result(result)
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if isinstance(error, urllib.error.HTTPError):
+                error.close()
+            self.internal_recovery_loading = False
+            self.internal_recovery_done = False
+            self.internal_recovery_feedback = (
+                "Não foi possível enviar as instruções. Tente novamente.")
+            self.internal_recovery_feedback_error = True
+            return
+        self.internal_recovery_loading = False
+        self.internal_recovery_done = True
+        self.internal_recovery_email = ""
+        self.internal_recovery_feedback = (
+            "Se o e-mail estiver cadastrado, enviaremos as instruções.")
+        self.internal_recovery_feedback_error = False
+
+    @rx.event
+    def set_internal_reset_email(self, value: str):
+        self.internal_reset_email = value
+
+    @rx.event
+    def set_internal_reset_token(self, value: str):
+        self.internal_reset_token = value
+
+    @rx.event
+    def set_internal_reset_password(self, value: str):
+        self.internal_reset_password = value
+
+    @rx.event
+    def set_internal_reset_confirm(self, value: str):
+        self.internal_reset_confirm = value
+
+    @rx.event
+    def enter_internal_reset(self):
+        params = self.router.url.query_parameters
+        self.internal_reset_done = False
+        self.internal_reset_feedback = ""
+        self.internal_reset_feedback_error = False
+        self.internal_reset_password = ""
+        self.internal_reset_confirm = ""
+        self.internal_reset_email = _public_recovery_parameter(params.get("email", ""), 254)
+        self.internal_reset_token = _public_recovery_parameter(params.get("token", ""), 128)
+
+    @rx.event
+    async def submit_internal_password_reset(self, form_data: dict[str, Any]):
+        email = str(form_data.get("email") or "")
+        token = str(form_data.get("token") or "")
+        password = str(form_data.get("password") or "")
+        confirm_password = str(form_data.get("confirm_password") or "")
+        try:
+            payload = recovery_confirm_payload(email, token, password, confirm_password)
+        except ValueError as error:
+            messages = {
+                "Password confirmation does not match.": (
+                    "A confirmação não confere com a nova senha."),
+                "Invalid recovery token.": (
+                    "Informe o código recebido por e-mail."),
+                "Invalid recovery email.": (
+                    "Informe um e-mail válido."),
+            }
+            self.internal_reset_feedback = messages.get(
+                str(error),
+                "A nova senha deve ter ao menos 8 caracteres, "
+                "uma letra e um número.")
+            self.internal_reset_feedback_error = True
+            return
+        self.internal_reset_loading = True
+        self.internal_reset_feedback = ""
+        self.internal_reset_feedback_error = False
+        try:
+            url = _required_environment_url(XANO_PASSWORD_RESET_CONFIRM_URL_ENV)
+            result = await _server_side_xano_request(
+                url,
+                method="POST",
+                payload=payload,
+                retry_rate_limit=False,
+            )
+            if not recovery_confirm_result(result):
+                raise ValueError("Invalid confirmation response.")
+        except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
+            if isinstance(error, urllib.error.HTTPError):
+                error.close()
+            self.internal_reset_loading = False
+            self.internal_reset_feedback = (
+                "Link inválido ou expirado."
+                if isinstance(error, urllib.error.HTTPError) and error.code == 400
+                else "Não foi possível redefinir a senha. Tente novamente.")
+            self.internal_reset_feedback_error = True
+            return
+        self.internal_reset_loading = False
+        self.internal_reset_email = ""
+        self.internal_reset_token = ""
+        self.internal_reset_password = ""
+        self.internal_reset_confirm = ""
+        self.internal_reset_done = True
+        self.internal_reset_feedback = (
+            "Senha redefinida com sucesso. Entre com a nova senha.")
+        self.internal_reset_feedback_error = False
+
     integration_loading: bool = False
     integration_status: str = "idle"
     integration_message: str = "Integration check has not run."
@@ -4248,6 +4418,7 @@ class State(rx.State):
         self._clear_internal_crm()
         self._clear_internal_users()
         self._clear_internal_profile()
+        self._clear_internal_recovery()
         self.internal_section = "clientes"
         self._auth_token = ""
         self.is_authenticated = False
@@ -9534,6 +9705,11 @@ def index() -> rx.Component:
                             on_submit=State.submit_login,
                             width="100%",
                         ),
+                        rx.el.a(
+                            "Esqueci minha senha",
+                            href="/interno/recuperar-senha",
+                            class_name="vx-internal-login__forgot",
+                        ),
                         rx.cond(
                             State.login_status != "idle",
                             feedback_text(State.login_message),
@@ -9578,6 +9754,240 @@ def index() -> rx.Component:
         State.is_authenticated & (State.session_status == "success") & (State.user_status == "ATIVO"),
         protected_area, login_surface)
 
+
+def _internal_recovery_feedback(feedback, feedback_error) -> rx.Component:
+    return rx.cond(
+        feedback != "",
+        rx.cond(
+            feedback_error,
+            feedback_text(feedback, tone="error"),
+            feedback_text(feedback, tone="success"),
+        ),
+        rx.fragment(),
+    )
+
+
+def internal_recovery_request_page() -> rx.Component:
+    return page_shell(
+        rx.fragment(
+            rx.el.link(rel="stylesheet", href="/voltix-internal-login.css"),
+            rx.vstack(
+                surface_card(
+                    rx.vstack(
+                        rx.box(
+                            width="3rem",
+                            height="4px",
+                            background=COLOR_CYAN,
+                            border_radius="9999px",
+                            class_name="vx-internal-login__accent",
+                        ),
+                        section_heading("Recuperar senha", size="5"),
+                        rx.text(
+                            "Informe o e-mail do seu usuário interno. Se ele estiver ativo, enviaremos as instruções para redefinir a senha.",
+                            color=COLOR_TEXT_MUTED,
+                        ),
+                        rx.cond(
+                            State.internal_recovery_done,
+                            rx.fragment(),
+                            rx.form(
+                                rx.vstack(
+                                    form_field(
+                                        "E-mail",
+                                        rx.input(
+                                            id="internal-recovery-email",
+                                            name="email",
+                                            type="email",
+                                            placeholder="voce@empresa.com",
+                                            required=True,
+                                            value=State.internal_recovery_email,
+                                            on_change=State.set_internal_recovery_email,
+                                            max_length=254,
+                                            disabled=State.internal_recovery_loading,
+                                            width="100%",
+                                        ),
+                                        field_id="internal-recovery-email",
+                                    ),
+                                    primary_button(
+                                        rx.cond(State.internal_recovery_loading, "Enviando...", "Enviar instruções"),
+                                        type="submit",
+                                        disabled=State.internal_recovery_loading,
+                                        width="100%",
+                                    ),
+                                    width="100%",
+                                    spacing="4",
+                                ),
+                                on_submit=State.request_internal_password_recovery,
+                                reset_on_submit=False,
+                                width="100%",
+                            ),
+                        ),
+                        _internal_recovery_feedback(
+                            State.internal_recovery_feedback,
+                            State.internal_recovery_feedback_error,
+                        ),
+                        rx.el.a(
+                            "Voltar ao acesso interno",
+                            href="/interno",
+                            class_name="vx-internal-login__back",
+                        ),
+                        align="stretch",
+                        spacing="4",
+                    ),
+                    max_width="28rem",
+                    margin_x="auto",
+                    class_name="vx-internal-login__card",
+                ),
+                align="center",
+                width="100%",
+                class_name="vx-internal-login__layout",
+            ),
+        ),
+        header=site_header(
+            [
+                ("Catálogo público", "/catalogo"),
+                ("Área do Cliente", "/cliente"),
+                ("Acesso interno", "/interno"),
+            ],
+            active="/interno",
+            badge="Recuperação de senha",
+        ),
+        max_width="56rem",
+        public_footer=True,
+    )
+
+
+def internal_password_reset_page() -> rx.Component:
+    return page_shell(
+        rx.fragment(
+            rx.el.link(rel="stylesheet", href="/voltix-internal-login.css"),
+            rx.vstack(
+                surface_card(
+                    rx.vstack(
+                        rx.box(
+                            width="3rem",
+                            height="4px",
+                            background=COLOR_CYAN,
+                            border_radius="9999px",
+                            class_name="vx-internal-login__accent",
+                        ),
+                        section_heading("Redefinir senha", size="5"),
+                        rx.text(
+                            "Informe o código recebido por e-mail e escolha uma nova senha.",
+                            color=COLOR_TEXT_MUTED,
+                        ),
+                        rx.cond(
+                            State.internal_reset_done,
+                            rx.fragment(),
+                            rx.form(
+                                rx.vstack(
+                                    form_field(
+                                        "E-mail",
+                                        rx.input(
+                                            id="internal-reset-email",
+                                            name="email",
+                                            type="email",
+                                            placeholder="voce@empresa.com",
+                                            required=True,
+                                            value=State.internal_reset_email,
+                                            on_change=State.set_internal_reset_email,
+                                            max_length=254,
+                                            disabled=State.internal_reset_loading,
+                                            width="100%",
+                                        ),
+                                        field_id="internal-reset-email",
+                                    ),
+                                    form_field(
+                                        "Código recebido por e-mail",
+                                        rx.input(
+                                            id="internal-reset-token",
+                                            name="token",
+                                            type="password",
+                                            placeholder="Cole o código recebido",
+                                            required=True,
+                                            value=State.internal_reset_token,
+                                            on_change=State.set_internal_reset_token,
+                                            max_length=128,
+                                            disabled=State.internal_reset_loading,
+                                            width="100%",
+                                        ),
+                                        field_id="internal-reset-token",
+                                    ),
+                                    form_field(
+                                        "Nova senha",
+                                        rx.input(
+                                            id="internal-reset-password",
+                                            name="password",
+                                            type="password",
+                                            placeholder="Mínimo de 8 caracteres, com letra e número",
+                                            required=True,
+                                            value=State.internal_reset_password,
+                                            on_change=State.set_internal_reset_password,
+                                            disabled=State.internal_reset_loading,
+                                            width="100%",
+                                        ),
+                                        field_id="internal-reset-password",
+                                    ),
+                                    form_field(
+                                        "Confirmar nova senha",
+                                        rx.input(
+                                            id="internal-reset-confirm",
+                                            name="confirm_password",
+                                            type="password",
+                                            required=True,
+                                            value=State.internal_reset_confirm,
+                                            on_change=State.set_internal_reset_confirm,
+                                            disabled=State.internal_reset_loading,
+                                            width="100%",
+                                        ),
+                                        field_id="internal-reset-confirm",
+                                    ),
+                                    primary_button(
+                                        rx.cond(State.internal_reset_loading, "Redefinindo...", "Redefinir senha"),
+                                        type="submit",
+                                        disabled=State.internal_reset_loading,
+                                        width="100%",
+                                    ),
+                                    width="100%",
+                                    spacing="4",
+                                ),
+                                on_submit=State.submit_internal_password_reset,
+                                reset_on_submit=False,
+                                width="100%",
+                            ),
+                        ),
+                        _internal_recovery_feedback(
+                            State.internal_reset_feedback,
+                            State.internal_reset_feedback_error,
+                        ),
+                        rx.el.a(
+                            "Voltar ao acesso interno",
+                            href="/interno",
+                            class_name="vx-internal-login__back",
+                        ),
+                        align="stretch",
+                        spacing="4",
+                    ),
+                    max_width="28rem",
+                    margin_x="auto",
+                    class_name="vx-internal-login__card",
+                ),
+                align="center",
+                width="100%",
+                class_name="vx-internal-login__layout",
+            ),
+        ),
+        header=site_header(
+            [
+                ("Catálogo público", "/catalogo"),
+                ("Área do Cliente", "/cliente"),
+                ("Acesso interno", "/interno"),
+            ],
+            active="/interno",
+            badge="Recuperação de senha",
+        ),
+        max_width="56rem",
+        public_footer=True,
+    )
 
 
 def home_page() -> rx.Component:
@@ -11070,6 +11480,17 @@ app.add_page(
     index,
     route="/interno",
     title="Acesso interno | Voltix",
+)
+app.add_page(
+    internal_recovery_request_page,
+    route="/interno/recuperar-senha",
+    title="Recuperar senha | Voltix",
+)
+app.add_page(
+    internal_password_reset_page,
+    route="/interno/redefinir-senha",
+    title="Redefinir senha | Voltix",
+    on_load=State.enter_internal_reset,
 )
 app.add_page(
     home_page,

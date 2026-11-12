@@ -63,6 +63,11 @@ def _password(value: Any) -> str:
     return password
 
 
+def password_rules(value: Any) -> str:
+    """Public alias of the internal-user password rule used across modules."""
+    return _password(value)
+
+
 def _role(value: Any) -> str:
     if not isinstance(value, str) or value.strip() not in ROLES:
         raise ValueError("Invalid internal user role.")

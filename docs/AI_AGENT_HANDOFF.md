@@ -1,6 +1,6 @@
 # Handoff para agente de IA — Voltix
 
-> Atualizado em 10/11/2026. Este documento resume o trabalho já realizado,
+> Atualizado em 12/11/2026. Este documento resume o trabalho já realizado,
 > o estado verificável do repositório e as regras para continuar o projeto com
 > segurança. Não contém senhas, tokens, URLs privadas de credenciais ou dados
 > pessoais de clientes.
@@ -86,14 +86,12 @@ importação real) exige ambiente isolado, autorizado e sem dados reais.
 
 ## 4. Estado do Git e do OpenSpec
 
-Na conferência de 10/11/2026, a cobertura de `internal-access` e
-`reflex-xano-integration` foi adicionada, o dashboard de CRM foi entregue como
-capability própria, a edição administrativa de Cliente, o ajuste de estoque por
-variação, a exclusão de Produto e a gestão de usuários internos com perfil
-próprio foram implementados e publicados. `openspec validate --all --strict`
-aprovou 28 specs consolidadas e a suíte
-`python -m unittest discover -s tests -q` aprovou 389 testes. Esses resultados
-são um registro datado, não substituem uma nova verificação após mudanças.
+Na conferência de 12/11/2026, a recuperação de senha interna foi entregue
+(item 11, change `implement-internal-password-recovery`): grupo público
+`voltix-internal-password-recovery` publicado com `POST request` e
+`POST confirm`, telas públicas de solicitação e redefinição, 411 testes e
+`openspec validate --all --strict` aprovando 29 itens. Esses resultados são
+um registro datado, não substituem uma nova verificação após mudanças.
 
 Antes de prosseguir, confira o estado real com:
 
@@ -168,6 +166,7 @@ As seguintes changes foram concluídas e arquivadas:
 - `implement-crm-dashboard`: seção CRM consolidada no painel interno.
 - `implement-internal-customer-edit`: edição administrativa e status de Cliente (C9).
 - `implement-internal-user-management`: gestão de usuários internos e perfil próprio (itens 7 + 14).
+- `implement-internal-password-recovery`: recuperação de senha interna por link de e-mail (item 11).
 
 O controle de seção interno deve continuar restrito no `State`:
 
@@ -459,6 +458,46 @@ documentada). Evidências:
 e
 [publicação](../openspec/changes/archive/2026-11-10-implement-internal-user-management/evidence/02-publish-verification.md).
 
+### Recuperação de senha interna
+
+A recuperação de senha interna (item 11) foi
+**IMPLEMENTADA e PUBLICADA em 12/11/2026** pela change
+`implement-internal-password-recovery`. O grupo público
+`Voltix Internal Password Recovery` (`voltix-internal-password-recovery`)
+expõe `POST request` e `POST confirm`, sem sessão e sem auto-login. Em
+`request`, a resposta é sempre a mesma mensagem genérica; o token (UUID de uso
+único, 60 minutos, armazenado como hash no `password_reset` existente) só é
+criado para FUNCIONARIO/ADMINISTRADOR `ATIVO`, e o e-mail sai via
+`util.send_email` com o link montado a partir da variável `voltix_app_url` e o
+token como texto de apoio. Em `confirm`, a validação cobre e-mail, token por
+`security.check_password`, expiração e uso único; a nova senha exige 8+
+caracteres com letra e dígito, confirmação igual e diferente da atual; a
+gravação da nova senha e a marcação de `used` ocorrem na mesma escrita; toda
+falha usa o mesmo erro genérico "Link inválido ou expirado.". O login interno
+ganhou o link "Esqueci minha senha"; foram criadas as páginas públicas
+`/interno/recuperar-senha` (e-mail, mensagem genérica) e
+`/interno/redefinir-senha` (leitura de `email`/`token` da URL com preenchimento
+manual, token em campo `password`, campos preservados em falha e limpos em
+sucesso, retorno ao login sem autenticar). Novas variáveis server-side:
+`XANO_PASSWORD_RESET_REQUEST_URL` e `XANO_PASSWORD_RESET_CONFIRM_URL`.
+Verificação remota somente leitura: `request` respondeu 200 genérico para
+e-mail inexistente e 400 para e-mail inválido; `confirm` rejeitou senha curta,
+senha sem dígito, confirmação divergente e conta inexistente com erro genérico.
+Descoberta e correção dentro da change: inputs `text` do Xano não aceitam
+`minAlpha`/`minDigit`, então `confirm` usa `text filters=min:8` e exige letra e
+dígito na stack via `regex_test`. Os mesmos filtros inválidos em
+`internal_users` (`users_POST` e `profile/password_POST`) foram registrados
+para uma change separada, por decisão do usuário. Limitações: a entrega de
+e-mail para usuários arbitrários não é comprovável no plano Free (o envio
+chega apenas ao e-mail do dono da instância); o teste E2E com e-mail não foi
+executado por decisão explícita; `voltix_app_url` não está configurada — o
+e-mail sai com o token como texto e a configuração exige ação separada. 411
+testes, `openspec validate --all --strict` (29 itens), `git diff --check` e
+`reflex compile` verdes, com `reflex.lock` inalterado. Evidências:
+[local](../openspec/changes/archive/2026-11-12-implement-internal-password-recovery/evidence/01-local-verification.md)
+e
+[publicação](../openspec/changes/archive/2026-11-12-implement-internal-password-recovery/evidence/02-publish-verification.md).
+
 ### Imagens de produto
 
 Há infraestrutura de imagens locais e créditos em `assets/demo/manifest.json`.
@@ -487,7 +526,7 @@ Verificação de testes a partir da raiz do repositório:
 & '.\.venv-windows\Scripts\python.exe' -m unittest discover -s tests -q
 ```
 
-A suíte mais recente registrada teve **389 testes aprovados**. Execute somente
+A suíte mais recente registrada teve **411 testes aprovados**. Execute somente
 os testes pertinentes quando a change for documental; não gere ruído rodando
 toda a aplicação sem necessidade.
 
@@ -534,12 +573,20 @@ git status --short --branch
    (change `implement-internal-user-management`, itens 7 + 14), com o grupo
    `Voltix Internal Users` publicado, listagem/criação/edição de usuários,
    proteção do último administrador e troca de senha pelo próprio usuário.
-7. **Próxima change recomendada:** recuperação de senha (item 11) — depende de
-   envio de e-mail nunca comprovado no plano Free e exige aprovação própria.
-   Demais itens de escopo (12 e 13) foram descartados pelo usuário.
-8. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
+7. **Recuperação de senha interna concluída em 12/11/2026** (change
+   `implement-internal-password-recovery`, item 11), com o grupo público
+   `voltix-internal-password-recovery` publicado, páginas públicas de
+   solicitação e redefinição, respostas genéricas, token de uso único e sem
+   auto-login. Entrega real de e-mail limitada ao plano Free; E2E com e-mail
+   não executado e `voltix_app_url` pendente de configuração.
+8. **Próxima change recomendada:** correção dos filtros inválidos em
+   `internal_users` (`users_POST`, `profile/password_POST`) — inputs `text`
+   não aceitam `minAlpha`/`minDigit` (mesmo erro corrigido nesta change) —
+   ainda sem aprovação. Demais itens de escopo (12 e 13) foram descartados
+   pelo usuário.
+9. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
    autorizado.
-9. Retomar o trabalho mobile somente com uma change própria.
+10. Retomar o trabalho mobile somente com uma change própria.
 
 O CRM está completo no backend e no painel: consulta de clientes (C4), histórico
 do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3), o

@@ -423,3 +423,8 @@
 .vx-team :is(button,input,select):focus-visible,.vx-profile :is(button,input,select):focus-visible{outline:3px solid #00b8d9;outline-offset:3px}
 @media(max-width:1100px){.vx-team__grid{grid-template-columns:1fr}}
 @media(max-width:800px){.vx-team,.vx-profile{padding:20px}.vx-team__table :is(th,td){padding:10px 8px}}
+/* Recuperacao de senha interna; escopo proprio. */
+.vx-internal-login__forgot{align-self:center;font-size:12px;font-weight:600;color:#0866d9;text-decoration:none}
+.vx-internal-login__forgot:hover,.vx-internal-login__back:hover{text-decoration:underline}
+.vx-internal-login__back{align-self:center;font-size:12px;font-weight:600;color:#0866d9;text-decoration:none}
+.vx-internal-login__forgot:focus-visible,.vx-internal-login__back:focus-visible{outline:3px solid #00b8d9;outline-offset:3px}
