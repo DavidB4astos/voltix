@@ -146,3 +146,11 @@
  .vx-home .vx-editorial__image { background: transparent; }
  .vx-home .vx-editorial__copy { line-height: 1.65; }
 }
+
+/* Trilho de categorias com rolagem suave e affordance. */
+.vx-home-category-scroll{scrollbar-width:thin;-webkit-overflow-scrolling:touch;overscroll-behavior-x:contain}
+.vx-home-category-link{scroll-snap-align:start}
+@media(max-width:1023px){
+.vx-home-category-scroll{scroll-snap-type:x proximity;mask-image:linear-gradient(90deg,#000 90%,transparent 100%)}
+.vx-home-category-bar{position:relative}
+}

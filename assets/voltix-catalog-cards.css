@@ -19,3 +19,12 @@
 .vx-catalog-card a:focus-visible, .vx-catalog-card button:focus-visible { outline: 2px solid #0086a3; outline-offset: 3px; }
 
 .vx-catalog-card__credit .vx-catalog-card__credit-notice{display:block;flex-basis:100%;font-size:11px;line-height:1.6;color:#526579}
+
+/* Grade do catalogo: faixas estaveis de colunas e midia com altura fixa. */
+.vx-catalog-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:1.5rem;width:100%;align-items:stretch}
+@media(min-width:768px){.vx-catalog-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(min-width:1280px){.vx-catalog-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+.vx-catalog-card__media{aspect-ratio:4/3}
+.vx-catalog-card__credit{font-size:.68rem;line-height:1.35;gap:.1rem .45rem}
+.vx-catalog-card__credit a{min-height:26px}
+.vx-catalog-card__credit-notice{font-size:.64rem;line-height:1.45}

@@ -7309,138 +7309,42 @@ def site_header(
     logo_href: str = "/catalogo",
     wide: bool = False,
 ) -> rx.Component:
-    """Cabecalho em banda navy com logo, badge de area e navegacao por pills."""
+    """Cabecalho publico: desktop em >=1024px e compacto abaixo; mesma lista de destinos."""
 
-    def nav_link(
-        label: str,
-        href: str,
-        *,
-        emphasized: bool = False,
-    ) -> rx.Component:
+    def mobile_link(label, href):
         is_active = active == href
         icon = _NAV_ICONS.get(href)
+        classes = "vx-nav__pill"
         if is_active:
-            color = COLOR_NAVY
-            background = COLOR_CYAN
-            border = "1px solid transparent"
-            hover = {
-                "background": COLOR_CYAN_DARK,
-                "color": COLOR_CARD,
-                "border": "1px solid transparent",
-            }
-        elif emphasized:
-            color = COLOR_CYAN
-            background = "rgba(0, 184, 217, 0.10)"
-            border = f"1px solid {COLOR_CYAN}"
-            hover = {
-                "background": "rgba(0, 184, 217, 0.22)",
-                "color": COLOR_CARD,
-                "border": f"1px solid {COLOR_CYAN}",
-            }
-        else:
-            color = "rgba(255,255,255,0.92)"
-            background = "rgba(255,255,255,0.05)"
-            border = "1px solid rgba(255,255,255,0.14)"
-            hover = {
-                "background": "rgba(255,255,255,0.16)",
-                "color": COLOR_CARD,
-                "border": "1px solid rgba(255,255,255,0.28)",
-            }
+            classes += " is-active"
+        if href in _INTERNAL_LINKS:
+            classes += " is-internal"
         return rx.link(
-            rx.hstack(
-                *([rx.icon(icon, size=16)] if icon else []),
-                rx.text(label),
-                spacing="2",
-                align="center",
-            ),
+            *([rx.icon(icon, size=15, aria_hidden=True)] if icon else []),
+            rx.text(label),
             href=href,
-            color=color,
-            background=background,
-            border=border,
-            padding_x="1.25rem",
-            padding_y="0.5rem",
-            border_radius="9999px",
-            font_weight="600" if is_active or emphasized else "500",
-            font_size="0.95rem",
-            white_space="nowrap",
-            text_decoration="none",
-            transition="background 0.15s ease, color 0.15s ease, border 0.15s ease",
-            _hover=hover,
-            _focus_visible=FOCUS_STYLE,
+            class_name=classes,
+            aria_current="page" if is_active else None,
         )
-
-    commercial = [(label, href) for label, href in links if href not in _INTERNAL_LINKS]
-    internal = [(label, href) for label, href in links if href in _INTERNAL_LINKS]
-
-    nav_items = [nav_link(label, href) for label, href in commercial]
-    if internal:
-        nav_items.append(
-            rx.box(
-                width="1px",
-                height="1.6rem",
-                background="rgba(255,255,255,0.20)",
-                margin_x="0.5rem",
-            )
-        )
-        nav_items.extend(
-            nav_link(label, href, emphasized=True) for label, href in internal
-        )
-
-    legacy_header = rx.box(
-        rx.container(
-            rx.flex(
-                rx.hstack(
-                    rx.link(
-                        brand_logo(on_dark=True),
-                        href=logo_href,
-                        text_decoration="none",
-                        _focus_visible=FOCUS_STYLE,
-                    ),
-                    rx.badge(
-                        badge,
-                        background="rgba(0, 184, 217, 0.18)",
-                        color=COLOR_CYAN,
-                        border=f"1px solid {COLOR_CYAN}",
-                        radius="full",
-                        size="2",
-                    ),
-                    spacing="3",
-                    align="center",
-                ),
-                rx.flex(
-                    *nav_items,
-                    spacing="3",
-                    align="center",
-                    wrap="wrap",
-                    justify={"initial": "start", "md": "end"},
-                    width=rx.breakpoints(initial="100%", md="auto"),
-                ),
-                direction={"initial": "column", "md": "row"},
-                align={"initial": "start", "md": "center"},
-                justify="between",
-                spacing="3",
-                width="100%",
+    mobile_header = rx.box(
+        rx.box(
+            rx.link(
+                rx.el.span(class_name="vx-nav__brand-mark", aria_hidden=True),
+                rx.el.span("Voltix"),
+                href=logo_href,
+                class_name="vx-nav__brand",
+                aria_label="Voltix — página inicial",
             ),
-            max_width="72rem",
-            size="4" if wide else "3",
-            width="100%",
-            margin_x="auto" if wide else "0rem",
-            padding_x="1rem" if wide else "2rem",
-            padding_y="1.25rem",
+            rx.el.span(badge, class_name="vx-nav__mobile-badge"),
+            class_name="vx-nav__mobile-identity",
         ),
-        background="linear-gradient(135deg, "
-        + COLOR_NAVY
-        + " 0%, "
-        + COLOR_NAVY_SOFT
-        + " 100%)",
-        border_bottom=f"3px solid {COLOR_CYAN}",
-        box_shadow="0 6px 20px rgba(7, 21, 37, 0.18)",
-        width="100%",
+        rx.el.nav(
+            *[mobile_link(label, href) for label, href in links],
+            aria_label="Navegação principal",
+            class_name="vx-nav__mobile-nav",
+        ),
+        class_name="vx-nav__mobile",
     )
-
-    # A variante antiga permanece disponível para larguras compactas.
-    if active not in {"/", "/catalogo", "/cliente", "/carrinho", "/checkout", "/pedidos", "/interno"}:
-        return legacy_header
 
     def desktop_link(label, href, *, icon=None, secondary=False):
         classes = "vx-nav__link"
@@ -7454,11 +7358,13 @@ def site_header(
             aria_current="page" if active == href else None,
         )
 
-    extra_links = [(label, href) for label, href in commercial
-                   if href not in {"/", "/catalogo", "/cliente", "/carrinho"}]
+    extra_links = [(label, href) for label, href in links
+                   if href not in _INTERNAL_LINKS
+                   and href not in {"/", "/catalogo", "/cliente", "/carrinho"}]
+    internal = [(label, href) for label, href in links if href in _INTERNAL_LINKS]
     return rx.box(
         rx.el.link(rel="stylesheet", href="/voltix-navigation.css"),
-        rx.box(legacy_header, class_name="vx-nav__legacy"),
+        mobile_header,
         rx.el.header(
             rx.box(
                 rx.link(
@@ -10229,6 +10135,7 @@ def home_page() -> rx.Component:
                                 lambda category: rx.link(
                                     category.name,
                                     href="/catalogo",
+                                    class_name="vx-home-category-link",
                                     color=COLOR_TEXT,
                                     font_size="0.88rem",
                                     font_weight="600",
@@ -10253,6 +10160,7 @@ def home_page() -> rx.Component:
                         align="center",
                         width="100%",
                         overflow_x="auto",
+                        class_name="vx-home-category-scroll",
                     ),
             max_width="72rem",
             size="4",
@@ -10520,8 +10428,7 @@ def public_catalog_page() -> rx.Component:
             & (State.public_products.length() > 0),
             rx.grid(
                 rx.foreach(State.public_products, product_card),
-                columns={"initial": "1", "md": "2", "lg": "3"},
-                spacing="4",
+                class_name="vx-catalog-grid",
                 align="stretch",
                 width="100%",
             ),

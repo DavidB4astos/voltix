@@ -86,12 +86,15 @@ importação real) exige ambiente isolado, autorizado e sem dados reais.
 
 ## 4. Estado do Git e do OpenSpec
 
-Na conferência de 12/11/2026, a recuperação de senha interna foi entregue
-(item 11, change `implement-internal-password-recovery`): grupo público
-`voltix-internal-password-recovery` publicado com `POST request` e
-`POST confirm`, telas públicas de solicitação e redefinição, 411 testes e
-`openspec validate --all --strict` aprovando 29 itens. Esses resultados são
-um registro datado, não substituem uma nova verificação após mudanças.
+Na conferência de 12/11/2026, a recuperação de senha interna (item 11, change
+`implement-internal-password-recovery`) e o refinamento visual da storefront
+(change `refine-storefront-design`) foram entregues. O primeiro publicou o grupo
+`voltix-internal-password-recovery` com `POST request`/`POST confirm` e as páginas
+públicas de recuperação; o segundo entregou navegação pública compacta abaixo de
+1024 px, barra de categorias com affordance, grade do catálogo em faixas estáveis e
+créditos compactos. 422 testes e `openspec validate --all --strict` aprovando 29
+itens. Esses resultados são um registro datado, não substituem uma nova verificação
+após mudanças.
 
 Antes de prosseguir, confira o estado real com:
 
@@ -167,6 +170,7 @@ As seguintes changes foram concluídas e arquivadas:
 - `implement-internal-customer-edit`: edição administrativa e status de Cliente (C9).
 - `implement-internal-user-management`: gestão de usuários internos e perfil próprio (itens 7 + 14).
 - `implement-internal-password-recovery`: recuperação de senha interna por link de e-mail (item 11).
+- `refine-storefront-design`: refinamento visual e responsivo da storefront pública.
 
 O controle de seção interno deve continuar restrito no `State`:
 
@@ -498,6 +502,25 @@ testes, `openspec validate --all --strict` (29 itens), `git diff --check` e
 e
 [publicação](../openspec/changes/archive/2026-11-12-implement-internal-password-recovery/evidence/02-publish-verification.md).
 
+### Refinamento visual da storefront
+
+O refinamento visual e de fluxo da storefront pública foi **IMPLEMENTADO em
+12/11/2026** pela change `refine-storefront-design`. A auditoria em 375/768/1280 px
+encontrou a navegação pública abaixo de 1024 px volumosa (cabeçalho legado de várias
+linhas), a barra de categorias da Home recortada sem affordance, o catálogo em 1
+coluna gigante em 768 px e os créditos do Icecat dominando os cards. Entregue:
+cabeçalho público compacto abaixo de 1024 px (barra de altura fixa com identidade e
+pílulas de Início/Produtos/conta/carrinho, `aria-current` preservado, mesma lista de
+destinos, fade no trilho da Home), grade do catálogo em faixas estáveis via CSS
+(1 coluna <768 px, 2 colunas 768–1279 px, 3 colunas a partir de 1280 px) e mídia com
+proporção estável, créditos compactos mantendo licença e links acessíveis; o
+cabeçalho desktop ficou inalterado a partir de 1024 px e o cabeçalho legado foi
+removido do fluxo público. Escopo restrito: nenhum backend, Xano, rota, State de
+negócio ou dado foi alterado; nenhuma imagem de produto nova foi acrescentada. 422
+testes, `openspec validate --all --strict` (29 itens) e inspeção visual sem overflow
+nas seis páginas públicas principais. Evidência:
+[verificação](../openspec/changes/archive/2026-11-12-refine-storefront-design/evidence/verification.md).
+
 ### Imagens de produto
 
 Há infraestrutura de imagens locais e créditos em `assets/demo/manifest.json`.
@@ -526,7 +549,7 @@ Verificação de testes a partir da raiz do repositório:
 & '.\.venv-windows\Scripts\python.exe' -m unittest discover -s tests -q
 ```
 
-A suíte mais recente registrada teve **411 testes aprovados**. Execute somente
+A suíte mais recente registrada teve **422 testes aprovados**. Execute somente
 os testes pertinentes quando a change for documental; não gere ruído rodando
 toda a aplicação sem necessidade.
 
@@ -573,20 +596,24 @@ git status --short --branch
    (change `implement-internal-user-management`, itens 7 + 14), com o grupo
    `Voltix Internal Users` publicado, listagem/criação/edição de usuários,
    proteção do último administrador e troca de senha pelo próprio usuário.
-7. **Recuperação de senha interna concluída em 12/11/2026** (change
+8. **Recuperação de senha interna concluída em 12/11/2026** (change
    `implement-internal-password-recovery`, item 11), com o grupo público
    `voltix-internal-password-recovery` publicado, páginas públicas de
    solicitação e redefinição, respostas genéricas, token de uso único e sem
    auto-login. Entrega real de e-mail limitada ao plano Free; E2E com e-mail
    não executado e `voltix_app_url` pendente de configuração.
-8. **Próxima change recomendada:** correção dos filtros inválidos em
-   `internal_users` (`users_POST`, `profile/password_POST`) — inputs `text`
-   não aceitam `minAlpha`/`minDigit` (mesmo erro corrigido nesta change) —
-   ainda sem aprovação. Demais itens de escopo (12 e 13) foram descartados
-   pelo usuário.
-9. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
-   autorizado.
-10. Retomar o trabalho mobile somente com uma change própria.
+9. **Refinamento visual da storefront concluído em 12/11/2026** (change
+   `refine-storefront-design`), com navegação pública compacta abaixo de
+   1024 px, barra de categorias com affordance e grade do catálogo em faixas
+   estáveis; segunda etapa pendente: workspace interno.
+10. **Próxima change recomendada:** correção dos filtros inválidos em
+    `internal_users` (`users_POST`, `profile/password_POST`) — inputs `text`
+    não aceitam `minAlpha`/`minDigit` (mesmo erro corrigido nesta change) —
+    ainda sem aprovação. Demais itens de escopo (12 e 13) foram descartados
+    pelo usuário.
+11. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
+    autorizado.
+12. Retomar o trabalho mobile somente com uma change própria.
 
 O CRM está completo no backend e no painel: consulta de clientes (C4), histórico
 do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3), o
