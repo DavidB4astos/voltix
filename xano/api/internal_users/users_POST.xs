@@ -6,7 +6,7 @@ query users verb=POST {
   input {
     text name filters=trim
     email email filters=trim|lower
-    text password filters=min:8|minAlpha:1|minDigit:1
+    text password filters=min:8
     enum role {
       values = ["FUNCIONARIO", "ADMINISTRADOR"]
     }
@@ -27,6 +27,12 @@ query users verb=POST {
     precondition (($input.name|strlen) >= 1 && ($input.name|strlen) <= 300 && ($input.email|strlen) <= 254) {
       error_type = "inputerror"
       error = "Provide a valid name and email for the internal user."
+    }
+
+    // Text inputs only support min-length filters; require one letter and one digit
+    precondition (($input.password|regex_test:"[A-Za-z]") && ($input.password|regex_test:"[0-9]")) {
+      error_type = "badrequest"
+      error = "The password must contain at least 8 characters, a letter and a digit."
     }
 
     db.query user {

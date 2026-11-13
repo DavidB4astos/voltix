@@ -472,6 +472,26 @@ class InternalUserScriptTests(unittest.TestCase):
         self.assertNotIn("password", response)
         self.assertIn("updated: true", response)
 
+    def test_text_password_inputs_do_not_use_password_only_filters(self):
+        for relative, field in [
+            ("users_POST.xs", "password"),
+            ("profile/password_POST.xs", "new_password"),
+        ]:
+            content = self.read(relative)
+            self.assertNotIn("minAlpha", content, relative)
+            self.assertNotIn("minDigit", content, relative)
+            self.assertIn(f"text {field} filters=min:8", content, relative)
+            self.assertIn('regex_test:"[A-Za-z]"', content, relative)
+            self.assertIn('regex_test:"[0-9]"', content, relative)
+            strength = content.index("regex_test")
+            write = content.index("db.add user" if relative == "users_POST.xs"
+                                  else "db.edit user")
+            self.assertLess(strength, write, relative)
+
+    def test_user_table_password_column_keeps_password_filters(self):
+        table = Path("xano/table/user.xs").read_text(encoding="utf-8")
+        self.assertIn("password filters=min:8|minAlpha:1|minDigit:1", table)
+
 
 if __name__ == "__main__":
     unittest.main()

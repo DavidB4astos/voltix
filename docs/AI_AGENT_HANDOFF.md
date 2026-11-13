@@ -88,16 +88,12 @@ importação real) exige ambiente isolado, autorizado e sem dados reais.
 
 Na conferência de 12/11/2026, a recuperação de senha interna (item 11, change
 `implement-internal-password-recovery`) e os dois refinamentos visuais
-(`refine-storefront-design` e `refine-internal-workspace`) foram entregues. O primeiro
-publicou o grupo `voltix-internal-password-recovery` com `POST request`/`POST confirm`
-e as páginas públicas de recuperação; o segundo entregou navegação pública compacta
-abaixo de 1024 px, barra de categorias com affordance e grade do catálogo em faixas
-estáveis; o terceiro unificou as ações de atualização como botões, reduziu a densidade
-dos painéis e da sidebar e trocou a pílula redundante por "Sessão ativa". Em 13/11/2026
-a correção da exibição monetária (`fix-money-display`) eliminou as aspas literais dos
-valores (`R$ "119,90"`) em toda a aplicação — 435 testes e
-`openspec validate --all --strict` aprovando 30 itens. Esses resultados são um
-registro datado, não substituem uma nova verificação após mudanças.
+(`refine-storefront-design` e `refine-internal-workspace`) foram entregues. Em 13/11/2026
+foram entregues a correção da exibição monetária (change `fix-money-display`) e a
+correção dos filtros inválidos de senha do grupo internal_users (change
+`fix-internal-users-password-filters`): 435 testes e
+`openspec validate --all --strict` aprovando 30 itens (29 após arquivamento). Esse
+resultado é um registro datado, não substitui uma nova verificação após mudanças.
 
 Antes de prosseguir, confira o estado real com:
 
@@ -176,6 +172,7 @@ As seguintes changes foram concluídas e arquivadas:
 - `refine-storefront-design`: refinamento visual e responsivo da storefront pública.
 - `refine-internal-workspace`: refinamento visual e de fluxo do workspace interno.
 - `fix-money-display`: correção da exibição monetária (sem aspas literais).
+- `fix-internal-users-password-filters`: correção dos filtros inválidos em `users_POST` e `profile/password_POST` (campo password).
 
 O controle de seção interno deve continuar restrito no `State`:
 
@@ -495,8 +492,9 @@ senha sem dígito, confirmação divergente e conta inexistente com erro genéri
 Descoberta e correção dentro da change: inputs `text` do Xano não aceitam
 `minAlpha`/`minDigit`, então `confirm` usa `text filters=min:8` e exige letra e
 dígito na stack via `regex_test`. Os mesmos filtros inválidos em
-`internal_users` (`users_POST` e `profile/password_POST`) foram registrados
-para uma change separada, por decisão do usuário. Limitações: a entrega de
+`internal_users` (`users_POST` e `profile/password_POST`) foram corrigidos em
+13/11/2026 pela change `fix-internal-users-password-filters`, publicada e
+verificada. Limitações: a entrega de
 e-mail para usuários arbitrários não é comprovável no plano Free (o envio
 chega apenas ao e-mail do dono da instância); o teste E2E com e-mail não foi
 executado por decisão explícita; `voltix_app_url` não está configurada — o
@@ -560,6 +558,24 @@ Nenhum dado do backend, rota, State ou handler mudou. 435 testes,
 `openspec validate --all --strict` (30 itens com a mudança ativa) e inspeção ao vivo
 confirmando `R$ 119,90` no Dashboard e nos preços de variações. Evidência:
 [verificação](../openspec/changes/archive/2026-11-13-fix-money-display/evidence/verification.md).
+
+### Correção dos filtros inválidos em internal_users
+
+A correção dos filtros inválidos do grupo `Voltix Internal Users` foi
+**IMPLEMENTADA e PUBLICADA em 13/11/2026** pela change
+`fix-internal-users-password-filters`. Os endpoints `POST /users` (criação por
+ADMINISTRADOR) e `POST /profile/password` (troca de senha própria) usavam
+`text password filters=min:8|minAlpha:1|minDigit:1` — filtros inexistentes para
+inputs `text` — rejeitando toda chamada com `ERROR_CODE_INPUT_ERROR`. Entregue:
+`filters=min:8` com precondition de letra e dígito via `regex_test`; asserções
+estáticas sobre ausência dos filtros e ordem autorização → validação → escrita;
+zero mudança em tabelas, rotas, contratos de resposta e regras de autorização.
+Publicação restrita aos dois documentos autorizada pelo usuário; pull confere com
+normalização do importador (`regex_test` → `regex_matches`); verificação remota
+somente leitura confirma `400` para senha curta, sem escrita; a verificação
+autenticada com sessão descartável não foi executada (limitação). 430 testes,
+`openspec validate --all --strict` e inspeção anterior verdes. Evidência:
+[verificação](../openspec/changes/archive/2026-11-13-fix-internal-users-password-filters/evidence/verification.md).
 
 ### Imagens de produto
 
@@ -652,10 +668,10 @@ git status --short --branch
 11. **Correção da exibição monetária concluída em 13/11/2026** (change
     `fix-money-display`), com os valores exibidos como `R$ 119,90` (sem aspas) em
     qualquer seção.
-12. **Próxima change recomendada:** correção dos filtros inválidos em
-    `internal_users` (`users_POST`, `profile/password_POST`) — já em andamento em
-    `openspec/changes/fix-internal-users-password-filters/`, aguardando o gate do
-    usuário antes da publicação.
+12. **Correção dos filtros inválidos em internal_users concluída em
+    13/11/2026** (change `fix-internal-users-password-filters`), com criação de
+    usuário interno e troca de senha própria funcionando em produção; pull confere
+    com normalização do importador.
 13. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
     autorizado.
 14. Retomar o trabalho mobile somente com uma change própria.

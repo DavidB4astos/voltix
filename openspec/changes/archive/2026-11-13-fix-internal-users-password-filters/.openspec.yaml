@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-13
+# Sincronização de specs dispensada: o contrato já está em
+# openspec/specs/internal-users/spec.md (8+ caracteres, letra e dígito).
+# A change corrige apenas o mecanismo de aplicação no XanoScript.
+skip_specs: true

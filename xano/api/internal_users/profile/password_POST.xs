@@ -5,7 +5,7 @@ query "profile/password" verb=POST {
 
   input {
     text current_password
-    text new_password filters=min:8|minAlpha:1|minDigit:1
+    text new_password filters=min:8
     text confirm_password filters=trim
   }
 
@@ -24,6 +24,12 @@ query "profile/password" verb=POST {
     precondition ($input.new_password == $input.confirm_password) {
       error_type = "badrequest"
       error = "Password confirmation does not match."
+    }
+
+    // Text inputs only support min-length filters; require one letter and one digit
+    precondition (($input.new_password|regex_test:"[A-Za-z]") && ($input.new_password|regex_test:"[0-9]")) {
+      error_type = "badrequest"
+      error = "The password must contain at least 8 characters, a letter and a digit."
     }
 
     security.check_password {
