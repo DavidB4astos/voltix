@@ -20,5 +20,5 @@
       30 itens válidos (29 com a change ativa + esta) e sem erros de whitespace
 - [x] 3.4 Restaurar `reflex.lock/*`, sincronizar spec, arquivar a change e atualizar docs —
       verificação: diretório em `archive/2026-11-13-fix-money-display/`
-- [ ] 3.5 Commit/push somente com autorização explícita — verificação: árvore limpa e
-      sincronizada com `origin/main`
+- [x] 3.5 Commit/push somente com autorização explícita — verificação: autorização
+      registrada; `9aab46a` em `main`
