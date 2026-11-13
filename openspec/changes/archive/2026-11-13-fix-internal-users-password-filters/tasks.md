@@ -48,5 +48,5 @@
 - [x] 4.3 Arquivar a change e validar globalmente — verificação:
       `openspec validate --all --strict` (28 itens após arquivamento) e diretório em
       `openspec/changes/archive/`
-- [ ] 4.4 Commit — verificação: somente com autorização explícita; `git status`
-      limpo ou limitações explicadas
+- [x] 4.4 Commit — verificação: autorização explícita recebida; `74952ef` em
+      `main`, árvore limpa e sincronizada
