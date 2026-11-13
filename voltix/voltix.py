@@ -11047,14 +11047,28 @@ def customer_account_page() -> rx.Component:
     )
 
 
-def _cart_money_text(value) -> rx.Var[str]:
-    """Present backend decimal text without float conversion or recalculation."""
-    value = rx.Var.create(value).to_string()
-    whole = value.split(".")[0]
-    fraction = (value + ".").split(".")[1]
-    digits = rx.cond(fraction.length() == 0, "00",
-                     rx.cond(fraction.length() == 1, fraction + "0", fraction))
-    return "R$ " + whole + "," + digits
+def _cart_money_text(value) -> "str | rx.Var[str]":
+    """Present backend decimal text as R$ <inteiro>,<fração>.
+
+    Strings/int/float/Decimal render in Python; Reflex Vars (numeric foreach
+    placeholders) are rendered through the supported JS string casts, which never
+    add quotes for numbers.
+    """
+    if isinstance(value, rx.Var):
+        # Money fields are annotated as str in the dataclasses, so they reach here as
+        # string Vars; operate on the Var text directly to avoid JSON quoting.
+        var_type = getattr(value, "_var_type", None)
+        text = value if var_type is str or var_type == "str" else value.to_string()
+        whole = text.split(".")[0]
+        fraction = (text + ".").split(".")[1]
+        digits = rx.cond(fraction.length() == 0, "00",
+                         rx.cond(fraction.length() == 1, fraction + "0", fraction))
+        return "R$ " + whole + "," + digits
+    text = str(value).strip()
+    whole, separator, fraction = text.partition(".")
+    if not whole.isdigit() or (separator and fraction and not fraction.isdigit()):
+        raise ValueError("Invalid monetary value.")
+    return "R$ " + whole + "," + ((fraction + "00")[:2] if separator else "00")
 
 
 def _cart_item_view(item, *, loading, on_update, on_remove) -> rx.Component:

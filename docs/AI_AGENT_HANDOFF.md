@@ -93,8 +93,10 @@ publicou o grupo `voltix-internal-password-recovery` com `POST request`/`POST co
 e as páginas públicas de recuperação; o segundo entregou navegação pública compacta
 abaixo de 1024 px, barra de categorias com affordance e grade do catálogo em faixas
 estáveis; o terceiro unificou as ações de atualização como botões, reduziu a densidade
-dos painéis e da sidebar e trocou a pílula redundante por "Sessão ativa". 428 testes e
-`openspec validate --all --strict` aprovando 29 itens. Esses resultados são um
+dos painéis e da sidebar e trocou a pílula redundante por "Sessão ativa". Em 13/11/2026
+a correção da exibição monetária (`fix-money-display`) eliminou as aspas literais dos
+valores (`R$ "119,90"`) em toda a aplicação — 435 testes e
+`openspec validate --all --strict` aprovando 30 itens. Esses resultados são um
 registro datado, não substituem uma nova verificação após mudanças.
 
 Antes de prosseguir, confira o estado real com:
@@ -173,6 +175,7 @@ As seguintes changes foram concluídas e arquivadas:
 - `implement-internal-password-recovery`: recuperação de senha interna por link de e-mail (item 11).
 - `refine-storefront-design`: refinamento visual e responsivo da storefront pública.
 - `refine-internal-workspace`: refinamento visual e de fluxo do workspace interno.
+- `fix-money-display`: correção da exibição monetária (sem aspas literais).
 
 O controle de seção interno deve continuar restrito no `State`:
 
@@ -545,6 +548,19 @@ Observação: o `.env` local recebeu as URLs internas canônicas para que os pai
 possam carregar dados. Evidência:
 [verificação](../openspec/changes/archive/2026-11-12-refine-internal-workspace/evidence/verification.md).
 
+### Correção da exibição monetária
+
+A correção da exibição monetária foi **IMPLEMENTADA em 13/11/2026** pela change
+`fix-money-display`. A auditoria em produção mostrou `R$ "119,90"` em toda a aplicação
+(o helper `_cart_money_text` compilava para `JSON.stringify(...)`, cujos delimitadores
+pareciam aspas no texto renderizado). Entregue: `_cart_money_text` opera sobre o
+próprio Var do texto nos caminhos de campo `str` das dataclasses (sem `to_string()`),
+e formata em Python puro nos demais caminhos; entradas inválidas lançam `ValueError`.
+Nenhum dado do backend, rota, State ou handler mudou. 435 testes,
+`openspec validate --all --strict` (30 itens com a mudança ativa) e inspeção ao vivo
+confirmando `R$ 119,90` no Dashboard e nos preços de variações. Evidência:
+[verificação](../openspec/changes/archive/2026-11-13-fix-money-display/evidence/verification.md).
+
 ### Imagens de produto
 
 Há infraestrutura de imagens locais e créditos em `assets/demo/manifest.json`.
@@ -573,7 +589,7 @@ Verificação de testes a partir da raiz do repositório:
 & '.\.venv-windows\Scripts\python.exe' -m unittest discover -s tests -q
 ```
 
-A suíte mais recente registrada teve **428 testes aprovados**. Execute somente
+A suíte mais recente registrada teve **435 testes aprovados**. Execute somente
 os testes pertinentes quando a change for documental; não gere ruído rodando
 toda a aplicação sem necessidade.
 
@@ -633,14 +649,16 @@ git status --short --branch
 10. **Refinamento visual do workspace interno concluído em 12/11/2026**
     (change `refine-internal-workspace`), com ações de atualização como botões,
     densidade maior, tabelas legíveis e pílula "Sessão ativa".
-11. **Próxima change recomendada:** correção dos filtros inválidos em
-    `internal_users` (`users_POST`, `profile/password_POST`) — inputs `text`
-    não aceitam `minAlpha`/`minDigit` (mesmo erro corrigido nesta change) —
-    ainda sem aprovação. Demais itens de escopo (12 e 13) foram descartados
-    pelo usuário.
-12. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
+11. **Correção da exibição monetária concluída em 13/11/2026** (change
+    `fix-money-display`), com os valores exibidos como `R$ 119,90` (sem aspas) em
+    qualquer seção.
+12. **Próxima change recomendada:** correção dos filtros inválidos em
+    `internal_users` (`users_POST`, `profile/password_POST`) — já em andamento em
+    `openspec/changes/fix-internal-users-password-filters/`, aguardando o gate do
+    usuário antes da publicação.
+13. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
     autorizado.
-13. Retomar o trabalho mobile somente com uma change própria.
+14. Retomar o trabalho mobile somente com uma change própria.
 
 O CRM está completo no backend e no painel: consulta de clientes (C4), histórico
 do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3), o
