@@ -4793,6 +4793,11 @@ class State(rx.State):
         self.public_product_detail_id = None
 
     @rx.event
+    def handle_public_product_dialog_open_change(self, is_open: bool):
+        if not is_open:
+            self.close_public_product_details()
+
+    @rx.event
     def set_product_form_name(self, value: str):
         self.product_form_name = value
 
@@ -10303,63 +10308,77 @@ def public_catalog_page() -> rx.Component:
 
     def selected_product_details() -> rx.Component:
         product = State.public_selected_product
-        return rx.cond(
-            product != None,
-            rx.el.section(
-                rx.box(
-                    rx.text("DETALHES DO PRODUTO", class_name="vx-product-detail__eyebrow"),
-                    rx.button(rx.icon("x", size=17, aria_hidden=True), "Fechar detalhes",
-                              on_click=State.close_public_product_details,
-                              class_name="vx-product-detail__close"),
-                    class_name="vx-product-detail__top"),
-                rx.box(
-                    rx.el.figure(
-                        rx.box(rx.cond(
-                            product.image_url != "",
-                            rx.image(src=product.image_url, alt=product.name,
-                                     class_name="vx-product-detail__image"),
-                            rx.box(rx.icon("image", size=40, aria_hidden=True),
-                                   rx.text("Imagem não disponível"),
-                                   class_name="vx-product-detail__placeholder vx-image-placeholder")),
-                            class_name="vx-product-detail__frame"),
-                        (rx.match(product.image_url,
-                                  *[(url, rx.el.figcaption(compact_credit(credit)))
-                                    for url, credit in photo_credits.items()], rx.fragment())
-                         if photo_credits else rx.fragment()),
-                        class_name="vx-product-detail__media"),
-                    rx.box(
-                        rx.cond(product.brand_name != "", rx.text(product.brand_name,
-                                class_name="vx-product-detail__brand"), rx.fragment()),
-                        rx.el.h2(product.name, id="product-detail-title",
-                                 class_name="vx-product-detail__title"),
-                        rx.cond(product.category_name != "", rx.text(product.category_name,
-                                class_name="vx-product-detail__category"), rx.fragment()),
-                        rx.cond(product.description != "", rx.text(product.description,
-                                class_name="vx-product-detail__description"), rx.fragment()),
-                        rx.el.h3("Variações disponíveis", class_name="vx-product-detail__subheading"),
-                        rx.cond(product.variations.length() == 0,
-                                rx.text("Não há variações ativas disponíveis.",
-                                        class_name="vx-product-detail__empty"),
-                                rx.box(
-                                    rx.text("Cada acionamento adiciona 1 unidade da variação escolhida.",
-                                            class_name="vx-product-detail__hint"),
-                                    rx.foreach(product.variations, detail_variation))),
+        return rx.dialog.root(
+            rx.dialog.content(
+                rx.cond(
+                    product != None,
+                    rx.el.section(
                         rx.box(
-                            feedback_text(State.cart_message, tone="error"),
-                            rx.cond(State.cart_message != "",
-                                    rx.cond(State.customer_authenticated,
-                                            rx.link("Ver carrinho", href="/carrinho"),
-                                            rx.link("Entrar como Cliente", href="/cliente")), rx.fragment()),
-                            role="status", aria_live="polite", class_name="vx-product-detail__feedback"),
-                        class_name="vx-product-detail__summary"),
-                    class_name="vx-product-detail__grid"),
-                rx.cond(product.technical_specifications != "",
-                        rx.box(rx.el.h3("Especificações técnicas", class_name="vx-product-detail__subheading"),
-                               rx.text(product.technical_specifications,
-                                       class_name="vx-product-detail__specification-text"),
-                               class_name="vx-product-detail__specifications"), rx.fragment()),
-                aria_labelledby="product-detail-title", class_name="vx-product-detail"),
-            rx.fragment())
+                            rx.text("DETALHES DO PRODUTO", class_name="vx-product-detail__eyebrow"),
+                            rx.button(rx.icon("x", size=17, aria_hidden=True), "Fechar detalhes",
+                                      on_click=State.close_public_product_details,
+                                      class_name="vx-product-detail__close"),
+                            class_name="vx-product-detail__top"),
+                        rx.box(
+                            rx.el.figure(
+                                rx.box(rx.cond(
+                                    product.image_url != "",
+                                    rx.image(src=product.image_url, alt=product.name,
+                                             class_name="vx-product-detail__image"),
+                                    rx.box(rx.icon("image", size=40, aria_hidden=True),
+                                           rx.text("Imagem não disponível"),
+                                           class_name="vx-product-detail__placeholder vx-image-placeholder")),
+                                    class_name="vx-product-detail__frame"),
+                                (rx.match(product.image_url,
+                                          *[(url, rx.el.figcaption(compact_credit(credit)))
+                                            for url, credit in photo_credits.items()], rx.fragment())
+                                 if photo_credits else rx.fragment()),
+                                class_name="vx-product-detail__media"),
+                            rx.box(
+                                rx.cond(product.brand_name != "", rx.text(product.brand_name,
+                                        class_name="vx-product-detail__brand"), rx.fragment()),
+                                rx.el.h2(product.name, id="product-detail-title",
+                                         class_name="vx-product-detail__title"),
+                                rx.cond(product.category_name != "", rx.text(product.category_name,
+                                        class_name="vx-product-detail__category"), rx.fragment()),
+                                rx.cond(product.description != "", rx.text(product.description,
+                                        class_name="vx-product-detail__description"), rx.fragment()),
+                                rx.el.h3("Variações disponíveis", class_name="vx-product-detail__subheading"),
+                                rx.cond(product.variations.length() == 0,
+                                        rx.text("Não há variações ativas disponíveis.",
+                                                class_name="vx-product-detail__empty"),
+                                        rx.box(
+                                            rx.text("Cada acionamento adiciona 1 unidade da variação escolhida.",
+                                                    class_name="vx-product-detail__hint"),
+                                            rx.foreach(product.variations, detail_variation))),
+                                rx.box(
+                                    feedback_text(State.cart_message, tone="error"),
+                                    rx.cond(State.cart_message != "",
+                                            rx.cond(State.customer_authenticated,
+                                                    rx.link("Ver carrinho", href="/carrinho"),
+                                                    rx.link("Entrar como Cliente", href="/cliente")), rx.fragment()),
+                                    role="status", aria_live="polite", class_name="vx-product-detail__feedback"),
+                                class_name="vx-product-detail__summary"),
+                            class_name="vx-product-detail__grid"),
+                        rx.cond(product.technical_specifications != "",
+                                rx.box(rx.el.h3("Especificações técnicas", class_name="vx-product-detail__subheading"),
+                                       rx.text(product.technical_specifications,
+                                               class_name="vx-product-detail__specification-text"),
+                                       class_name="vx-product-detail__specifications"), rx.fragment()),
+                        aria_labelledby="product-detail-title", class_name="vx-product-detail"),
+                    rx.fragment()),
+                max_width="60rem",
+                width="92vw",
+                max_height="88vh",
+                overflow_y="auto",
+                padding="0",
+                border_radius="20px",
+                background="transparent",
+                box_shadow="none",
+            ),
+            open=product != None,
+            on_open_change=State.handle_public_product_dialog_open_change,
+        )
 
     return page_shell(
         rx.el.link(rel="stylesheet", href="/voltix-catalog-search.css"),

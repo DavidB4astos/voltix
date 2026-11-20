@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-20
+goal: Exibir os detalhes do produto no catálogo público (/catalogo) em um modal
+  centralizado (rx.dialog) sobre a tela atual em vez de um painel fixo no topo da
+  página, preservando State, handlers, preços, variações e regras do catálogo.
+skip_specs: true
