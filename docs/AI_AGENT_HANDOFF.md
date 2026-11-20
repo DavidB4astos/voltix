@@ -577,6 +577,21 @@ autenticada com sessão descartável não foi executada (limitação). 430 teste
 `openspec validate --all --strict` e inspeção anterior verdes. Evidência:
 [verificação](../openspec/changes/archive/2026-11-13-fix-internal-users-password-filters/evidence/verification.md).
 
+### Auditoria de runtime das telas
+
+Em 20/11/2026, a change `audit-runtime-screens-and-flows` foi reativada e executada contra o
+Xano configurado, em modo somente leitura e em 1280/768/375 px. Resultado: as 9 rotas públicas e
+as 9 seções internas carregam sem erro; busca, filtro por categoria, detalhe de produto, CRM,
+clientes, pedidos, produtos, categorias e usuários respondem com dados reais; sem overflow
+horizontal. A lista de defeitos classificados e o escopo de correção proposto estão em
+`evidence/02-defects.md`. Destaques para a entrega: catálogo público exibindo produto de teste
+(bloqueador de demo), cards do catálogo sem preço (contraria requisito consolidado), selo "Built
+with Reflex" sobrepondo o rodapé e 8 de 23 produtos sem imagem. Limitações: sessão de Cliente
+não autenticável (403 nas credenciais de teste), ações de escrita não executadas, e-mail não
+exercitado. Evidências:
+[inventário](../openspec/changes/archive/2026-11-20-audit-runtime-screens-and-flows/evidence/01-screen-inventory.md)
+e [defeitos](../openspec/changes/archive/2026-11-20-audit-runtime-screens-and-flows/evidence/02-defects.md).
+
 ### Imagens de produto
 
 Há infraestrutura de imagens locais e créditos em `assets/demo/manifest.json`.
@@ -672,9 +687,12 @@ git status --short --branch
     13/11/2026** (change `fix-internal-users-password-filters`), com criação de
     usuário interno e troca de senha própria funcionando em produção; pull confere
     com normalização do importador.
-13. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
+13. **Auditoria de runtime concluída em 20/11/2026** (change
+    `audit-runtime-screens-and-flows`), com inventário de 9 rotas e 9 seções e lista
+    de defeitos priorizada; o bloqueador de demo é o resíduo de teste no catálogo.
+14. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
     autorizado.
-14. Retomar o trabalho mobile somente com uma change própria.
+15. Retomar o trabalho mobile somente com uma change própria.
 
 O CRM está completo no backend e no painel: consulta de clientes (C4), histórico
 do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3), o

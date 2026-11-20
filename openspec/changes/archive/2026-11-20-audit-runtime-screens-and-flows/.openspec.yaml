@@ -1,0 +1,5 @@
+schema: spec-driven
+created: 2026-11-10
+goal: Provar em execução quais telas e fluxos funcionam, quais falham e quais
+  bloqueios existem, antes de gravar o vídeo ou abrir correções.
+skip_specs: true

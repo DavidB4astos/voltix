@@ -293,3 +293,19 @@ Change `fix-internal-users-password-filters` implementada e publicada. Corrige d
 
 ### Correção da exibição monetária — CONCLUÍDA — 13/11/2026
 Change `fix-money-display` implementada. O helper `_cart_money_text` compilava para `JSON.stringify(...)`, renderizando valores com aspas literais (`R$ "119,90"`) em toda a aplicação. Entregue: `_cart_money_text` opera direto sobre o Var do texto (campos `str` das dataclasses), sem `to_string()`; entradas Python (`str`/`int`/`float`) são formatadas em Python puro (pad de fração para duas casas, `ValueError` para entrada inválida). 435 testes, `reflex compile` e `openspec validate --all --strict` verdes; ao vivo, o Dashboard renderiza `R$ 119,90` e os preços de variações sem aspas. Evidência: [verificação](../openspec/changes/archive/2026-11-13-fix-money-display/evidence/verification.md).
+
+### Auditoria de runtime das telas — CONCLUÍDA — 20/11/2026
+
+Change `audit-runtime-screens-and-flows` (rascunho de 10/11/2026, reativada) executada em modo
+somente leitura contra o Xano configurado, em 1280/768/375 px. Inventário de **9 rotas públicas**
+e **9 seções internas** (sessão de ADMINISTRADOR): todas carregam sem erro de carregamento; busca
+por "headset" (2 resultados), filtro por categoria "Monitores" (3) e estado vazio funcionando; sem
+overflow horizontal nas três larguras. Achados classificados em `evidence/02-defects.md`: D1
+bloqueador de demo (catálogo público exibe produto de teste `TMP-VALIDB-…`), D2 cards do catálogo
+sem preço (contraria o requisito consolidado de alinhamento imagem/preço/ação), D3 selo "Built
+with Reflex" sobrepondo o rodapé, D4 8 de 23 produtos sem imagem, D5 cabeçalho mobile escondendo
+"Acesso interno", D6 quebra de linha em valores altos na coluna Total, D7 "Connection Error:"
+não confirmado (falso positivo). Limitações registradas: sessão de Cliente indisponível (credenciais
+de teste com 403), ações de escrita não executadas, e-mail não exercitado. Evidências:
+[inventário](../openspec/changes/archive/2026-11-20-audit-runtime-screens-and-flows/evidence/01-screen-inventory.md)
+e [defeitos](../openspec/changes/archive/2026-11-20-audit-runtime-screens-and-flows/evidence/02-defects.md).
