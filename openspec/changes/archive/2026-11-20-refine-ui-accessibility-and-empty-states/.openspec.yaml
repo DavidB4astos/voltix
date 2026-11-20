@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-20
+goal: Refinar acessibilidade de formulários (id/name/autocomplete), polimento visual do
+  placeholder de imagem no catálogo e estado vazio do painel de Atendimentos sem alterar
+  regras de negócio, contratos Xano ou specs consolidadas.
+skip_specs: true
