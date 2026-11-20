@@ -40,8 +40,13 @@ class StorefrontHeaderTests(unittest.TestCase):
         self.assertIn(".vx-nav__mobile{display:none}", NAV_CSS)
         self.assertIn("@media(max-width:1023px)", NAV_CSS)
         self.assertIn(".vx-nav__pill.is-active", NAV_CSS)
-        self.assertIn("scroll-snap-type:x proximity", NAV_CSS)
-        self.assertIn(".vx-nav__mobile-nav::-webkit-scrollbar{display:none}", NAV_CSS)
+        mobile_rule = next(
+            line for line in NAV_CSS.splitlines()
+            if line.startswith(".vx-nav__mobile-nav{")
+        )
+        self.assertIn("flex-wrap:wrap", mobile_rule)
+        self.assertNotIn("overflow-x:auto", mobile_rule)
+        self.assertNotIn("mask-image:linear-gradient", NAV_CSS)
 
 
 class HomeCategoryBarTests(unittest.TestCase):

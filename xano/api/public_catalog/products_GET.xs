@@ -185,6 +185,25 @@ query "products" verb=GET {
           }
         }
 
+        var $min_price {
+          value = null
+        }
+
+        db.query variacao_produto {
+          return = {type: "single"}
+          where = ($db.variacao_produto.produto_id == $product.id) && ($db.variacao_produto.status == "ATIVO")
+          sort = {preco: "asc"}
+          output = ["preco"]
+        } as $cheapest_variation
+
+        conditional {
+          if ($cheapest_variation != null) {
+            var.update $min_price {
+              value = $cheapest_variation.preco
+            }
+          }
+        }
+
         var.update $product_list {
           value = $product_list|push:{
             id: $product.id
@@ -197,6 +216,7 @@ query "products" verb=GET {
             marca_nome: $brand_name
             status: $product.status
             image_url: $image_url
+            preco_minimo: $min_price
           }
         }
       }
@@ -205,4 +225,5 @@ query "products" verb=GET {
 
   response = $product_list
   tags = ["voltix:public-catalog"]
+  guid = "PpxGMCEZT9PIt2JRqnJfZtD7obk"
 }

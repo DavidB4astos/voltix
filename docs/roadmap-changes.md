@@ -1,6 +1,6 @@
 # Roadmap de changes — Voltix
 
-Atualizado em 03/11/2026 por conferência do repositório local. Fontes: [AGENTS](../AGENTS.md), [visão geral](project-overview.md), [domínio](domain-model.md), [configuração OpenSpec](../openspec/config.yaml), specs consolidadas, arquivos, manifesto e histórico Git. O histórico anterior permanece no Git.
+Atualizado em 20/11/2026 por conferência do repositório local. Fontes: [AGENTS](../AGENTS.md), [visão geral](project-overview.md), [domínio](domain-model.md), [configuração OpenSpec](../openspec/config.yaml), specs consolidadas, arquivos, manifesto e histórico Git. O histórico anterior permanece no Git.
 
 ## Regras
 
@@ -309,3 +309,23 @@ não confirmado (falso positivo). Limitações registradas: sessão de Cliente i
 de teste com 403), ações de escrita não executadas, e-mail não exercitado. Evidências:
 [inventário](../openspec/changes/archive/2026-11-20-audit-runtime-screens-and-flows/evidence/01-screen-inventory.md)
 e [defeitos](../openspec/changes/archive/2026-11-20-audit-runtime-screens-and-flows/evidence/02-defects.md).
+
+### Correção dos bloqueadores de demonstração — CONCLUÍDA — 20/11/2026
+
+Change `fix-demo-blockers` arquivada. Escopo aprovado "Todos os 6" executado: D1 inativados (sem
+exclusão) `TMP-VALIDB-20261015142856-A`, `Notebook Voltix Teste Hp` e `mouse` pela interface
+administrativa, com autorização explícita de gravação; D2 endpoint público
+`api/public_catalog/products_GET.xs` publicado com `preco_minimo` (menor preço de variação ativa) e
+card exibindo `a partir de R$ …` somente quando há preço real; D3 `show_built_with_reflex=False`;
+D4 placeholder textual `Imagem não disponível` em card e detalhe, sem foto ou crédito inventado;
+D5 pílula `Acesso interno` visível e sem rolagem horizontal em 375 px; D6 valor alto em uma linha
+com `white-space: nowrap`/`tabular-nums`. D7 permanece falso positivo.
+
+Verificação: 445 testes OK, `reflex compile` verde, `git diff --check` sem erros, inspeção visual em
+1280/768/375 px sem overflow no documento, catálogo final com 20 produtos e 20 preços, e
+`openspec validate --all --strict` com 28 specs válidas após consolidação de `public-catalog` e
+`visual-interface`. `reflex.lock/*` restaurado antes do `diff`. Limitações mantidas: sem E2E de
+compra, sem e-mail real, sem novas imagens de produto; uma varredura de 23 detalhes encontrou limite
+de 10 requisições/20 s do plano Free, sem impacto na conferência de preços já feita em 5 produtos.
+Publicação Xano restrita com `--force` autorizado em 20/11/2026. Evidência:
+[verificação](../openspec/changes/archive/2026-11-20-fix-demo-blockers/evidence/verification.md).

@@ -71,6 +71,7 @@
 .vx-customers__table table{width:100%;min-width:640px;border-collapse:collapse;font-size:12px}
 .vx-customers__table th{background:#f5f8fb;color:#637287;font-size:10px;letter-spacing:.025em;font-weight:600;white-space:nowrap;padding:13px 14px}
 .vx-customers__table td{padding:17px 14px;vertical-align:middle;color:#637287;border-bottom:1px solid #edf1f5}
+.vx-customers__table .vx-internal__money-cell{white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums}
 .vx-customers__table tr:last-child td{border-bottom:0}
 .vx-customers__table tbody tr:hover{background:#f8fbfd}
 .vx-customers__name{color:#17314b;font-weight:600}

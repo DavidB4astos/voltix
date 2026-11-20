@@ -1,6 +1,6 @@
 # Handoff para agente de IA — Voltix
 
-> Atualizado em 12/11/2026. Este documento resume o trabalho já realizado,
+> Atualizado em 20/11/2026. Este documento resume o trabalho já realizado,
 > o estado verificável do repositório e as regras para continuar o projeto com
 > segurança. Não contém senhas, tokens, URLs privadas de credenciais ou dados
 > pessoais de clientes.
@@ -94,6 +94,14 @@ correção dos filtros inválidos de senha do grupo internal_users (change
 `fix-internal-users-password-filters`): 435 testes e
 `openspec validate --all --strict` aprovando 30 itens (29 após arquivamento). Esse
 resultado é um registro datado, não substitui uma nova verificação após mudanças.
+
+Em 20/11/2026, as changes `audit-runtime-screens-and-flows` e `fix-demo-blockers`
+foram arquivadas. O estado verificado após o fechamento é: **445 testes OK**,
+`reflex compile` verde, `git diff --check` sem erros e validação strict do
+OpenSpec com **28 specs válidas**. O catálogo público da instância limpa exibe
+20 produtos, todos com preço; o endpoint público `products_GET` retorna
+`preco_minimo`. O commit/push dessa change ainda depende de autorização
+explícita — confira `git status` antes de qualquer ação.
 
 Antes de prosseguir, confira o estado real com:
 
@@ -690,9 +698,19 @@ git status --short --branch
 13. **Auditoria de runtime concluída em 20/11/2026** (change
     `audit-runtime-screens-and-flows`), com inventário de 9 rotas e 9 seções e lista
     de defeitos priorizada; o bloqueador de demo é o resíduo de teste no catálogo.
-14. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
+14. **Correção dos bloqueadores de demonstração concluída em 20/11/2026** (change
+    `fix-demo-blockers`): D1 inativação (sem exclusão) de três produtos de teste
+    pela interface administrativa, com autorização explícita de gravação; D2
+    `preco_minimo` publicado em `products_GET` e exibido como `a partir de R$ …`
+    somente quando há variação ativa; D3 selo do runtime removido; D4 placeholder
+    textual padronizado; D5 pílula "Acesso interno" visível em 375 px; D6 valor
+    alto sem quebra na coluna Total. Nenhuma foto, E2E de compra ou e-mail real
+    foi criado. 445 testes, `reflex compile`, `git diff --check` e validação
+    OpenSpec verdes (28 specs após arquivamento). Exceção registrada: push Xano
+    restrito com `--force` autorizado em 20/11/2026 para `api/public_catalog/products_GET.xs`.
+15. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
     autorizado.
-15. Retomar o trabalho mobile somente com uma change própria.
+16. Retomar o trabalho mobile somente com uma change própria.
 
 O CRM está completo no backend e no painel: consulta de clientes (C4), histórico
 do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3), o

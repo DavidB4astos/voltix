@@ -191,6 +191,7 @@ class PublicProductEntry:
     brand_name: str
     image_url: str
     variations: list[ProductVariation]
+    min_price: str = ""
 
 
 @dataclass(frozen=True)
@@ -1245,6 +1246,25 @@ def _public_product_entry(
 
     final_image_url = image_url or item_image_url or ""
 
+    raw_min_price = payload.get("preco_minimo")
+    min_price = ""
+    if raw_min_price is not None and raw_min_price != "":
+        if isinstance(raw_min_price, bool) or not isinstance(
+            raw_min_price, (int, float, str)
+        ):
+            raise ValueError("Public product minimum price has an invalid value.")
+        try:
+            minimum = Decimal(str(raw_min_price))
+        except InvalidOperation as error:
+            raise ValueError(
+                "Public product minimum price has an invalid value."
+            ) from error
+        if not minimum.is_finite() or minimum < 0:
+            raise ValueError(
+                "Public product minimum price is outside the allowed range."
+            )
+        min_price = format(minimum, ".2f")
+
     return PublicProductEntry(
         id=product_id,
         name=name or "",
@@ -1254,6 +1274,7 @@ def _public_product_entry(
         brand_name=brand_name or "",
         image_url=final_image_url,
         variations=variations or [],
+        min_price=min_price,
     )
 
 
@@ -8303,7 +8324,7 @@ def internal_order_panel(*, show_heading: bool = True) -> rx.Component:
             rx.el.td(status_badge(item.status)),
             rx.el.td(item.data_pedido_display),
             rx.el.td(item.itens_count_display),
-            rx.el.td(_cart_money_text(item.valor_total)),
+            rx.el.td(_cart_money_text(item.valor_total), class_name="vx-internal__money-cell"),
             rx.el.td(rx.el.button("Abrir", rx.icon("arrow-up-right", size=15),
                 on_click=State.select_internal_order(item.id), type="button",
                 aria_label="Abrir pedido " + item.codigo,
@@ -10223,7 +10244,7 @@ def public_catalog_page() -> rx.Component:
                              class_name="vx-catalog-card__image"),
                     rx.box(rx.icon("image", size=30, aria_hidden=True),
                            rx.text("Imagem não disponível"),
-                           class_name="vx-catalog-card__placeholder")),
+                           class_name="vx-catalog-card__placeholder vx-image-placeholder")),
                 class_name="vx-catalog-card__media"),
             rx.box(
                 rx.cond(product.brand_name != "", rx.text(product.brand_name, class_name="vx-catalog-card__brand"), rx.fragment()),
@@ -10231,6 +10252,10 @@ def public_catalog_page() -> rx.Component:
                 rx.cond(product.category_name != "", rx.text(product.category_name, class_name="vx-catalog-card__category"), rx.fragment()),
                 rx.box(rx.cond(product.description != "", rx.text(product.description), rx.fragment()),
                        class_name="vx-catalog-card__description"),
+                rx.cond(product.min_price != "",
+                        rx.text("a partir de R$ " + product.min_price.replace(".", ","),
+                                class_name="vx-catalog-card__price"),
+                        rx.fragment()),
                 (rx.match(product.image_url, *[(url, compact_credit(credit)) for url, credit in photo_credits.items()], rx.fragment())
                  if photo_credits else rx.fragment()),
                 rx.button("Ver detalhes", rx.icon("arrow-right", size=17, aria_hidden=True),
@@ -10283,7 +10308,7 @@ def public_catalog_page() -> rx.Component:
                                      class_name="vx-product-detail__image"),
                             rx.box(rx.icon("image", size=40, aria_hidden=True),
                                    rx.text("Imagem não disponível"),
-                                   class_name="vx-product-detail__placeholder")),
+                                   class_name="vx-product-detail__placeholder vx-image-placeholder")),
                             class_name="vx-product-detail__frame"),
                         (rx.match(product.image_url,
                                   *[(url, rx.el.figcaption(compact_credit(credit)))
