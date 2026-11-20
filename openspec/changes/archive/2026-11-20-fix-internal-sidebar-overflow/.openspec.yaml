@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-20
+goal: Corrigir o transbordamento vertical da sidebar do workspace interno (/interno) e a
+  quebra de e-mail no card Identidade de Meu perfil em viewports desktop de altura menor
+  (ex. 1366x768).
+skip_specs: true
