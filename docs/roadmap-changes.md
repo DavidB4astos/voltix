@@ -361,3 +361,27 @@ Evidências:
 [03 Xano](../openspec/changes/archive/2026-11-20-audit-full-demo-readiness/evidence/03-xano-readonly.md),
 [04 segurança](../openspec/changes/archive/2026-11-20-audit-full-demo-readiness/evidence/04-security.md) e
 [05 prontidão](../openspec/changes/archive/2026-11-20-audit-full-demo-readiness/evidence/05-demo-readiness.md).
+
+### Auditoria de prontidão da entrega — CONCLUÍDA — 20/11/2026
+
+Change `audit-delivery-readiness` executada em worktree separado (`.worktrees/audit-delivery-readiness`)
+e arquivada com `skip_specs: true`, sem alteração de código, specs consolidadas ou escrita no Xano.
+Veredito: **0 bloqueadores de demo**.
+
+- **Runtime:** portas `3090`, `3091` e `3092` ativas (`200`); rotas `/`, `/catalogo`, `/carrinho`,
+  `/checkout` e `/interno` respondendo `200` na porta `3092` (`/entrar` com `404` classificado como
+  falso positivo, pois a rota real é `/cliente`). Limitação documentada: `chrome_devtools` MCP sem
+  `DevToolsActivePort` ativo no perfil atual (sem reiniciar navegador).
+- **Código/gates:** `445/445` testes OK, `reflex compile` verde com `reflex.lock/*` restaurado,
+  `git diff --check` limpo e `openspec validate --all --strict` com 28 specs válidas após arquivamento.
+- **Xano e segurança:** `xano workspace pull` somente leitura (`126` documentos, sem `--env`/`--records`,
+  sem 429); autorização backend conferida para `CLIENTE`, `FUNCIONARIO` e `ADMINISTRADOR`; nenhum
+  segredo ou dado pessoal exposto; `db_xano_bastos/status_cliente/*` com `auth=False` registrado como
+  pós-entrega.
+
+Evidências:
+[01 runtime](../openspec/changes/archive/2026-11-20-audit-delivery-readiness/evidence/01-runtime.md),
+[02 código/gates](../openspec/changes/archive/2026-11-20-audit-delivery-readiness/evidence/02-code-specs-gates.md),
+[03 Xano](../openspec/changes/archive/2026-11-20-audit-delivery-readiness/evidence/03-xano-readonly.md),
+[04 segurança](../openspec/changes/archive/2026-11-20-audit-delivery-readiness/evidence/04-security.md) e
+[05 prontidão](../openspec/changes/archive/2026-11-20-audit-delivery-readiness/evidence/05-demo-readiness.md).

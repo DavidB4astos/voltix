@@ -720,6 +720,17 @@ git status --short --branch
     (sem POST nem reset), checkout apenas simulado e pendências Xano históricas mantidas. Evidências:
     `openspec/changes/archive/2026-11-20-audit-full-demo-readiness/evidence/01-runtime.md` a
     `05-demo-readiness.md`.
+18. **Auditoria de prontidão da entrega arquivada em 20/11/2026**
+    (change `audit-delivery-readiness`, executada no worktree `.worktrees/audit-delivery-readiness`):
+    cinco frentes sequenciais sem alterar código, specs ou Xano. Portas `3090`/`3091`/`3092` e rotas
+    `/`, `/catalogo`, `/carrinho`, `/checkout` e `/interno` respondendo HTTP `200`; `445/445` testes OK,
+    `reflex compile` verde com `reflex.lock/*` restaurado, `git diff --check` limpo, `xano workspace pull`
+    somente leitura (126 documentos, sem 429) e autorização backend verificada (`0` bloqueadores de demo).
+    Limitação documentada: `chrome_devtools` MCP sem `DevToolsActivePort` ativo nesta execução (sem reiniciar
+    perfil), 403 histórico de Cliente preservado sem reset e `db_xano_bastos/status_cliente/*` com `auth=False`
+    registrado como pós-entrega. Evidências:
+    `openspec/changes/archive/2026-11-20-audit-delivery-readiness/evidence/01-runtime.md` a
+    `05-demo-readiness.md`.
 
 O CRM está completo no backend e no painel: consulta de clientes (C4), histórico
 do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3), o

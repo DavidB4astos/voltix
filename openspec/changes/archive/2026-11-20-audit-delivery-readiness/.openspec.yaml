@@ -1,0 +1,7 @@
+schema: spec-driven
+created: 2026-11-20
+goal: Auditar a prontidão da entrega e demonstração do Voltix em worktree separado,
+  cobrindo runtime/telas, código/specs/gates, Xano somente leitura, segurança e
+  consolidação de matriz achado-jornada-classificação e roteiro de ensaio, sem
+  alterar comportamento nem gravar dados reais.
+skip_specs: true
