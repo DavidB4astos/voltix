@@ -329,3 +329,35 @@ compra, sem e-mail real, sem novas imagens de produto; uma varredura de 23 detal
 de 10 requisições/20 s do plano Free, sem impacto na conferência de preços já feita em 5 produtos.
 Publicação Xano restrita com `--force` autorizado em 20/11/2026. Evidência:
 [verificação](../openspec/changes/archive/2026-11-20-fix-demo-blockers/evidence/verification.md).
+
+### Auditoria completa de prontidão da demonstração — CONCLUÍDA — 20/11/2026
+
+Change `audit-full-demo-readiness` arquivada em worktree separado, com `skip_specs: true`. Escopo
+aprovado "tudo" (quatro frentes) e "todas" (quatro jornadas), sem alteração de código, specs
+consolidadas, Xano ou dados. Nenhum bloqueador de demo identificado no escopo executável.
+
+- **Runtime:** 9 rotas × 3 larguras (1280/768/375 px) = 27 combinações sem overflow, sem
+  "Carregando" e sem badge do framework; console sem `[error]`/`[warn]`, apenas avisos de
+  acessibilidade e o falso positivo `Connection Error:` vazio. Catálogo → detalhe → carrinho e os
+  estados de checkout/ADMIN conferidos no DOM, sem mutação.
+- **Código/gates:** 445 testes OK, `reflex compile` verde com `reflex.lock/*` restaurado,
+  `git diff --check` limpo e `openspec validate --all --strict` com 29 itens antes e 28 specs após o
+  arquivamento. Corrigido em `AI_AGENT_HANDOFF.md` o registro desatualizado de 435 testes.
+- **Xano somente leitura:** pull de metadados (126 documentos) em área temporária, sem `--env` nem
+  `--records`; `preco_minimo` conferido local e publicado; um GET público → 200, 20 produtos, 20/20
+  com preço, sem 429. Pendências mantidas: joins de carrinho/checkout, defaults de schema, upload com
+  403, tabela remota `tmp_rollback_test` e prova isolada bloqueada por E6.
+- **Segurança:** matriz de 5 papéis coerente com E1/E2/E4 e specs; cinco GETs anônimos → 401; varredura
+  de CPF/e-mail/telefone/senha/hash/token/variáveis de ambiente limpa no DOM das 9 rotas e nas
+  evidências. Dois achados classificados como falso positivo e a superfície legada
+  `DB_XANO_BASTOS/status_cliente_*` como pós-entrega.
+- **Limitações da rodada:** sessão ADMINISTRADOR indisponível após o restart do Chrome (seções
+  internas não reabertas ao vivo), 403 de Cliente documentado sem reenvio de POST e sem reset, e
+  checkout estritamente simulado.
+
+Evidências:
+[01 runtime](../openspec/changes/archive/2026-11-20-audit-full-demo-readiness/evidence/01-runtime.md),
+[02 código/gates](../openspec/changes/archive/2026-11-20-audit-full-demo-readiness/evidence/02-code-specs-gates.md),
+[03 Xano](../openspec/changes/archive/2026-11-20-audit-full-demo-readiness/evidence/03-xano-readonly.md),
+[04 segurança](../openspec/changes/archive/2026-11-20-audit-full-demo-readiness/evidence/04-security.md) e
+[05 prontidão](../openspec/changes/archive/2026-11-20-audit-full-demo-readiness/evidence/05-demo-readiness.md).

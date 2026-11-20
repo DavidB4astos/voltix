@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-20
+goal: Auditar, em uma única change, a prontidão da demonstração nas frentes de
+  runtime/telas, código/specs/gates, Xano somente leitura e segurança/autorização,
+  produzindo evidências e um plano de jornadas sem gravar dados reais.
+skip_specs: true

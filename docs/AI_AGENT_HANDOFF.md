@@ -628,7 +628,7 @@ Verificação de testes a partir da raiz do repositório:
 & '.\.venv-windows\Scripts\python.exe' -m unittest discover -s tests -q
 ```
 
-A suíte mais recente registrada teve **435 testes aprovados**. Execute somente
+A suíte mais recente registrada teve **445 testes aprovados**. Execute somente
 os testes pertinentes quando a change for documental; não gere ruído rodando
 toda a aplicação sem necessidade.
 
@@ -711,6 +711,15 @@ git status --short --branch
 15. Manter testes de compra E2E bloqueados até haver ambiente Xano isolado e
     autorizado.
 16. Retomar o trabalho mobile somente com uma change própria.
+17. **Auditoria completa de prontidão da demonstração arquivada em 20/11/2026**
+    (change `audit-full-demo-readiness`, executada em worktree separado): quatro frentes
+    (runtime/telas, código/specs/gates, Xano somente leitura e segurança/autorização) e quatro
+    jornadas. Nenhum bloqueador de demo no escopo executável; 27 combinações rota/viewport sem
+    overflow, 445 testes OK, `reflex compile` verde e 28 specs válidas após arquivamento. Limitações:
+    sessão ADMINISTRADOR perdida antes da reabertura das seções internas, 403 de Cliente não reemitido
+    (sem POST nem reset), checkout apenas simulado e pendências Xano históricas mantidas. Evidências:
+    `openspec/changes/archive/2026-11-20-audit-full-demo-readiness/evidence/01-runtime.md` a
+    `05-demo-readiness.md`.
 
 O CRM está completo no backend e no painel: consulta de clientes (C4), histórico
 do Cliente (C6), atendimentos (C7), consulta/transição de pedidos (C3), o
