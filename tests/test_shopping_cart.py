@@ -345,7 +345,7 @@ class ShoppingCartTests(unittest.TestCase):
         self.assertIn("State.add_to_cart(variation.id)", catalog_page)
         self.assertIn('route="/carrinho"', source)
         self.assertIn("State.load_cart", cart_page)
-        self.assertIn("State.update_cart_item(item.id)", cart_page)
+        self.assertIn("State.update_cart_item_form", cart_page)
         self.assertIn("State.remove_cart_item(item.id)", cart_page)
         self.assertIn("State.cart_total", cart_page)
         self.assertIn('href="/checkout"', cart_page)

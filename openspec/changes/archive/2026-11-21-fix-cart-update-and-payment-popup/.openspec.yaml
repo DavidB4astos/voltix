@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-21
+goal: Corrigir a atualização de quantidade e total no carrinho (/carrinho) e adicionar
+  um pop-up de confirmação de compra aprovada ao aprovar o pagamento simulado em
+  /pedidos.
+skip_specs: true

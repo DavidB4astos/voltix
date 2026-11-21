@@ -4306,6 +4306,9 @@ class State(rx.State):
     selected_order_payment_status: str = ""
     order_loading: bool = False
     payment_simulating: bool = False
+    payment_approved_modal_open: bool = False
+    payment_approved_order_code: str = ""
+    payment_approved_total: str = ""
     payment_message: str = ""
     customer_addresses: list[CustomerAddressEntry] = []
     customer_addresses_loading: bool = False
@@ -6420,6 +6423,19 @@ class State(rx.State):
         )
 
     @rx.event
+    async def update_cart_item_form(self, form_data: dict[str, Any]):
+        raw_item_id = form_data.get("item_id") if isinstance(form_data, dict) else None
+        if (
+            not isinstance(raw_item_id, (int, str))
+            or isinstance(raw_item_id, bool)
+            or (isinstance(raw_item_id, str) and not raw_item_id.strip().isdigit())
+            or int(raw_item_id) < 1
+        ):
+            self.cart_message = "Item não encontrado no carrinho. Atualize a lista."
+            return
+        await self.update_cart_item(int(raw_item_id), form_data)
+
+    @rx.event
     async def remove_cart_item(self, item_id: int):
         if not any(item.id == item_id for item in self.cart_items):
             self.cart_message = "Item não encontrado no carrinho. Atualize a lista."
@@ -6782,6 +6798,22 @@ class State(rx.State):
         self.payment_message = (
             "Pagamento simulado aprovado. Nenhuma cobrança real foi realizada."
         )
+        if (
+            updated_order.status == "PAGAMENTO_CONFIRMADO"
+            or updated_order.payment_status == "APROVADO"
+        ):
+            self.payment_approved_order_code = updated_order.code
+            self.payment_approved_total = updated_order.total
+            self.payment_approved_modal_open = True
+
+    @rx.event
+    def close_payment_approved_modal(self):
+        self.payment_approved_modal_open = False
+
+    @rx.event
+    def handle_payment_approved_dialog_open_change(self, is_open: bool):
+        if not is_open:
+            self.close_payment_approved_modal()
 
     @rx.event
     async def register_customer(self, form_data: dict[str, Any]):
@@ -11153,6 +11185,7 @@ def _cart_item_view(item, *, loading, on_update, on_remove) -> rx.Component:
                        rx.text(_cart_money_text(item.subtotal), class_name="vx-cart__subtotal")),
                 class_name="vx-cart__prices"),
             rx.form(
+                rx.el.input(type="hidden", name="item_id", value=item.id.to_string()),
                 rx.box(
                     rx.el.label("Quantidade", html_for=quantity_id, class_name="vx-cart__label"),
                     rx.input(id=quantity_id, name="quantidade", type="number", min="0", step="1",
@@ -11306,7 +11339,7 @@ def _checkout_contents(view, *, on_address, on_review, on_method, on_confirm) ->
 def customer_cart_page() -> rx.Component:
     def cart_item_card(item: CartItemEntry) -> rx.Component:
         return _cart_item_view(item, loading=State.cart_loading,
-                               on_update=State.update_cart_item(item.id),
+                               on_update=State.update_cart_item_form,
                                on_remove=State.remove_cart_item(item.id))
 
     return page_shell(
@@ -11442,10 +11475,60 @@ def customer_orders_page() -> rx.Component:
         section_heading("Meus pedidos"),
         rx.text("Consulte o histórico e os valores registrados em cada compra.", class_name="vx-orders__intro"),
         rx.cond(State.customer_authenticated,
-            _orders_contents(State, on_refresh=State.load_customer_orders, card_renderer=order_card,
-                on_simulate=State.simulate_order_payment,
-                can_simulate=(State.selected_order_status == "AGUARDANDO_PAGAMENTO") & (State.selected_order_payment_status == "PENDENTE"),
-                simulation_notice="Aprovação simulada: nenhum valor será cobrado."),
+            rx.fragment(
+                _orders_contents(State, on_refresh=State.load_customer_orders, card_renderer=order_card,
+                    on_simulate=State.simulate_order_payment,
+                    can_simulate=(State.selected_order_status == "AGUARDANDO_PAGAMENTO") & (State.selected_order_payment_status == "PENDENTE"),
+                    simulation_notice="Aprovação simulada: nenhum valor será cobrado."),
+                rx.dialog.root(
+                    rx.dialog.content(
+                        rx.vstack(
+                            rx.box(
+                                rx.icon("circle-check", size=32, color=COLOR_SUCCESS, aria_hidden=True),
+                                padding="0.75rem",
+                                border_radius="9999px",
+                                background="#ECFDF5",
+                            ),
+                            rx.heading("Compra aprovada!", size="6", color=COLOR_NAVY),
+                            rx.text(
+                                "O pagamento simulado do pedido "
+                                + State.payment_approved_order_code
+                                + " foi confirmado.",
+                                color=COLOR_TEXT,
+                                text_align="center",
+                            ),
+                            rx.cond(
+                                State.payment_approved_total != "",
+                                rx.text(
+                                    "Total pago: " + _cart_money_text(State.payment_approved_total),
+                                    font_weight="700",
+                                    color=COLOR_NAVY,
+                                ),
+                                rx.fragment(),
+                            ),
+                            rx.text(
+                                "Nenhuma cobrança real foi realizada (ambiente acadêmico).",
+                                font_size="0.85rem",
+                                color=COLOR_TEXT_MUTED,
+                                text_align="center",
+                            ),
+                            primary_button(
+                                "Continuar",
+                                on_click=State.close_payment_approved_modal,
+                                width="100%",
+                            ),
+                            spacing="3",
+                            align="center",
+                            width="100%",
+                        ),
+                        max_width="28rem",
+                        padding="24px",
+                        border_radius="16px",
+                    ),
+                    open=State.payment_approved_modal_open,
+                    on_open_change=State.handle_payment_approved_dialog_open_change,
+                ),
+            ),
             rx.el.section(rx.el.h2("Seu histórico fica na sua conta", class_name="vx-orders__section-title"),
                 rx.text("Entre como Cliente para consultar seus pedidos."),
                 rx.link("Acessar conta de Cliente", href="/cliente", class_name="vx-access-cta"), class_name="vx-orders vx-orders__selection")),
