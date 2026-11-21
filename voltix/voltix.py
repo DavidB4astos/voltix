@@ -3549,27 +3549,35 @@ class State(rx.State):
             return await bounded_read(request)
 
         try:
-            customers = await read(
-                "XANO_INTERNAL_CUSTOMERS_URL",
-                {"status": "ATIVO", "page": 1, "per_page": 1})
+            (
+                customers,
+                open_attendances,
+                in_progress_attendances,
+                finished_attendances,
+                orders,
+                recent,
+                sales,
+            ) = await asyncio.gather(
+                read("XANO_INTERNAL_CUSTOMERS_URL", {"status": "ATIVO", "page": 1, "per_page": 1}),
+                *(
+                    read("XANO_INTERNAL_ATTENDANCES_URL", {"status": status, "page": 1, "per_page": 1})
+                    for status in CRM_STATUS_ORDER
+                ),
+                read("XANO_INTERNAL_ORDERS_URL", {"q": "", "status": "TODOS", "page": 1, "per_page": 1}),
+                read("XANO_INTERNAL_ATTENDANCES_URL", {"status": "TODOS", "page": 1, "per_page": 10}),
+                read("XANO_INTERNAL_SALES_URL", {}),
+            )
             _, clientes_ativos, _ = customer_page(customers, page=1, per_page=1)
             counts = {}
-            for status in CRM_STATUS_ORDER:
-                result = await read(
-                    "XANO_INTERNAL_ATTENDANCES_URL",
-                    {"status": status, "page": 1, "per_page": 1})
+            for status, result in zip(
+                CRM_STATUS_ORDER,
+                (open_attendances, in_progress_attendances, finished_attendances),
+            ):
                 _, total, _ = attendance_page(result, page=1, per_page=1)
                 counts[status] = total
-            orders = await read(
-                "XANO_INTERNAL_ORDERS_URL",
-                {"q": "", "status": "TODOS", "page": 1, "per_page": 1})
             _, pedidos_total, _ = order_summary_page(orders, page=1, per_page=1)
-            recent = await read(
-                "XANO_INTERNAL_ATTENDANCES_URL",
-                {"status": "TODOS", "page": 1, "per_page": 10})
             recentes, atendimentos_total, _ = attendance_page(
                 recent, page=1, per_page=10)
-            sales = await read("XANO_INTERNAL_SALES_URL", {})
             snapshot = crm_dashboard(
                 clientes_ativos=clientes_ativos,
                 atendimentos_por_status=counts,
@@ -4749,11 +4757,13 @@ class State(rx.State):
         self.public_product_detail_id = product_id
         self.public_selected_product = None
         try:
-            details = await self._public_catalog_request(
-                XANO_PUBLIC_PRODUCT_DETAILS_URL_ENV,
-                record_id=product_id,
+            details, image_url = await asyncio.gather(
+                self._public_catalog_request(
+                    XANO_PUBLIC_PRODUCT_DETAILS_URL_ENV,
+                    record_id=product_id,
+                ),
+                self._public_product_image(product_id),
             )
-            image_url = await self._public_product_image(product_id)
             product_payload = details.get("product") if isinstance(details, dict) else None
             variations_payload = details.get("variations") if isinstance(details, dict) else None
             first_sku = ""

@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-21
+goal: Reduzir o tempo de abertura do modal de detalhes do produto no catálogo e do painel
+  de CRM executando leituras independentes ao Xano em paralelo com asyncio.gather,
+  preservando contratos, cache, bounded_read e tratamento de erros.
+skip_specs: true
