@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-21
+goal: Criar o arquivo README.md na raiz do repositório Voltix como manual de uso do
+  aplicativo web, cobrindo as 7 seções exigidas pela entrega sem expor credenciais,
+  CPFs ou dados reais.
+skip_specs: true
