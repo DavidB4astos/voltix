@@ -1,0 +1,6 @@
+schema: spec-driven
+created: 2026-11-21
+goal: Evitar falhas por HTTP 429 e recargas redundantes no Dashboard de vendas e no CRM
+  ao alternar entre abas do /interno, com cache curto (20s), reaproveitamento de
+  reports/sales e mensagem clara quando atingir o limite do plano gratuito.
+skip_specs: true

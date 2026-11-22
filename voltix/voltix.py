@@ -2111,12 +2111,14 @@ class State(rx.State):
     internal_dashboard_loading: bool = False
     internal_dashboard_message: str = ""
     _internal_dashboard_generation: int = 0
+    _internal_dashboard_loaded_at: float = 0.0
 
     internal_crm: list[CrmDashboard] = []
     internal_crm_loading: bool = False
     internal_crm_message: str = ""
     internal_crm_loaded: bool = False
     _internal_crm_generation: int = 0
+    _internal_crm_loaded_at: float = 0.0
 
     internal_users: list[InternalUserEntry] = []
     internal_users_loading: bool = False
@@ -2175,9 +2177,19 @@ class State(rx.State):
             if changed and section == "pedidos":
                 return State.load_internal_orders
             if changed and section == "dashboard":
-                return State.load_internal_dashboard
+                if (
+                    not getattr(self, "internal_dashboard", [])
+                    or (time.monotonic() - getattr(self, "_internal_dashboard_loaded_at", 0.0)) >= 20.0
+                ):
+                    return State.load_internal_dashboard
+                return
             if changed and section == "crm":
-                return State.load_internal_crm
+                if (
+                    not getattr(self, "internal_crm_loaded", False)
+                    or (time.monotonic() - getattr(self, "_internal_crm_loaded_at", 0.0)) >= 20.0
+                ):
+                    return State.load_internal_crm
+                return
             if changed and section == "usuarios":
                 return State.load_internal_users
             if section == "perfil":
@@ -2373,6 +2385,7 @@ class State(rx.State):
 
     def _clear_internal_dashboard(self):
         self._internal_dashboard_generation += 1
+        self._internal_dashboard_loaded_at = 0.0
         self.internal_dashboard = []
         self.internal_dashboard_loading = False
         self.internal_dashboard_message = ""
@@ -2380,6 +2393,7 @@ class State(rx.State):
 
     def _clear_internal_crm(self):
         self._internal_crm_generation += 1
+        self._internal_crm_loaded_at = 0.0
         self.internal_crm = []
         self.internal_crm_loading = False
         self.internal_crm_message = ""
@@ -3498,6 +3512,7 @@ class State(rx.State):
                     and token == self._auth_token and user_id == self.user_id
                     and self._internal_dashboard_allowed()):
                 self.internal_dashboard = [dashboard]
+                self._internal_dashboard_loaded_at = time.monotonic()
                 if dashboard.pedidos == 0:
                     self.internal_dashboard_message = (
                         "Nenhuma venda encontrada no período informado.")
@@ -3513,6 +3528,10 @@ class State(rx.State):
                 if isinstance(error, urllib.error.HTTPError) and error.code == 400:
                     self.internal_dashboard_message = (
                         "Período inválido. Revise as datas e tente novamente.")
+                elif isinstance(error, urllib.error.HTTPError) and error.code == 429:
+                    self.internal_dashboard_message = (
+                        "Limite temporário de requisições do plano gratuito (10 req/20 s). "
+                        "Aguarde ~20 segundos e tente novamente.")
                 else:
                     self.internal_dashboard_message = (
                         "Não foi possível carregar as métricas. "
@@ -3548,16 +3567,20 @@ class State(rx.State):
                     url, authorization="Bearer " + token, retry_rate_limit=False)
             return await bounded_read(request)
 
+        cached_dash = getattr(self, "internal_dashboard", [])
+        reusable_sales = (
+            cached_dash[0]
+            if (
+                cached_dash
+                and not getattr(self, "internal_dashboard_from", "")
+                and not getattr(self, "internal_dashboard_to", "")
+                and (time.monotonic() - getattr(self, "_internal_dashboard_loaded_at", 0.0)) < 20.0
+            )
+            else None
+        )
+
         try:
-            (
-                customers,
-                open_attendances,
-                in_progress_attendances,
-                finished_attendances,
-                orders,
-                recent,
-                sales,
-            ) = await asyncio.gather(
+            reads = [
                 read("XANO_INTERNAL_CUSTOMERS_URL", {"status": "ATIVO", "page": 1, "per_page": 1}),
                 *(
                     read("XANO_INTERNAL_ATTENDANCES_URL", {"status": status, "page": 1, "per_page": 1})
@@ -3565,7 +3588,20 @@ class State(rx.State):
                 ),
                 read("XANO_INTERNAL_ORDERS_URL", {"q": "", "status": "TODOS", "page": 1, "per_page": 1}),
                 read("XANO_INTERNAL_ATTENDANCES_URL", {"status": "TODOS", "page": 1, "per_page": 10}),
-                read("XANO_INTERNAL_SALES_URL", {}),
+            ]
+            if reusable_sales is None:
+                reads.append(read("XANO_INTERNAL_SALES_URL", {}))
+            results = await asyncio.gather(*reads)
+            (
+                customers,
+                open_attendances,
+                in_progress_attendances,
+                finished_attendances,
+                orders,
+                recent,
+            ) = results[:6]
+            vendas_snapshot = (
+                reusable_sales if reusable_sales is not None else sales_dashboard(results[6])
             )
             _, clientes_ativos, _ = customer_page(customers, page=1, per_page=1)
             counts = {}
@@ -3584,11 +3620,12 @@ class State(rx.State):
                 atendimentos_total=atendimentos_total,
                 pedidos_total=pedidos_total,
                 recentes=recentes,
-                vendas=sales_dashboard(sales),
+                vendas=vendas_snapshot,
             )
             if current():
                 self.internal_crm = [snapshot]
                 self.internal_crm_loaded = True
+                self._internal_crm_loaded_at = time.monotonic()
         except (urllib.error.URLError, TimeoutError, ValueError, json.JSONDecodeError) as error:
             if current():
                 if isinstance(error, urllib.error.HTTPError):
@@ -3597,9 +3634,14 @@ class State(rx.State):
                     self._clear_authentication_state(
                         "Acesso interno não autorizado. Entre novamente.")
                     return
-                self.internal_crm_message = (
-                    "Não foi possível carregar o CRM. "
-                    "Verifique o acesso e tente novamente.")
+                if isinstance(error, urllib.error.HTTPError) and error.code == 429:
+                    self.internal_crm_message = (
+                        "Limite temporário de requisições do plano gratuito (10 req/20 s). "
+                        "Aguarde ~20 segundos e tente novamente.")
+                else:
+                    self.internal_crm_message = (
+                        "Não foi possível carregar o CRM. "
+                        "Verifique o acesso e tente novamente.")
         finally:
             if generation == self._internal_crm_generation:
                 self.internal_crm_loading = False
